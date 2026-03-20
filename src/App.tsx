@@ -1,7 +1,9 @@
-import { AppLayout } from "@/app/app-layout"
+import { RouterProvider } from "@tanstack/react-router"
+
+import { router } from "@/app/router"
 
 function App() {
-  return <AppLayout />
+  return <RouterProvider router={router} />
 }
 
 export default App
