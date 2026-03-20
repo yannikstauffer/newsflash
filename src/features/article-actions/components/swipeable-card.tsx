@@ -1,5 +1,5 @@
 import { useDrag } from "@use-gesture/react"
-import { useCallback, useRef, useState } from "react"
+import { useRef, useState } from "react"
 
 import type { ReactNode } from "react"
 
@@ -19,23 +19,15 @@ export function SwipeableCard({
   const [offsetX, setOffsetX] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const handleSwipeRight = useCallback(() => {
-    onSwipeRight()
-  }, [onSwipeRight])
-
-  const handleSwipeLeft = useCallback(() => {
-    onSwipeLeft()
-  }, [onSwipeLeft])
-
   const bind = useDrag(
     ({ movement: [mx], last, event }) => {
       event.stopPropagation()
 
       if (last) {
         if (mx > SWIPE_THRESHOLD) {
-          handleSwipeRight()
+          onSwipeRight()
         } else if (mx < -SWIPE_THRESHOLD) {
-          handleSwipeLeft()
+          onSwipeLeft()
         }
         setOffsetX(0)
         return
