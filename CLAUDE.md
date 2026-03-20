@@ -2,6 +2,10 @@
 
 This file contains project-specific instructions for Claude Code when working on this codebase.
 
+## Temporary Files
+
+**ALWAYS** use `.tmp/` for writing temporary files. **NEVER** use other folders for temporary files.
+
 ## Project Overview
 
 This is a **Vite 8 + React 19 + TypeScript** single-page application (SPA). The project follows Bulletproof React architecture with strict module boundaries enforced via ESLint.
@@ -137,15 +141,9 @@ The `docs/` folder contains comprehensive guidelines with code examples, checkli
 - **Before reviewing code:** Verify against the relevant checklists
 - **CRITICAL sections** (mobile-first, WCAG, OWASP) are non-negotiable requirements
 
-## Keeping `docs/` Up to Date (CRITICAL)
+## Keeping `docs/` Up to Date
 
-**After completing any task** or **before using the condense skill**, check whether anything learned during the task should be captured in `docs/`:
-
-1. Did you discover a new pattern, gotcha, or best practice relevant to an existing doc? **Update that doc.**
-2. Did you work in an area not yet covered by any doc? **Create a new doc** and add it to the table above.
-3. Did a guideline in a doc turn out to be wrong or outdated? **Fix or remove it.**
-
-This ensures the docs stay accurate and grow with the project. Stale docs are worse than no docs.
+See **Quality Gates > Documentation Currency** above. Stale docs are worse than no docs.
 
 ## Mobile-First Development (CRITICAL)
 
@@ -250,6 +248,27 @@ npm run test:e2e   # Run Playwright
 - Keep client-side JavaScript minimal
 - Lazy load heavy components: `const Heavy = lazy(() => import("./Heavy"))`
 - Use responsive images with proper `width`/`height` attributes and `loading="lazy"`
+
+## Quality Gates (CRITICAL)
+
+**After creating or modifying any file**, run these checks before considering the work done:
+
+### IDE Diagnostics
+
+Run `mcp__jetbrains__get_file_problems` on each file that was created or changed. Review all reported errors and warnings:
+
+1. **Fix genuine issues** immediately before moving on
+2. **For false positives**, do NOT suppress or ignore silently — **ASK the user** how they want to handle each one (suppress, configure, or accept)
+
+No file should be committed without a clean diagnostics check.
+
+### Documentation Currency
+
+After completing any task, check whether anything learned should be captured in `docs/`:
+
+1. Did you discover a new pattern, gotcha, or best practice relevant to an existing doc? **Update that doc.**
+2. Did you work in an area not yet covered by any doc? **Create a new doc** and add it to the table above.
+3. Did a guideline in a doc turn out to be wrong or outdated? **Fix or remove it.**
 
 ## When in Doubt
 
