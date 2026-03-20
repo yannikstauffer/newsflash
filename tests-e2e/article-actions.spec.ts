@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
-import { setupMocks, ALL_CONNECTOR_FIXTURES } from "./helpers/mock-feeds"
 import { clearLocalStorage } from "./helpers/local-storage"
+import { setupMocks, ALL_CONNECTOR_FIXTURES } from "./helpers/mock-feeds"
 
 test.beforeEach(async ({ page }) => {
   await setupMocks(page, ALL_CONNECTOR_FIXTURES)
@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
 
 // Desktop-only tests: hover-based button actions
 test.describe("desktop button actions", () => {
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(async (_fixtures, testInfo) => {
     if (testInfo.project.name === "mobile-chrome") {
       test.skip()
     }
@@ -118,7 +118,7 @@ test.describe("desktop button actions", () => {
 
   test("remove article from read list", async ({ page }) => {
     const firstCard = page.locator("article").first()
-    const firstTitle = await firstCard.locator("h3").textContent()
+    const _firstTitle = await firstCard.locator("h3").textContent()
 
     // Save first
     await firstCard.hover()
@@ -168,7 +168,7 @@ test("empty read list shows guidance message", async ({ page }) => {
 
 // Mobile-only tests: swipe gestures
 test.describe("mobile swipe actions", () => {
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(async (_fixtures, testInfo) => {
     if (testInfo.project.name !== "mobile-chrome") {
       test.skip()
     }

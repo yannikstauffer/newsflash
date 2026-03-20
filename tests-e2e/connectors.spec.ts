@@ -37,8 +37,8 @@ for (const connector of CONNECTORS) {
       const cards = page.locator("article")
       await expect(cards).toHaveCount(connector.expectedArticles)
 
-      for (let i = 0; i < connector.expectedArticles; i++) {
-        const card = cards.nth(i)
+      for (let index = 0; index < connector.expectedArticles; index++) {
+        const card = cards.nth(index)
 
         // Title inside a link
         const titleLink = card.locator("a[target='_blank'] h3")
@@ -66,8 +66,8 @@ for (const connector of CONNECTORS) {
         const images = page.locator("article img")
         await expect(images).toHaveCount(connector.expectedArticles)
 
-        for (let i = 0; i < connector.expectedArticles; i++) {
-          const naturalWidth = await images.nth(i).evaluate(
+        for (let index = 0; index < connector.expectedArticles; index++) {
+          const naturalWidth = await images.nth(index).evaluate(
             (img: HTMLImageElement) => img.naturalWidth,
           )
           expect(naturalWidth).toBeGreaterThan(0)

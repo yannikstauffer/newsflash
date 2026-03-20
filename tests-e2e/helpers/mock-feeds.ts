@@ -6,7 +6,7 @@ import type { Page } from "@playwright/test"
 const FIXTURES_DIR = path.resolve(import.meta.dirname, "../fixtures")
 
 function readFixture(name: string): string {
-  return fs.readFileSync(path.join(FIXTURES_DIR, name), "utf-8")
+  return fs.readFileSync(path.join(FIXTURES_DIR, name), "utf8")
 }
 
 function readPlaceholderPng(): Buffer {

@@ -38,11 +38,9 @@ export function FeedConfigPage() {
 
   return (
     <div className="space-y-8">
-      {/* eslint-disable-next-line i18next/no-literal-string -- static heading, no i18n system yet */}
       <h2 className="text-xl font-bold text-foreground">Settings</h2>
 
       <section className="space-y-3">
-        {/* eslint-disable-next-line i18next/no-literal-string -- static heading, no i18n system yet */}
         <h3 className="text-base font-semibold text-foreground">Language</h3>
         <div
           className="inline-flex rounded-lg border border-border"
@@ -69,7 +67,6 @@ export function FeedConfigPage() {
       </section>
 
       <section className="space-y-3">
-        {/* eslint-disable-next-line i18next/no-literal-string -- static heading, no i18n system yet */}
         <h3 className="text-base font-semibold text-foreground">Appearance</h3>
         <div
           className="inline-flex rounded-lg border border-border"
@@ -96,7 +93,6 @@ export function FeedConfigPage() {
       </section>
 
       <section className="space-y-3">
-        {/* eslint-disable-next-line i18next/no-literal-string -- static heading, no i18n system yet */}
         <h3 className="text-base font-semibold text-foreground">Sources</h3>
         <div className="divide-y divide-border rounded-lg border border-border">
           {connectors.map((connector) => {

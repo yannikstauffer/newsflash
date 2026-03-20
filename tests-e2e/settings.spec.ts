@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
-import { setupMocks, ALL_CONNECTOR_FIXTURES } from "./helpers/mock-feeds"
 import { clearLocalStorage } from "./helpers/local-storage"
+import { setupMocks, ALL_CONNECTOR_FIXTURES } from "./helpers/mock-feeds"
 
 test.beforeEach(async ({ page }) => {
   await setupMocks(page, ALL_CONNECTOR_FIXTURES)

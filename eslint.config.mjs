@@ -232,11 +232,8 @@ const eslintConfig = defineConfig([
       "security/detect-pseudoRandomBytes": "error",
       "security/detect-unsafe-regex": "error",
 
-      // Internationalization
-      "i18next/no-literal-string": ["error", {
-        markupOnly: true,
-        ignoreAttribute: ["className", "href", "src", "alt", "type", "id", "name", "target", "rel", "role"],
-      }],
+      // Internationalization (disabled until an i18n system is adopted)
+      "i18next/no-literal-string": "off",
 
       // Prevent secrets in code
       "no-secrets/no-secrets": ["error", {
@@ -276,14 +273,6 @@ const eslintConfig = defineConfig([
 
       // React best practices
       "react/no-danger": "error",
-    },
-  },
-
-  // UI components and scaffold pages contain intentional literal strings
-  {
-    files: ["src/components/ui/**", "src/App.tsx"],
-    rules: {
-      "i18next/no-literal-string": "off",
     },
   },
 

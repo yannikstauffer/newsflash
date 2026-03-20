@@ -1,7 +1,7 @@
-import type { Page } from "@playwright/test"
-
-import { setupMocks } from "./mock-feeds"
 import { seedFeedPreferences } from "./local-storage"
+import { setupMocks } from "./mock-feeds"
+
+import type { Page } from "@playwright/test"
 
 /** All feed IDs across all connectors. */
 const ALL_FEED_IDS = [
