@@ -223,7 +223,8 @@ export function parseRss(
     }
 
     return []
-  } catch {
+  } catch (error: unknown) {
+    console.error(`Failed to parse feed from source "${source}":`, error)
     return []
   }
 }

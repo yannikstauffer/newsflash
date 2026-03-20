@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { hashString53, parseRss } from "./base-parser"
 
@@ -111,9 +111,32 @@ describe("parseRss", () => {
 
   describe("error handling", () => {
     it("returns empty array for malformed XML", () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
       const articles = parseRss("not xml at all {{{", "test", "en")
 
       expect(articles).toEqual([])
+
+      consoleSpy.mockRestore()
+    })
+
+    it("logs to console.error when XML parsing fails", () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+      // Force a throw by passing a value that causes the parser to error
+      const result = parseRss(
+        null as unknown as string,
+        "broken-feed",
+        "en",
+      )
+
+      expect(result).toEqual([])
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Failed to parse feed from source "broken-feed":',
+        expect.anything(),
+      )
+
+      consoleSpy.mockRestore()
     })
 
     it("returns empty array for empty string", () => {

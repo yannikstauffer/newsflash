@@ -1,6 +1,7 @@
 import { Bookmark, Newspaper, Settings } from "lucide-react"
 import { useState } from "react"
 
+import { ErrorBoundary } from "@/components/error-boundary"
 import { ReadListPage } from "@/features/article-actions/components/read-list-page"
 import { FeedPage } from "@/features/feed/components/feed-page"
 import { FeedConfigPage } from "@/features/feed-config/components/feed-config-page"
@@ -39,9 +40,11 @@ export function AppLayout() {
       </header>
 
       <main className="flex-1 p-3 md:p-6">
-        {activeView === "feed" && <FeedPage />}
-        {activeView === "readlist" && <ReadListPage />}
-        {activeView === "config" && <FeedConfigPage />}
+        <ErrorBoundary>
+          {activeView === "feed" && <FeedPage />}
+          {activeView === "readlist" && <ReadListPage />}
+          {activeView === "config" && <FeedConfigPage />}
+        </ErrorBoundary>
       </main>
     </div>
   )
