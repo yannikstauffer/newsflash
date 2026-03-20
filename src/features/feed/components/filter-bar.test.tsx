@@ -14,6 +14,7 @@ const defaultProps = {
   onPrev: vi.fn(),
   onNext: vi.fn(),
   onToggleAllArticles: vi.fn(),
+  lastRefreshedAt: null as Date | null,
 }
 
 describe("FilterBar", () => {
@@ -129,5 +130,19 @@ describe("FilterBar", () => {
     fireEvent.change(screen.getByLabelText("Search articles"), { target: { value: "test" } })
 
     expect(onSearchChange).toHaveBeenCalledWith("test")
+  })
+
+  it("displays last refreshed timestamp when provided", () => {
+    const lastRefreshedAt = new Date()
+    render(<FilterBar {...defaultProps} lastRefreshedAt={lastRefreshedAt} />)
+
+    expect(screen.getByLabelText("Last refreshed")).toBeDefined()
+    expect(screen.getByLabelText("Last refreshed").textContent).toContain("Refreshed")
+  })
+
+  it("does not display last refreshed timestamp when null", () => {
+    render(<FilterBar {...defaultProps} lastRefreshedAt={null} />)
+
+    expect(screen.queryByLabelText("Last refreshed")).toBeNull()
   })
 })

@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Eye, EyeOff, Search } from "lucide-react"
 
 import { formatDayLabel } from "../utils/format-day-label"
+import { formatRelativeTime } from "../utils/format-time"
 
 import { Button } from "@/components/ui/button"
 
@@ -15,6 +16,7 @@ interface FilterBarProps {
   readonly onPrev: () => void
   readonly onNext: () => void
   readonly onToggleAllArticles: () => void
+  readonly lastRefreshedAt: Date | null
 }
 
 export function FilterBar({
@@ -28,6 +30,7 @@ export function FilterBar({
   onPrev,
   onNext,
   onToggleAllArticles,
+  lastRefreshedAt,
 }: FilterBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -102,6 +105,12 @@ export function FilterBar({
           aria-label="Search articles"
         />
       </div>
+
+      {lastRefreshedAt && (
+        <span className="text-xs text-muted-foreground" aria-label="Last refreshed">
+          {`Refreshed ${formatRelativeTime(lastRefreshedAt)}`}
+        </span>
+      )}
     </div>
   )
 }

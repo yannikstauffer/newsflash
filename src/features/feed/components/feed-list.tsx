@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react"
+import { useMemo } from "react"
 
 import { ArticleCard } from "./article-card"
 
@@ -29,7 +30,7 @@ export function FeedList({
   emptyMessage,
 }: FeedListProps) {
   const { visibleItems, sentinelRef } = useLazyList(articles)
-  const hiddenSet = new Set(hiddenIds)
+  const hiddenSet = useMemo(() => new Set(hiddenIds), [hiddenIds])
 
   if (loading && articles.length === 0) {
     return (

@@ -27,6 +27,7 @@ interface FilterBarProps {
   readonly onPrev: () => void
   readonly onNext: () => void
   readonly onToggleAllArticles: () => void
+  readonly lastRefreshedAt: Date | null
 }
 
 interface FeedListProps {
@@ -50,7 +51,7 @@ interface UseFeedPageResult {
 
 export function useFeedPage(): UseFeedPageResult {
   const { isFeedEnabled, language } = useFeedPreferences()
-  const { articles, loading, errors, refresh } = useFeedData(isFeedEnabled)
+  const { articles, loading, errors, lastRefreshedAt } = useFeedData(isFeedEnabled)
   const {
     hiddenIds,
     isHidden,
@@ -73,10 +74,6 @@ export function useFeedPage(): UseFeedPageResult {
     return today
   })
   const [allArticles, setAllArticles] = useState(false)
-
-  useEffect(() => {
-    void refresh()
-  }, [refresh])
 
   const filteredArticles = useMemo(() => {
     const filtered = filterArticles(articles, {
@@ -256,10 +253,11 @@ export function useFeedPage(): UseFeedPageResult {
     onPrev: handlePreviousDay,
     onNext: handleNextDay,
     onToggleAllArticles: handleToggleAllArticles,
+    lastRefreshedAt,
   }), [
     showHidden, handleToggleShowHidden, searchQuery, selectedDate,
     allArticles, isToday, handlePreviousDay, handleNextDay,
-    handleToggleAllArticles,
+    handleToggleAllArticles, lastRefreshedAt,
   ])
 
   const emptyMessage = !allArticles && !loading

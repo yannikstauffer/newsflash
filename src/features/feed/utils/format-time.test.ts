@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { formatAbsoluteTime, formatShortTime } from "./format-time"
+import { formatAbsoluteTime, formatRelativeTime, formatShortTime } from "./format-time"
 
 describe("formatAbsoluteTime", () => {
   it.each([
@@ -53,5 +53,39 @@ describe("formatShortTime", () => {
     },
   ])("returns correct format for $name", ({ date, expected }) => {
     expect(formatShortTime(date)).toBe(expected)
+  })
+})
+
+describe("formatRelativeTime", () => {
+  const base = new Date("2026-03-20T12:00:00Z")
+
+  it.each([
+    {
+      name: "just now for less than 60 seconds",
+      date: new Date("2026-03-20T11:59:30Z"),
+      expected: "just now",
+    },
+    {
+      name: "1 min ago",
+      date: new Date("2026-03-20T11:59:00Z"),
+      expected: "1 min ago",
+    },
+    {
+      name: "multiple minutes ago",
+      date: new Date("2026-03-20T11:45:00Z"),
+      expected: "15 min ago",
+    },
+    {
+      name: "1 hour ago",
+      date: new Date("2026-03-20T11:00:00Z"),
+      expected: "1 hour ago",
+    },
+    {
+      name: "multiple hours ago",
+      date: new Date("2026-03-20T09:00:00Z"),
+      expected: "3 hours ago",
+    },
+  ])("returns $expected for $name", ({ date, expected }) => {
+    expect(formatRelativeTime(date, base)).toBe(expected)
   })
 })
