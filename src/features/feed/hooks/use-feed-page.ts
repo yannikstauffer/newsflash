@@ -62,6 +62,7 @@ export function useFeedPage(): UseFeedPageResult {
   } = useArticleState()
 
   const hoveredArticleRef = useRef<string | undefined>(undefined)
+  const focusedArticleRef = useRef<string | undefined>(undefined)
   const articlesRef = useRef<NormalizedArticle[]>([])
 
   const [showHidden, setShowHidden] = useState(false)
@@ -154,6 +155,11 @@ export function useFeedPage(): UseFeedPageResult {
     [isInReadList, removeFromReadList, addToReadList],
   )
 
+  const getFocusedArticleId = useCallback(
+    () => focusedArticleRef.current,
+    [],
+  )
+
   const getHoveredArticleId = useCallback(
     () => hoveredArticleRef.current,
     [],
@@ -162,17 +168,22 @@ export function useFeedPage(): UseFeedPageResult {
   useArticleKeyboardShortcuts({
     onHide: handleKeyboardHide,
     onSave: handleKeyboardSave,
+    getFocusedArticleId,
     getHoveredArticleId,
   })
 
-  const createHoverRef = useCallback(
+  const createInteractionRef = useCallback(
     (articleId: string) => {
       return (node: HTMLElement | null) => {
         if (node) {
           const handleEnter = () => { hoveredArticleRef.current = articleId }
           const handleLeave = () => { hoveredArticleRef.current = undefined }
+          const handleFocus = () => { focusedArticleRef.current = articleId }
+          const handleBlur = () => { focusedArticleRef.current = undefined }
           node.addEventListener("mouseenter", handleEnter)
           node.addEventListener("mouseleave", handleLeave)
+          node.addEventListener("focusin", handleFocus)
+          node.addEventListener("focusout", handleBlur)
         }
       }
     },
@@ -208,7 +219,7 @@ export function useFeedPage(): UseFeedPageResult {
     (article: NormalizedArticle, children: ReactNode) => {
       const hoverDiv = createElement(
         "div",
-        { ref: createHoverRef(article.id) },
+        { ref: createInteractionRef(article.id) },
         children,
       )
       return createElement(
@@ -227,7 +238,7 @@ export function useFeedPage(): UseFeedPageResult {
         },
       )
     },
-    [hideArticle, isInReadList, removeFromReadList, addToReadList, createHoverRef],
+    [hideArticle, isInReadList, removeFromReadList, addToReadList, createInteractionRef],
   )
 
   const handleToggleShowHidden = useCallback(() => {

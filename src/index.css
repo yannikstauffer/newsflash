@@ -4,6 +4,7 @@
 @import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant touch-device (@media (hover: none));
 
 :root {
   --background: oklch(0.98 0 0);

@@ -1,14 +1,16 @@
 import { useEffect } from "react"
 
 interface KeyboardShortcutOptions {
-  onHide: (articleId: string) => void
-  onSave: (articleId: string) => void
-  getHoveredArticleId: () => string | undefined
+  readonly onHide: (articleId: string) => void
+  readonly onSave: (articleId: string) => void
+  readonly getFocusedArticleId: () => string | undefined
+  readonly getHoveredArticleId: () => string | undefined
 }
 
 export function useArticleKeyboardShortcuts({
   onHide,
   onSave,
+  getFocusedArticleId,
   getHoveredArticleId,
 }: KeyboardShortcutOptions) {
   useEffect(() => {
@@ -20,7 +22,7 @@ export function useArticleKeyboardShortcuts({
         return
       }
 
-      const articleId = getHoveredArticleId()
+      const articleId = getFocusedArticleId() ?? getHoveredArticleId()
       if (!articleId) {
         return
       }
@@ -38,5 +40,5 @@ export function useArticleKeyboardShortcuts({
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [onHide, onSave, getHoveredArticleId])
+  }, [onHide, onSave, getFocusedArticleId, getHoveredArticleId])
 }

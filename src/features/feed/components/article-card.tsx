@@ -12,7 +12,9 @@ interface ArticleCardProps {
 export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
   return (
     <article
-      className={`group relative grid ${article.imageUrl ? "grid-cols-[auto_1fr]" : "grid-cols-1"} gap-3 rounded-lg bg-card p-3 shadow-sm transition-all duration-150 hover:shadow-md dark:shadow-[0_1px_3px_rgba(0,0,0,0.4)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.5)] md:gap-4 md:p-4 ${
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1: focusable for keyboard shortcuts
+      tabIndex={0}
+      className={`group relative grid ${article.imageUrl ? "grid-cols-[auto_1fr]" : "grid-cols-1"} gap-3 rounded-lg bg-card p-3 shadow-sm transition-all duration-150 hover:shadow-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 dark:shadow-[0_1px_3px_rgba(0,0,0,0.4)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.5)] md:gap-4 md:p-4 ${
         dimmed ? "opacity-50" : ""
       }`}
     >

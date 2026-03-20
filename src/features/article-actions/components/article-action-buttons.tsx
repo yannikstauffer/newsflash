@@ -14,7 +14,7 @@ export function ArticleActionButtons({
   isSaved,
 }: ArticleActionButtonsProps) {
   return (
-    <div className="hidden gap-1 group-hover:flex">
+    <div className="hidden gap-1 group-hover:flex group-focus-within:flex touch-device:flex touch-device:gap-0.5">
       <Button
         variant="ghost"
         size="icon-xs"
