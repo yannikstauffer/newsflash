@@ -84,6 +84,13 @@ When ready to implement, run /opsx:apply
    openspec status --change "<name>"
    ```
 
+6. **Auto-commit the proposal** (MANDATORY)
+
+   After showing the final status, **immediately** use the **Skill tool** to invoke `openspec-commit`.
+   The commit context is: change-name = `<name>`, operation = `propose`.
+
+   Do NOT skip this step. Do NOT ask the user whether to commit.
+
 **Output**
 
 After completing all artifacts, summarize:

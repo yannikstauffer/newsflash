@@ -87,6 +87,14 @@ Implement tasks from an OpenSpec change.
    - If all done: suggest archive
    - If paused: explain why and wait for guidance
 
+8. **Auto-commit the implementation** (MANDATORY — on completion or pause, NOT on error/blocker)
+
+   After showing the status, if at least one task was completed this session, **immediately** use the **Skill tool** to invoke `openspec-commit`.
+   The commit context is: change-name = `<name>`, operation = `apply`.
+
+   Do NOT skip this step. Do NOT ask the user whether to commit.
+   Only skip if zero tasks were completed (nothing to commit).
+
 **Output During Implementation**
 
 ```

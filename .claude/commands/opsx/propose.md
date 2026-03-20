@@ -12,6 +12,7 @@ I'll create a change with artifacts:
 - design.md (how)
 - tasks.md (implementation steps)
 
+Changes are auto-committed after proposal creation.
 When ready to implement, run /opsx:apply
 
 ---
