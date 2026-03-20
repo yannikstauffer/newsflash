@@ -111,6 +111,7 @@ app → features → shared modules
 
 ### Component Guidelines
 
+- **Readonly props** - All props interface properties must use the `readonly` modifier (see [`docs/component-patterns.md`](docs/component-patterns.md#read-only-props-critical))
 - **Minimize state** - Keep components focused and state minimal
 - **Extract hooks** - Move complex logic into custom hooks
 - **Composition over nesting** - Prefer composing small components
@@ -255,9 +256,9 @@ npm run test:e2e   # Run Playwright
 
 ### IDE Diagnostics
 
-Run `mcp__jetbrains__get_file_problems` on each file that was created or changed. Review all reported errors and warnings:
+**Run once as a finishing task** — after all edits are complete, not after every individual edit. Run `mcp__jetbrains__get_file_problems` on each file that was created or changed. Review all reported errors and warnings:
 
-1. **Fix genuine issues** immediately before moving on
+1. **Fix genuine issues** before considering the task done
 2. **For false positives**, do NOT suppress or ignore silently — **ASK the user** how they want to handle each one (suppress, configure, or accept)
 
 No file should be committed without a clean diagnostics check.

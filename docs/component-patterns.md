@@ -71,6 +71,28 @@ function App() {
 }
 ```
 
+## Read-Only Props (CRITICAL)
+
+All component prop interfaces **must** use the `readonly` modifier on every property. This enforces immutability, prevents accidental mutation, and enables React rendering optimizations.
+
+```tsx
+// Good — all properties marked readonly
+interface CardProps {
+  readonly children: React.ReactNode
+  readonly title: string
+  readonly onClick?: () => void
+}
+
+// Bad — mutable props
+interface CardProps {
+  children: React.ReactNode
+  title: string
+  onClick?: () => void
+}
+```
+
+This applies to all prop definitions: `interface`, `type`, and inline types used as component parameters.
+
 ## Composition Over Inheritance
 
 Prefer composition patterns. Never use class inheritance for component reuse.
@@ -79,8 +101,8 @@ Prefer composition patterns. Never use class inheritance for component reuse.
 
 ```tsx
 interface CardProps {
-  children: React.ReactNode
-  className?: string
+  readonly children: React.ReactNode
+  readonly className?: string
 }
 
 function Card({ children, className }: CardProps) {
@@ -102,9 +124,9 @@ function Card({ children, className }: CardProps) {
 
 ```tsx
 interface ListProps<T> {
-  items: T[]
-  renderItem: (item: T, index: number) => React.ReactNode
-  emptyState?: React.ReactNode
+  readonly items: T[]
+  readonly renderItem: (item: T, index: number) => React.ReactNode
+  readonly emptyState?: React.ReactNode
 }
 
 function List<T>({ items, renderItem, emptyState }: ListProps<T>) {
