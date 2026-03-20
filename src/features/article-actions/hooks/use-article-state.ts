@@ -4,6 +4,9 @@ import type { NormalizedArticle } from "@/features/connectors/types"
 
 import { useLocalStorage } from "@/hooks/use-local-storage"
 
+export const MAX_HIDDEN_IDS = 500
+export const MAX_READLIST_ITEMS = 200
+
 const HIDDEN_KEY = "newsflash:hidden"
 const READLIST_KEY = "newsflash:readlist"
 
@@ -75,9 +78,11 @@ export function useArticleState(): {
 
   const hideArticle = useCallback(
     (articleId: string) => {
-      setHiddenIds((previous) =>
-        previous.includes(articleId) ? previous : [...previous, articleId],
-      )
+      setHiddenIds((previous) => {
+        if (previous.includes(articleId)) return previous
+        const next = [articleId, ...previous]
+        return next.length > MAX_HIDDEN_IDS ? next.slice(0, MAX_HIDDEN_IDS) : next
+      })
     },
     [setHiddenIds],
   )
@@ -91,11 +96,13 @@ export function useArticleState(): {
 
   const addToReadList = useCallback(
     (article: NormalizedArticle) => {
-      setStoredReadList((previous) =>
-        previous.some((a) => a.id === article.id)
-          ? previous
-          : [toStored(article), ...previous],
-      )
+      setStoredReadList((previous) => {
+        if (previous.some((a) => a.id === article.id)) return previous
+        const next = [toStored(article), ...previous]
+        return next.length > MAX_READLIST_ITEMS
+          ? next.slice(0, MAX_READLIST_ITEMS)
+          : next
+      })
     },
     [setStoredReadList],
   )
