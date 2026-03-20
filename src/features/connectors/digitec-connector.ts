@@ -10,7 +10,6 @@ export const digitecConnector: Connector = {
     {
       id: "digitec",
       name: "Digitec Magazine",
-      proxyPath: "/api/rss/digitec",
     },
   ],
   parse(xml: string): NormalizedArticle[] {

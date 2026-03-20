@@ -10,7 +10,6 @@ export const galaxusConnector: Connector = {
     {
       id: "galaxus",
       name: "Galaxus Magazine",
-      proxyPath: "/api/rss/galaxus",
     },
   ],
   parse(xml: string): NormalizedArticle[] {

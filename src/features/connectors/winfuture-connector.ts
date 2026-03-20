@@ -10,7 +10,6 @@ export const winfutureConnector: Connector = {
     {
       id: "winfuture",
       name: "WinFuture News",
-      proxyPath: "/api/rss/winfuture",
     },
   ],
   parse(xml: string): NormalizedArticle[] {

@@ -1,7 +1,6 @@
 export interface FeedConfig {
   id: string
   name: string
-  proxyPath: string
 }
 
 export interface Connector {

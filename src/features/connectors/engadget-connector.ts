@@ -10,7 +10,6 @@ export const engadgetConnector: Connector = {
     {
       id: "engadget",
       name: "Engadget",
-      proxyPath: "/api/rss/engadget",
     },
   ],
   parse(xml: string): NormalizedArticle[] {

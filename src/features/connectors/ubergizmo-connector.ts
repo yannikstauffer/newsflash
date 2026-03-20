@@ -10,7 +10,6 @@ export const ubergizmoConnector: Connector = {
     {
       id: "ubergizmo",
       name: "Ubergizmo",
-      proxyPath: "/api/rss/ubergizmo",
     },
   ],
   parse(xml: string): NormalizedArticle[] {

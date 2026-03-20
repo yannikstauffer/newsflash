@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
+import { feedProxyPath } from "@/config/feeds"
 import { fetchFeed } from "@/features/connectors/fetch-feed"
 import { connectors } from "@/features/connectors/registry"
 
@@ -53,7 +54,7 @@ async function fetchAllFeeds(
       .filter((feed) => isFeedEnabled(feed.id))
       .map(async (feed): Promise<NormalizedArticle[]> => {
         try {
-          const xml = await fetchFeed(feed.proxyPath)
+          const xml = await fetchFeed(feedProxyPath(feed.id))
           return connector.parse(xml)
         } catch (error) {
           const message =

@@ -10,7 +10,6 @@ export const heiseConnector: Connector = {
     {
       id: "heise",
       name: "Heise Online",
-      proxyPath: "/api/rss/heise",
     },
   ],
   parse(xml: string): NormalizedArticle[] {
