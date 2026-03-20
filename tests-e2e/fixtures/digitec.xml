@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Digitec Magazine</title>
+    <link>https://www.digitec.ch</link>
+    <description>Digitec Magazine RSS Feed</description>
+    <item>
+      <title>Digitec Inline Image Article</title>
+      <link>https://www.digitec.ch/article/inline-image</link>
+      <description>&lt;img src="https://example.com/digitec-inline.jpg" /&gt;&lt;p&gt;This article has an inline image at the start of the description.&lt;/p&gt;</description>
+      <pubDate>Thu, 20 Mar 2026 10:00:00 GMT</pubDate>
+      <category>Tech</category>
+    </item>
+    <item>
+      <title>Digitec Anchor Wrapped Image Article</title>
+      <link>https://www.digitec.ch/article/anchor-image</link>
+      <description>&lt;a href="https://www.digitec.ch"&gt;&lt;img src="https://example.com/digitec-anchor.jpg" /&gt;&lt;/a&gt;&lt;p&gt;This article has an image wrapped in an anchor tag.&lt;/p&gt;</description>
+      <pubDate>Thu, 20 Mar 2026 09:00:00 GMT</pubDate>
+      <category>Reviews</category>
+    </item>
+  </channel>
+</rss>

@@ -5,6 +5,8 @@ import { ArticleCard } from "./article-card"
 import type { NormalizedArticle } from "@/features/connectors/types"
 import type { ReactNode } from "react"
 
+import { useLazyList } from "@/hooks/use-lazy-list"
+
 interface FeedListProps {
   readonly articles: NormalizedArticle[]
   readonly loading: boolean
@@ -13,6 +15,7 @@ interface FeedListProps {
   readonly showHidden: boolean
   readonly renderActions?: (article: NormalizedArticle) => ReactNode
   readonly renderWrapper?: (article: NormalizedArticle, children: ReactNode) => ReactNode
+  readonly emptyMessage?: string
 }
 
 export function FeedList({
@@ -23,7 +26,9 @@ export function FeedList({
   showHidden,
   renderActions,
   renderWrapper,
+  emptyMessage,
 }: FeedListProps) {
+  const { visibleItems, sentinelRef } = useLazyList(articles)
   const hiddenSet = new Set(hiddenIds)
 
   if (loading && articles.length === 0) {
@@ -57,11 +62,11 @@ export function FeedList({
 
       {articles.length === 0 && !loading && (
         <p className="py-12 text-center text-muted-foreground">
-          {"No articles found. Try adjusting your filters."}
+          {emptyMessage ?? "No articles found. Try adjusting your filters."}
         </p>
       )}
 
-      {articles.map((article) => {
+      {visibleItems.map((article) => {
         const card = (
           <ArticleCard
             key={article.id}
@@ -72,6 +77,8 @@ export function FeedList({
         )
         return renderWrapper ? renderWrapper(article, card) : card
       })}
+
+      <div ref={sentinelRef} />
     </div>
   )
 }

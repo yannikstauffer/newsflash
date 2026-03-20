@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>WinFuture News</title>
+    <link>https://www.winfuture.de</link>
+    <description>WinFuture News RSS Feed</description>
+    <item>
+      <title>WinFuture Enclosure Image Article</title>
+      <link>https://www.winfuture.de/article/enclosure</link>
+      <description>This article uses an enclosure tag with an image type.</description>
+      <pubDate>Thu, 20 Mar 2026 10:00:00 GMT</pubDate>
+      <enclosure url="https://example.com/winfuture-enclosure.jpg" type="image/jpeg" />
+      <category>Windows</category>
+    </item>
+    <item>
+      <title>WinFuture Inline Fallback Article</title>
+      <link>https://www.winfuture.de/article/inline-fallback</link>
+      <description>&lt;img src="https://example.com/winfuture-inline.jpg" /&gt;&lt;p&gt;This article falls back to inline image extraction.&lt;/p&gt;</description>
+      <pubDate>Thu, 20 Mar 2026 09:00:00 GMT</pubDate>
+      <category>Hardware</category>
+    </item>
+  </channel>
+</rss>

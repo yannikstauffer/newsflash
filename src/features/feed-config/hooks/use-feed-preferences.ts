@@ -3,50 +3,65 @@ import { useCallback } from "react"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 
 const STORAGE_KEY = "newsflash:feed-prefs"
+const LANGUAGE_FIELD = "_language"
+
+export type LanguagePreference = "all" | "de" | "en"
+
+interface FeedPrefsStore extends Record<string, boolean | LanguagePreference> {
+  [LANGUAGE_FIELD]?: LanguagePreference
+}
 
 export function useFeedPreferences(): {
   preferences: Record<string, boolean>
+  language: LanguagePreference
   isFeedEnabled: (feedId: string) => boolean
   toggleFeed: (feedId: string) => void
   setFeedEnabled: (feedId: string, enabled: boolean) => void
   setAllForSource: (feedIds: string[], enabled: boolean) => void
+  setLanguage: (language: LanguagePreference) => void
 } {
-  const [preferences, setPreferences] = useLocalStorage<
-    Record<string, boolean>
-  >(STORAGE_KEY, {})
+  const [store, setStore] = useLocalStorage<FeedPrefsStore>(STORAGE_KEY, {})
+
+  // Extract language and feed preferences from the combined store
+  const language: LanguagePreference =
+    // eslint-disable-next-line security/detect-object-injection -- LANGUAGE_FIELD is a constant
+    (store[LANGUAGE_FIELD] as LanguagePreference | undefined) ?? "all"
+  const preferences: Record<string, boolean> = Object.fromEntries(
+    Object.entries(store).filter(([key]) => key !== LANGUAGE_FIELD),
+  ) as Record<string, boolean>
 
   const isFeedEnabled = useCallback(
     (feedId: string): boolean => {
       // eslint-disable-next-line security/detect-object-injection -- feedId is from our connector registry
-      return preferences[feedId] !== false
+      return store[feedId] !== false
     },
-    [preferences],
+    [store],
   )
 
   const toggleFeed = useCallback(
     (feedId: string) => {
-      setPreferences((previous) => ({
+      setStore((previous) => ({
         ...previous,
         // eslint-disable-next-line security/detect-object-injection -- feedId is from our connector registry
         [feedId]: previous[feedId] === false,
       }))
     },
-    [setPreferences],
+    [setStore],
   )
 
   const setFeedEnabled = useCallback(
     (feedId: string, enabled: boolean) => {
-      setPreferences((previous) => ({
+      setStore((previous) => ({
         ...previous,
         [feedId]: enabled,
       }))
     },
-    [setPreferences],
+    [setStore],
   )
 
   const setAllForSource = useCallback(
     (feedIds: string[], enabled: boolean) => {
-      setPreferences((previous) => {
+      setStore((previous) => {
         const updated = { ...previous }
         for (const feedId of feedIds) {
           // eslint-disable-next-line security/detect-object-injection -- feedId from connector registry
@@ -55,8 +70,26 @@ export function useFeedPreferences(): {
         return updated
       })
     },
-    [setPreferences],
+    [setStore],
   )
 
-  return { preferences, isFeedEnabled, toggleFeed, setFeedEnabled, setAllForSource }
+  const setLanguage = useCallback(
+    (newLanguage: LanguagePreference) => {
+      setStore((previous) => ({
+        ...previous,
+        [LANGUAGE_FIELD]: newLanguage,
+      }))
+    },
+    [setStore],
+  )
+
+  return {
+    preferences,
+    language,
+    isFeedEnabled,
+    toggleFeed,
+    setFeedEnabled,
+    setAllForSource,
+    setLanguage,
+  }
 }

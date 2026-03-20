@@ -1,28 +1,21 @@
-const MINUTE = 60_000
-const HOUR = 3_600_000
-const DAY = 86_400_000
+function pad(value: number): string {
+  return String(value).padStart(2, "0")
+}
 
-export function formatRelativeTime(date: Date): string {
-  const now = Date.now()
-  const diff = now - date.getTime()
+export function formatAbsoluteTime(date: Date): string {
+  const day = pad(date.getDate())
+  const month = pad(date.getMonth() + 1)
+  const year = date.getFullYear()
+  const hours = pad(date.getHours())
+  const minutes = pad(date.getMinutes())
+  const seconds = pad(date.getSeconds())
+  return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`
+}
 
-  if (diff < MINUTE) {
-    return "just now"
-  }
-  if (diff < HOUR) {
-    const minutes = Math.floor(diff / MINUTE)
-    return `${minutes}m ago`
-  }
-  if (diff < DAY) {
-    const hours = Math.floor(diff / HOUR)
-    return `${hours}h ago`
-  }
-  const days = Math.floor(diff / DAY)
-  if (days === 1) {
-    return "yesterday"
-  }
-  if (days < 30) {
-    return `${days}d ago`
-  }
-  return date.toLocaleDateString()
+export function formatShortTime(date: Date): string {
+  const day = pad(date.getDate())
+  const month = pad(date.getMonth() + 1)
+  const hours = pad(date.getHours())
+  const minutes = pad(date.getMinutes())
+  return `${day}.${month}. ${hours}:${minutes}`
 }

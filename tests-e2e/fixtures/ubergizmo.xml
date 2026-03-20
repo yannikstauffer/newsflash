@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Ubergizmo</title>
+    <link>https://www.ubergizmo.com</link>
+    <description>Ubergizmo RSS Feed</description>
+    <item>
+      <title>Ubergizmo With Image Article</title>
+      <link>https://www.ubergizmo.com/article/with-image</link>
+      <description>&lt;img src="https://example.com/ubergizmo-inline.jpg" /&gt;&lt;p&gt;This article has an inline image at the start.&lt;/p&gt;</description>
+      <pubDate>Thu, 20 Mar 2026 10:00:00 GMT</pubDate>
+      <category>Mobile</category>
+    </item>
+    <item>
+      <title>Ubergizmo No Image Article</title>
+      <link>https://www.ubergizmo.com/article/no-image</link>
+      <description>This article has no image at all, just plain text description.</description>
+      <pubDate>Thu, 20 Mar 2026 09:00:00 GMT</pubDate>
+      <category>Apps</category>
+    </item>
+  </channel>
+</rss>

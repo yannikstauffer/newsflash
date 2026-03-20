@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Engadget</title>
+    <link>https://www.engadget.com</link>
+    <description>Engadget RSS Feed</description>
+    <item>
+      <title>Engadget Single Media Content Article</title>
+      <link>https://www.engadget.com/article/single-media</link>
+      <description>This article uses a single media:content element for its image.</description>
+      <pubDate>Thu, 20 Mar 2026 10:00:00 GMT</pubDate>
+      <media:content url="https://example.com/engadget-single.jpg" medium="image" />
+      <category>Gadgets</category>
+    </item>
+    <item>
+      <title>Engadget Array Media Content Article</title>
+      <link>https://www.engadget.com/article/array-media</link>
+      <description>This article uses an array of media:content elements for its images.</description>
+      <pubDate>Thu, 20 Mar 2026 09:00:00 GMT</pubDate>
+      <media:content url="https://example.com/engadget-array-1.jpg" medium="image" />
+      <media:content url="https://example.com/engadget-array-2.jpg" medium="image" />
+      <category>Science</category>
+    </item>
+  </channel>
+</rss>

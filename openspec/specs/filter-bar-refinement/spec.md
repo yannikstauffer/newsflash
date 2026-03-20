@@ -1,26 +1,35 @@
 ## ADDED Requirements
 
-### Requirement: Two-row filter layout
-The filter bar SHALL organize controls into two logical rows: source toggle buttons with refresh on the first row, and language filter, hidden toggle, and search input on the second row. On mobile, source buttons SHALL wrap naturally.
+### Requirement: Simplified single-row filter bar
+The filter bar SHALL contain the "All articles" toggle, "Show hidden" toggle, date navigator, and search input. The date navigator SHALL render the "Next day" button on the left and the "Previous day" button on the right. The refresh button SHALL NOT appear. Source pills and language selector SHALL NOT appear on the feed page.
 
-#### Scenario: Desktop view
-- **WHEN** the filter bar is displayed on a screen wider than 768px
-- **THEN** source buttons and refresh SHALL appear on the first row, and language/hidden/search SHALL appear on the second row with consistent spacing
+#### Scenario: Filter bar rendering
+- **WHEN** the filter bar is displayed with day navigation visible
+- **THEN** it SHALL show the date navigator with the "Next day" button (right chevron icon) on the left side of the date label, and the "Previous day" button (left chevron icon) on the right side of the date label
+
+#### Scenario: Toggle ordering
+- **WHEN** the filter bar is displayed
+- **THEN** the "All articles" toggle SHALL appear to the left of the "Hidden" toggle
+
+#### Scenario: Day navigation centering
+- **WHEN** the filter bar is displayed and "All articles" is not active
+- **THEN** the prev/date/next controls SHALL be visually centered within the bar
+
+#### Scenario: Day navigation hidden when all articles active
+- **WHEN** "All articles" toggle is active
+- **THEN** the prev/date/next controls SHALL NOT be displayed
+
+#### Scenario: Next day button disabled when on today
+- **WHEN** the selected date is today
+- **THEN** the "Next day" button (left position) SHALL be disabled
 
 #### Scenario: Mobile view
-- **WHEN** the filter bar is displayed on a screen narrower than 768px
-- **THEN** source buttons SHALL wrap to multiple lines, and the second row controls SHALL stack or adjust to fit the available width
-
-### Requirement: Source buttons as compact pills
-The source toggle buttons SHALL be styled as compact pill-shaped chips with reduced padding and smaller text to fit more sources without overflow.
-
-#### Scenario: Source buttons rendering
-- **WHEN** the filter bar renders source buttons
-- **THEN** each button SHALL appear as a rounded pill with compact padding, filled when active and outlined when inactive
+- **WHEN** the filter bar is displayed on a mobile viewport
+- **THEN** the controls SHALL fit in a single row, with the search input filling remaining space
 
 ### Requirement: Search input with clear affordance
-The search input SHALL include a visible search icon on the left and expand to fill available horizontal space in its row.
+The search input SHALL include a visible search icon on the left and expand to fill available horizontal space.
 
 #### Scenario: Search input display
 - **WHEN** the filter bar is rendered
-- **THEN** the search input SHALL display with a search icon prefix and fill remaining space in the second row
+- **THEN** the search input SHALL display with a search icon prefix and fill remaining space

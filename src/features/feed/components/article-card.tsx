@@ -1,4 +1,4 @@
-import { formatRelativeTime } from "../utils/format-time"
+import { formatAbsoluteTime, formatShortTime } from "../utils/format-time"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 import type { ReactNode } from "react"
@@ -12,7 +12,7 @@ interface ArticleCardProps {
 export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
   return (
     <article
-      className={`group relative grid ${article.imageUrl ? "grid-cols-[auto_1fr]" : "grid-cols-1"} gap-3 rounded-lg border border-border p-3 transition-all duration-150 hover:bg-muted/50 hover:shadow-sm md:gap-4 md:p-4 ${
+      className={`group relative grid ${article.imageUrl ? "grid-cols-[auto_1fr]" : "grid-cols-1"} gap-3 rounded-lg bg-card p-3 shadow-sm transition-all duration-150 hover:shadow-md dark:shadow-[0_1px_3px_rgba(0,0,0,0.4)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.5)] md:gap-4 md:p-4 ${
         dimmed ? "opacity-50" : ""
       }`}
     >
@@ -27,6 +27,24 @@ export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
         />
       )}
       <div className="min-w-0 text-left">
+        <div className="mb-1.5 flex flex-wrap items-center gap-1.5 text-xs lowercase text-muted-foreground">
+          <span className="font-medium">{article.source}</span>
+          <span aria-hidden="true">&middot;</span>
+          <time dateTime={article.publishedAt.toISOString()}>
+            <span className="hidden md:inline">
+              {formatAbsoluteTime(article.publishedAt)}
+            </span>
+            <span className="md:hidden">
+              {formatShortTime(article.publishedAt)}
+            </span>
+          </time>
+          {article.category && (
+            <span className="hidden md:inline">
+              <span aria-hidden="true">&middot; </span>
+              {article.category}
+            </span>
+          )}
+        </div>
         <a
           href={article.link}
           target="_blank"
@@ -37,19 +55,6 @@ export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
             {article.title}
           </h3>
         </a>
-        <div className="mb-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="font-medium">{article.source}</span>
-          <span aria-hidden="true">&middot;</span>
-          <time dateTime={article.publishedAt.toISOString()}>
-            {formatRelativeTime(article.publishedAt)}
-          </time>
-          {article.category && (
-            <>
-              <span aria-hidden="true">&middot;</span>
-              <span>{article.category}</span>
-            </>
-          )}
-        </div>
         {article.description && (
           <p className="line-clamp-2 text-sm text-muted-foreground">
             {article.description}

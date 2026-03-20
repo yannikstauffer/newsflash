@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { FeedList } from "./feed-list"
 import { FilterBar } from "./filter-bar"
-import { RefreshButton } from "./refresh-button"
 import { useFeedData } from "../hooks/use-feed-data"
 import { filterArticles } from "../utils/filter-articles"
+import { filterByDay } from "../utils/filter-by-day"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
@@ -13,11 +13,10 @@ import { HiddenArticleActions } from "@/features/article-actions/components/hidd
 import { SwipeableCard } from "@/features/article-actions/components/swipeable-card"
 import { useArticleKeyboardShortcuts } from "@/features/article-actions/hooks/use-article-keyboard-shortcuts"
 import { useArticleState } from "@/features/article-actions/hooks/use-article-state"
-import { connectors } from "@/features/connectors/registry"
 import { useFeedPreferences } from "@/features/feed-config/hooks/use-feed-preferences"
 
 export function FeedPage() {
-  const { isFeedEnabled } = useFeedPreferences()
+  const { isFeedEnabled, language } = useFeedPreferences()
   const { articles, loading, errors, refresh } = useFeedData(isFeedEnabled)
   const {
     hiddenIds,
@@ -32,43 +31,71 @@ export function FeedPage() {
   const hoveredArticleRef = useRef<string | undefined>(undefined)
   const articlesRef = useRef<NormalizedArticle[]>([])
 
-  const [enabledSources, setEnabledSources] = useState<Set<string>>(
-    () => new Set(connectors.map((c) => c.id)),
-  )
-  const [language, setLanguage] = useState<"all" | "de" | "en">("all")
   const [showHidden, setShowHidden] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return today
+  })
+  const [allArticles, setAllArticles] = useState(false)
 
   useEffect(() => {
     void refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const filteredArticles = useMemo(
-    () =>
-      filterArticles(articles, {
-        enabledSources,
-        language,
-        showHidden,
-        hiddenIds,
-        searchQuery,
-      }),
-    [articles, enabledSources, language, showHidden, hiddenIds, searchQuery],
-  )
+  const filteredArticles = useMemo(() => {
+    const filtered = filterArticles(articles, {
+      isFeedEnabled,
+      language,
+      showHidden,
+      hiddenIds,
+      searchQuery,
+    })
+    if (allArticles) {
+      return filtered
+    }
+    return filterByDay(filtered, selectedDate)
+  }, [articles, isFeedEnabled, language, showHidden, hiddenIds, searchQuery, allArticles, selectedDate])
 
-  articlesRef.current = filteredArticles
+  const isToday = useMemo(() => {
+    const today = new Date()
+    return (
+      selectedDate.getFullYear() === today.getFullYear() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getDate() === today.getDate()
+    )
+  }, [selectedDate])
 
-  const handleToggleSource = useCallback((sourceId: string) => {
-    setEnabledSources((previous) => {
-      const next = new Set(previous)
-      if (next.has(sourceId)) {
-        next.delete(sourceId)
-      } else {
-        next.add(sourceId)
-      }
+  const handlePreviousDay = useCallback(() => {
+    setSelectedDate((previous) => {
+      const next = new Date(previous)
+      next.setDate(next.getDate() - 1)
       return next
     })
   }, [])
+
+  const handleNextDay = useCallback(() => {
+    setSelectedDate((previous) => {
+      const next = new Date(previous)
+      next.setDate(next.getDate() + 1)
+      return next
+    })
+  }, [])
+
+  const handleToggleAllArticles = useCallback(() => {
+    setAllArticles((previous) => {
+      if (previous) {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        setSelectedDate(today)
+      }
+      return !previous
+    })
+  }, [])
+
+  articlesRef.current = filteredArticles
 
   const handleKeyboardHide = useCallback(
     (articleId: string) => {
@@ -151,15 +178,16 @@ export function FeedPage() {
   return (
     <div className="space-y-4">
       <FilterBar
-        enabledSources={enabledSources}
-        onToggleSource={handleToggleSource}
-        language={language}
-        onLanguageChange={setLanguage}
         showHidden={showHidden}
         onToggleShowHidden={() => setShowHidden((previous) => !previous)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        refreshButton={<RefreshButton loading={loading} onClick={() => void refresh()} />}
+        selectedDate={selectedDate}
+        allArticles={allArticles}
+        isToday={isToday}
+        onPrev={handlePreviousDay}
+        onNext={handleNextDay}
+        onToggleAllArticles={handleToggleAllArticles}
       />
 
       <FeedList
@@ -170,6 +198,11 @@ export function FeedPage() {
         showHidden={showHidden}
         renderActions={renderActions}
         renderWrapper={renderArticleWrapper}
+        emptyMessage={
+          !allArticles && !loading
+            ? "No articles for this day."
+            : undefined
+        }
       />
     </div>
   )

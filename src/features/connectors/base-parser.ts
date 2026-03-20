@@ -43,7 +43,7 @@ interface RssItem {
   link?: unknown
   pubDate?: string
   "media:thumbnail"?: { "@_url"?: string }
-  "media:content"?: { "@_url"?: string }
+  "media:content"?: { "@_url"?: string } | Array<{ "@_url"?: string }>
   enclosure?: { "@_url"?: string; "@_type"?: string }
   category?: unknown
 }
@@ -82,7 +82,12 @@ function extractImageUrl(item: RssItem | AtomEntry): string | undefined {
   }
   if ("media:content" in item) {
     const media = (item as RssItem)["media:content"]
-    if (media?.["@_url"]) {
+    if (Array.isArray(media)) {
+      const first = media.find((m) => m["@_url"])
+      if (first?.["@_url"]) {
+        return first["@_url"]
+      }
+    } else if (media?.["@_url"]) {
       return media["@_url"]
     }
   }
@@ -136,6 +141,30 @@ function parseRssItems(
   })
 }
 
+function extractAtomInlineImage(
+  entry: AtomEntry,
+): { imageUrl: string | undefined; descriptionHtml: string } {
+  const contentHtml = extractText(entry.content)
+  const summaryHtml = extractText(entry.summary)
+  const descriptionSource = summaryHtml || contentHtml
+
+  if (contentHtml) {
+    const result = extractLeadingImage(contentHtml)
+    if (result.imageUrl) {
+      return { imageUrl: result.imageUrl, descriptionHtml: descriptionSource }
+    }
+  }
+
+  if (summaryHtml) {
+    const result = extractLeadingImage(summaryHtml)
+    if (result.imageUrl) {
+      return { imageUrl: result.imageUrl, descriptionHtml: result.html }
+    }
+  }
+
+  return { imageUrl: undefined, descriptionHtml: descriptionSource }
+}
+
 function parseAtomEntries(
   entries: AtomEntry[],
   source: string,
@@ -144,13 +173,16 @@ function parseAtomEntries(
   return entries.map((entry) => {
     const link = extractAtomLink(entry.link)
     const dedicatedImage = extractImageUrl(entry)
-    const descriptionHtml = extractText(entry.summary ?? entry.content)
-    const { imageUrl: inlineImage, html: cleanedHtml } =
-      extractLeadingImage(descriptionHtml)
+    const { imageUrl: inlineImage, descriptionHtml } =
+      extractAtomInlineImage(entry)
     return {
       id: hashString(link),
       title: extractText(entry.title),
-      description: stripHtml(dedicatedImage ? descriptionHtml : cleanedHtml),
+      description: stripHtml(
+        dedicatedImage
+          ? extractText(entry.summary ?? entry.content)
+          : descriptionHtml,
+      ),
       link,
       publishedAt: parseDate(entry.published ?? entry.updated),
       source,

@@ -6,9 +6,11 @@ import type { NormalizedArticle } from "@/features/connectors/types"
 
 import { Button } from "@/components/ui/button"
 import { ArticleCard } from "@/features/feed/components/article-card"
+import { useLazyList } from "@/hooks/use-lazy-list"
 
 export function ReadListPage() {
   const { readListArticles, removeFromReadList } = useArticleState()
+  const { visibleItems, sentinelRef } = useLazyList(readListArticles)
 
   if (readListArticles.length === 0) {
     return (
@@ -20,7 +22,7 @@ export function ReadListPage() {
 
   return (
     <div className="space-y-2">
-      {readListArticles.map((article: NormalizedArticle) => (
+      {visibleItems.map((article: NormalizedArticle) => (
         <ArticleCard
           key={article.id}
           article={article}
@@ -41,6 +43,8 @@ export function ReadListPage() {
           }
         />
       ))}
+
+      <div ref={sentinelRef} />
     </div>
   )
 }

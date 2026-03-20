@@ -12,13 +12,14 @@ interface FeedDataResult {
   refresh: () => Promise<void>
 }
 
-function deduplicateByLink(articles: NormalizedArticle[]): NormalizedArticle[] {
+function deduplicateArticles(articles: NormalizedArticle[]): NormalizedArticle[] {
   const seen = new Set<string>()
   return articles.filter((article) => {
-    if (seen.has(article.link)) {
+    const key = `${article.title}|${article.publishedAt.getTime()}`
+    if (seen.has(key)) {
       return false
     }
-    seen.add(article.link)
+    seen.add(key)
     return true
   })
 }
@@ -61,7 +62,7 @@ export function useFeedData(
 
     await Promise.all(feedPromises)
 
-    const deduplicated = deduplicateByLink(allArticles)
+    const deduplicated = deduplicateArticles(allArticles)
     const sorted = sortChronologically(deduplicated)
 
     setArticles(sorted)

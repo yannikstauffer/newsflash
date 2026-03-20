@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Galaxus Magazine</title>
+    <link>https://www.galaxus.ch</link>
+    <description>Galaxus Magazine RSS Feed</description>
+    <item>
+      <title>Galaxus Paragraph Image Article</title>
+      <link>https://www.galaxus.ch/article/paragraph-image</link>
+      <description>&lt;p&gt;&lt;img src="https://example.com/galaxus-paragraph.jpg" /&gt;&lt;/p&gt;&lt;p&gt;This article has an image wrapped in a paragraph tag.&lt;/p&gt;</description>
+      <pubDate>Thu, 20 Mar 2026 10:00:00 GMT</pubDate>
+      <category>Lifestyle</category>
+    </item>
+    <item>
+      <title>Galaxus Media Thumbnail Article</title>
+      <link>https://www.galaxus.ch/article/media-thumbnail</link>
+      <description>This article uses a media:thumbnail for its image.</description>
+      <pubDate>Thu, 20 Mar 2026 09:00:00 GMT</pubDate>
+      <media:thumbnail url="https://example.com/galaxus-thumbnail.jpg" />
+      <category>Gaming</category>
+    </item>
+  </channel>
+</rss>

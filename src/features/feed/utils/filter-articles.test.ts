@@ -19,7 +19,7 @@ function makeArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedArti
 }
 
 const defaultOptions: FilterOptions = {
-  enabledSources: new Set(["engadget", "heise", "srf"]),
+  isFeedEnabled: () => true,
   language: "all",
   showHidden: false,
   hiddenIds: [],
@@ -44,7 +44,7 @@ describe("filterArticles", () => {
 
     const result = filterArticles(articles, {
       ...defaultOptions,
-      enabledSources: new Set(["engadget"]),
+      isFeedEnabled: (id: string) => id === "engadget",
     })
 
     expect(result).toHaveLength(1)
@@ -174,7 +174,7 @@ describe("filterArticles", () => {
     ]
 
     const result = filterArticles(articles, {
-      enabledSources: new Set(["engadget", "srf"]),
+      isFeedEnabled: (id: string) => id === "engadget" || id === "srf",
       language: "en",
       showHidden: false,
       hiddenIds: [],

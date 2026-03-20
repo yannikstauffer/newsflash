@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>SRF News</title>
+    <link>https://www.srf.ch</link>
+    <description>SRF News RSS Feed</description>
+    <item>
+      <title>SRF Media Thumbnail Article</title>
+      <link>https://www.srf.ch/article/media-thumbnail</link>
+      <description>This article uses a media:thumbnail tag for its image.</description>
+      <pubDate>Thu, 20 Mar 2026 10:00:00 GMT</pubDate>
+      <media:thumbnail url="https://example.com/srf-thumbnail.jpg" />
+      <category>Schweiz</category>
+    </item>
+    <item>
+      <title>SRF Media Content Array Article</title>
+      <link>https://www.srf.ch/article/media-content-array</link>
+      <description>This article uses an array of media:content elements.</description>
+      <pubDate>Thu, 20 Mar 2026 09:00:00 GMT</pubDate>
+      <media:content url="https://example.com/srf-content-1.jpg" medium="image" />
+      <media:content url="https://example.com/srf-content-2.jpg" medium="image" />
+      <category>International</category>
+    </item>
+  </channel>
+</rss>

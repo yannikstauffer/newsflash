@@ -1,7 +1,7 @@
 import type { NormalizedArticle } from "@/features/connectors/types"
 
 export interface FilterOptions {
-  enabledSources: Set<string>
+  isFeedEnabled: (feedId: string) => boolean
   language: "all" | "de" | "en"
   showHidden: boolean
   hiddenIds: string[]
@@ -12,13 +12,13 @@ export function filterArticles(
   articles: NormalizedArticle[],
   options: FilterOptions,
 ): NormalizedArticle[] {
-  const { enabledSources, language, showHidden, hiddenIds, searchQuery } =
+  const { isFeedEnabled, language, showHidden, hiddenIds, searchQuery } =
     options
   const hiddenSet = new Set(hiddenIds)
   const query = searchQuery.toLowerCase().trim()
 
   return articles.filter((article) => {
-    if (!enabledSources.has(article.source)) {
+    if (!isFeedEnabled(article.source)) {
       return false
     }
 

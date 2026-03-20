@@ -27,17 +27,20 @@ export function extractLeadingImage(html: string): ExtractLeadingImageResult {
     return { imageUrl: undefined, html }
   }
 
-  // Remove the img (or its wrapping <p> if the <p> only contains the img)
-  const parent = firstImg.parentElement
+  // Remove the img, its <a> wrapper, and/or its <p> wrapper if they become empty
+  const imgParent = firstImg.parentElement
+  const removeTarget =
+    imgParent && imgParent.tagName === "A" ? imgParent : firstImg
+  const wrapperParent = removeTarget.parentElement
   if (
-    parent &&
-    parent.tagName === "P" &&
-    parent.children.length === 1 &&
-    !parent.textContent?.trim()
+    wrapperParent &&
+    wrapperParent.tagName === "P" &&
+    wrapperParent.children.length === 1 &&
+    !wrapperParent.textContent?.trim()
   ) {
-    parent.remove()
+    wrapperParent.remove()
   } else {
-    firstImg.remove()
+    removeTarget.remove()
   }
 
   return { imageUrl: imageSource, html: body.innerHTML }
@@ -61,7 +64,16 @@ function findLeadingImg(body: HTMLElement): HTMLImageElement | undefined {
         return element as HTMLImageElement
       }
 
-      // Check if it's a <p> wrapping an <img> as its first meaningful child
+      // Check if it's an <a> wrapping an <img>
+      if (element.tagName === "A") {
+        const img = findImgInAnchor(element)
+        if (img) {
+          return img
+        }
+        return undefined
+      }
+
+      // Check if it's a <p> wrapping an <img> (or <a><img>) as its first meaningful child
       if (element.tagName === "P") {
         for (const child of element.childNodes) {
           if (child.nodeType === Node.TEXT_NODE) {
@@ -70,11 +82,17 @@ function findLeadingImg(body: HTMLElement): HTMLImageElement | undefined {
             }
             continue
           }
-          if (
-            child.nodeType === Node.ELEMENT_NODE &&
-            (child as HTMLElement).tagName === "IMG"
-          ) {
-            return child as HTMLImageElement
+          if (child.nodeType === Node.ELEMENT_NODE) {
+            const childElement = child as HTMLElement
+            if (childElement.tagName === "IMG") {
+              return childElement as HTMLImageElement
+            }
+            if (childElement.tagName === "A") {
+              const img = findImgInAnchor(childElement)
+              if (img) {
+                return img
+              }
+            }
           }
           return undefined
         }
@@ -85,5 +103,19 @@ function findLeadingImg(body: HTMLElement): HTMLImageElement | undefined {
     }
   }
 
+  return undefined
+}
+
+function findImgInAnchor(
+  anchor: HTMLElement,
+): HTMLImageElement | undefined {
+  for (const child of anchor.childNodes) {
+    if (
+      child.nodeType === Node.ELEMENT_NODE &&
+      (child as HTMLElement).tagName === "IMG"
+    ) {
+      return child as HTMLImageElement
+    }
+  }
   return undefined
 }

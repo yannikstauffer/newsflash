@@ -197,6 +197,122 @@ describe("parseRss", () => {
       expect(articles[0].imageUrl).toBe("https://example.com/atom-img.jpg")
       expect(articles[0].description).toBe("Summary text")
     })
+
+    it("extracts image from Atom content when summary is plain text", () => {
+      const xml = `<?xml version="1.0"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <title>Heise Article</title>
+            <summary>Plain text summary</summary>
+            <content type="html">&lt;p&gt;&lt;a href="https://example.com/article"&gt;&lt;img src="https://example.com/content-img.jpg" /&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Article body text&lt;/p&gt;</content>
+            <link rel="alternate" href="https://example.com/heise-1" />
+            <published>2024-01-01T12:00:00Z</published>
+          </entry>
+        </feed>`
+
+      const articles = parseRss(xml, "test", "en")
+
+      expect(articles[0].imageUrl).toBe("https://example.com/content-img.jpg")
+      expect(articles[0].description).toBe("Plain text summary")
+    })
+
+    it("extracts image from Atom summary when content has no image", () => {
+      const xml = `<?xml version="1.0"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <title>Summary Image</title>
+            <summary type="html">&lt;img src="https://example.com/summary-img.jpg" /&gt;&lt;p&gt;Summary text&lt;/p&gt;</summary>
+            <content type="html">&lt;p&gt;Full article without leading image&lt;/p&gt;</content>
+            <link rel="alternate" href="https://example.com/summary-img" />
+            <published>2024-01-01T12:00:00Z</published>
+          </entry>
+        </feed>`
+
+      const articles = parseRss(xml, "test", "en")
+
+      expect(articles[0].imageUrl).toBe("https://example.com/summary-img.jpg")
+      expect(articles[0].description).toBe("Summary text")
+    })
+
+    it("returns undefined imageUrl when neither Atom field has an image", () => {
+      const xml = `<?xml version="1.0"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <title>No Image</title>
+            <summary>Plain summary</summary>
+            <content type="html">&lt;p&gt;Content without image&lt;/p&gt;</content>
+            <link rel="alternate" href="https://example.com/no-img" />
+            <published>2024-01-01T12:00:00Z</published>
+          </entry>
+        </feed>`
+
+      const articles = parseRss(xml, "test", "en")
+
+      expect(articles[0].imageUrl).toBeUndefined()
+      expect(articles[0].description).toBe("Plain summary")
+    })
+  })
+
+  describe("array media:content handling", () => {
+    it("extracts image from single media:content element", () => {
+      const xml = `<?xml version="1.0"?>
+        <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+          <channel>
+            <item>
+              <title>Single Media</title>
+              <description>Content</description>
+              <link>https://example.com/single-media</link>
+              <pubDate>Mon, 01 Jan 2024 12:00:00 GMT</pubDate>
+              <media:content url="https://example.com/media.jpg" medium="image" />
+            </item>
+          </channel>
+        </rss>`
+
+      const articles = parseRss(xml, "test", "en")
+
+      expect(articles[0].imageUrl).toBe("https://example.com/media.jpg")
+    })
+
+    it("extracts first valid URL from multiple media:content elements", () => {
+      const xml = `<?xml version="1.0"?>
+        <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+          <channel>
+            <item>
+              <title>Multi Media</title>
+              <description>Content</description>
+              <link>https://example.com/multi-media</link>
+              <pubDate>Mon, 01 Jan 2024 12:00:00 GMT</pubDate>
+              <media:content url="https://example.com/first.jpg" medium="image" />
+              <media:content url="https://example.com/second.jpg" medium="image" />
+              <media:content url="https://example.com/third.jpg" medium="image" />
+            </item>
+          </channel>
+        </rss>`
+
+      const articles = parseRss(xml, "test", "en")
+
+      expect(articles[0].imageUrl).toBe("https://example.com/first.jpg")
+    })
+
+    it("falls through when array media:content has no valid URLs", () => {
+      const xml = `<?xml version="1.0"?>
+        <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+          <channel>
+            <item>
+              <title>No URLs</title>
+              <description>Content</description>
+              <link>https://example.com/no-urls</link>
+              <pubDate>Mon, 01 Jan 2024 12:00:00 GMT</pubDate>
+              <media:content medium="image" />
+              <media:content medium="video" />
+            </item>
+          </channel>
+        </rss>`
+
+      const articles = parseRss(xml, "test", "en")
+
+      expect(articles[0].imageUrl).toBeUndefined()
+    })
   })
 
   describe("single item handling", () => {

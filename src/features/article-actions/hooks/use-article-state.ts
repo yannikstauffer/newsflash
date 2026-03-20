@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
@@ -50,6 +50,8 @@ export function useArticleState(): {
   unhideArticle: (articleId: string) => void
   addToReadList: (article: NormalizedArticle) => void
   removeFromReadList: (articleId: string) => void
+  removeHiddenBySource: (sourceId: string) => void
+  removeReadListBySource: (sourceId: string) => void
 } {
   const [hiddenIds, setHiddenIds] = useLocalStorage<string[]>(HIDDEN_KEY, [])
   const [storedReadList, setStoredReadList] = useLocalStorage<StoredArticle[]>(
@@ -57,8 +59,8 @@ export function useArticleState(): {
     [],
   )
 
-  const readListIds = storedReadList.map((a) => a.id)
-  const readListArticles = storedReadList.map(fromStored)
+  const readListIds = useMemo(() => storedReadList.map((a) => a.id), [storedReadList])
+  const readListArticles = useMemo(() => storedReadList.map(fromStored), [storedReadList])
 
   const isHidden = useCallback(
     (articleId: string): boolean => hiddenIds.includes(articleId),
@@ -107,6 +109,24 @@ export function useArticleState(): {
     [setStoredReadList],
   )
 
+  const removeHiddenBySource = useCallback(
+    (sourceId: string) => {
+      setHiddenIds((previous) =>
+        previous.filter((id) => !id.startsWith(`${sourceId}:`)),
+      )
+    },
+    [setHiddenIds],
+  )
+
+  const removeReadListBySource = useCallback(
+    (sourceId: string) => {
+      setStoredReadList((previous) =>
+        previous.filter((a) => a.source !== sourceId),
+      )
+    },
+    [setStoredReadList],
+  )
+
   return {
     hiddenIds,
     readListIds,
@@ -117,5 +137,7 @@ export function useArticleState(): {
     unhideArticle,
     addToReadList,
     removeFromReadList,
+    removeHiddenBySource,
+    removeReadListBySource,
   }
 }
