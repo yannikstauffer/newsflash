@@ -167,4 +167,56 @@ describe("useLazyList", () => {
 
     expect(result.current.visibleItems).toHaveLength(15)
   })
+
+  it("returns empty array when items array is empty", () => {
+    const { result } = renderHook(() => useLazyList([], 10))
+
+    expect(result.current.visibleItems).toHaveLength(0)
+    expect(result.current.visibleItems).toEqual([])
+  })
+
+  it("shows exactly 1 item initially with batch size of 1 and adds 1 per intersection", () => {
+    const items = makeItems(3)
+    const { result } = renderHook(() => useLazyList(items, 1))
+
+    expect(result.current.visibleItems).toHaveLength(1)
+    expect(result.current.visibleItems[0]).toBe("item-0")
+
+    // Attach sentinel and trigger intersection
+    const sentinel = document.createElement("div")
+    act(() => {
+      result.current.sentinelRef(sentinel)
+    })
+
+    act(() => {
+      intersectionCallback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+
+    expect(result.current.visibleItems).toHaveLength(2)
+    expect(result.current.visibleItems[1]).toBe("item-1")
+
+    act(() => {
+      intersectionCallback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+
+    expect(result.current.visibleItems).toHaveLength(3)
+  })
+
+  it("does not create IntersectionObserver when sentinel receives null", () => {
+    const items = makeItems(30)
+    const { result } = renderHook(() => useLazyList(items, 10))
+
+    // Pass null to sentinelRef — should not throw or create observer
+    act(() => {
+      result.current.sentinelRef(null)
+    })
+
+    expect(mockObserve).not.toHaveBeenCalled()
+  })
 })

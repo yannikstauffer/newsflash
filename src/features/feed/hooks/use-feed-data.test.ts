@@ -5,6 +5,10 @@ import { clearFeedCache, useFeedData } from "./use-feed-data"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
+vi.mock("@/config/feeds", () => ({
+  feedProxyPath: (feedId: string) => `/api/rss/${feedId}`,
+}))
+
 vi.mock("@/features/connectors/fetch-feed", () => ({
   fetchFeed: vi.fn(),
 }))
@@ -21,7 +25,7 @@ const mockConnectors = connectors as unknown as Array<{
   id: string
   name: string
   language: "en"
-  feeds: Array<{ id: string; name: string; proxyPath: string }>
+  feeds: Array<{ id: string; name: string }>
   parse: ReturnType<typeof vi.fn>
 }>
 
@@ -66,14 +70,14 @@ describe("useFeedData", () => {
         id: "c1",
         name: "Connector 1",
         language: "en",
-        feeds: [{ id: "f1", name: "Feed 1", proxyPath: "/proxy/f1" }],
+        feeds: [{ id: "f1", name: "Feed 1" }],
         parse: vi.fn(() => [article1]),
       },
       {
         id: "c2",
         name: "Connector 2",
         language: "en",
-        feeds: [{ id: "f2", name: "Feed 2", proxyPath: "/proxy/f2" }],
+        feeds: [{ id: "f2", name: "Feed 2" }],
         parse: vi.fn(() => [article2]),
       },
     )
@@ -100,14 +104,14 @@ describe("useFeedData", () => {
         id: "c1",
         name: "Connector 1",
         language: "en",
-        feeds: [{ id: "f1", name: "Feed 1", proxyPath: "/proxy/f1" }],
+        feeds: [{ id: "f1", name: "Feed 1" }],
         parse: vi.fn(() => [article1]),
       },
       {
         id: "c2",
         name: "Connector 2",
         language: "en",
-        feeds: [{ id: "f2", name: "Feed 2", proxyPath: "/proxy/f2" }],
+        feeds: [{ id: "f2", name: "Feed 2" }],
         parse: vi.fn(),
       },
     )
@@ -133,7 +137,7 @@ describe("useFeedData", () => {
       id: "c1",
       name: "Connector 1",
       language: "en",
-      feeds: [{ id: "f1", name: "Feed 1", proxyPath: "/proxy/f1" }],
+      feeds: [{ id: "f1", name: "Feed 1" }],
       parse: vi.fn(() => [article1]),
     })
 
@@ -168,7 +172,7 @@ describe("useFeedData", () => {
       id: "c1",
       name: "Connector 1",
       language: "en",
-      feeds: [{ id: "f1", name: "Feed 1", proxyPath: "/proxy/f1" }],
+      feeds: [{ id: "f1", name: "Feed 1" }],
       parse: vi.fn(() => [article1]),
     })
 
@@ -194,7 +198,7 @@ describe("useFeedData", () => {
       id: "c1",
       name: "Connector 1",
       language: "en",
-      feeds: [{ id: "f1", name: "Feed 1", proxyPath: "/proxy/f1" }],
+      feeds: [{ id: "f1", name: "Feed 1" }],
       parse: vi.fn(() => []),
     })
 
@@ -214,7 +218,7 @@ describe("useFeedData", () => {
       id: "c1",
       name: "Connector 1",
       language: "en",
-      feeds: [{ id: "f1", name: "Feed 1", proxyPath: "/proxy/f1" }],
+      feeds: [{ id: "f1", name: "Feed 1" }],
       parse: vi.fn(() => []),
     })
 
@@ -241,7 +245,7 @@ describe("useFeedData", () => {
       id: "c1",
       name: "Connector 1",
       language: "en",
-      feeds: [{ id: "f1", name: "Feed 1", proxyPath: "/proxy/f1" }],
+      feeds: [{ id: "f1", name: "Feed 1" }],
       parse: vi.fn(() => [article, duplicate]),
     })
 
@@ -253,14 +257,138 @@ describe("useFeedData", () => {
     expect(result.current.articles).toHaveLength(1)
   })
 
+  it("keeps articles with same title but different timestamps", async () => {
+    const article1 = makeArticle({
+      id: "a1",
+      title: "Same Title",
+      publishedAt: new Date("2026-03-20T10:00:00Z"),
+    })
+    const article2 = makeArticle({
+      id: "a2",
+      title: "Same Title",
+      publishedAt: new Date("2026-03-20T11:00:00Z"),
+    })
+
+    mockConnectors.push({
+      id: "c1",
+      name: "Connector 1",
+      language: "en",
+      feeds: [{ id: "f1", name: "Feed 1" }],
+      parse: vi.fn(() => [article1, article2]),
+    })
+
+    mockFetchFeed.mockResolvedValue("<xml/>")
+
+    const { result } = renderHook(() => useFeedData(isFeedEnabled))
+    await act(async () => {})
+
+    expect(result.current.articles).toHaveLength(2)
+  })
+
+  it("sorts articles in reverse chronological order (newest first)", async () => {
+    const oldest = makeArticle({
+      id: "a1",
+      title: "Oldest",
+      publishedAt: new Date("2026-03-18T10:00:00Z"),
+    })
+    const middle = makeArticle({
+      id: "a2",
+      title: "Middle",
+      publishedAt: new Date("2026-03-19T10:00:00Z"),
+    })
+    const newest = makeArticle({
+      id: "a3",
+      title: "Newest",
+      publishedAt: new Date("2026-03-20T10:00:00Z"),
+    })
+
+    mockConnectors.push({
+      id: "c1",
+      name: "Connector 1",
+      language: "en",
+      feeds: [{ id: "f1", name: "Feed 1" }],
+      parse: vi.fn(() => [oldest, middle, newest]),
+    })
+
+    mockFetchFeed.mockResolvedValue("<xml/>")
+
+    const { result } = renderHook(() => useFeedData(isFeedEnabled))
+    await act(async () => {})
+
+    expect(result.current.articles[0].title).toBe("Newest")
+    expect(result.current.articles[1].title).toBe("Middle")
+    expect(result.current.articles[2].title).toBe("Oldest")
+  })
+
+  it("returns errors for all feeds when all feeds fail", async () => {
+    mockConnectors.push(
+      {
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(),
+      },
+      {
+        id: "c2",
+        name: "Connector 2",
+        language: "en",
+        feeds: [{ id: "f2", name: "Feed 2" }],
+        parse: vi.fn(),
+      },
+    )
+
+    mockFetchFeed
+      .mockRejectedValueOnce(new Error("Timeout"))
+      .mockRejectedValueOnce(new Error("DNS error"))
+
+    const { result } = renderHook(() => useFeedData(isFeedEnabled))
+    await act(async () => {})
+
+    expect(result.current.articles).toHaveLength(0)
+    expect(result.current.errors).toHaveLength(2)
+    expect(result.current.errors[0]).toContain("Timeout")
+    expect(result.current.errors[1]).toContain("DNS error")
+  })
+
+  it("sets loading to true during fetch and false after completion", async () => {
+    mockConnectors.push({
+      id: "c1",
+      name: "Connector 1",
+      language: "en",
+      feeds: [{ id: "f1", name: "Feed 1" }],
+      parse: vi.fn(() => []),
+    })
+
+    let resolveFetch: (value: string) => void
+    mockFetchFeed.mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+
+    const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+    // Loading should be true while fetch is in progress
+    expect(result.current.loading).toBe(true)
+
+    await act(async () => {
+      resolveFetch!("<xml/>")
+    })
+
+    // Loading should be false after fetch completes
+    expect(result.current.loading).toBe(false)
+  })
+
   it("skips disabled feeds", async () => {
     mockConnectors.push({
       id: "c1",
       name: "Connector 1",
       language: "en",
       feeds: [
-        { id: "f1", name: "Feed 1", proxyPath: "/proxy/f1" },
-        { id: "f2", name: "Feed 2", proxyPath: "/proxy/f2" },
+        { id: "f1", name: "Feed 1" },
+        { id: "f2", name: "Feed 2" },
       ],
       parse: vi.fn(() => []),
     })
@@ -271,7 +399,7 @@ describe("useFeedData", () => {
     await act(async () => {})
 
     expect(mockFetchFeed).toHaveBeenCalledTimes(1)
-    expect(mockFetchFeed).toHaveBeenCalledWith("/proxy/f1")
+    expect(mockFetchFeed).toHaveBeenCalledWith("/api/rss/f1")
     expect(result.current.loading).toBe(false)
   })
 })
