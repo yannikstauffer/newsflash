@@ -10,13 +10,20 @@ const parser = new XMLParser({
   attributeNamePrefix: "@_",
 })
 
-function hashString(input: string): string {
-  let hash = 0
+export function hashString53(input: string): string {
+  let h1 = 0xdeadbeef
+  let h2 = 0x41c6ce57
   for (let index = 0; index < input.length; index++) {
     const char = input.codePointAt(index) ?? 0
-    hash = Math.trunc((hash << 5) - hash + char)
+    h1 = Math.imul(h1 ^ char, 2654435761)
+    h2 = Math.imul(h2 ^ char, 1597334677)
   }
-  return Math.abs(hash).toString(36)
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507)
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507)
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+  const combined = 4294967296 * (2097151 & h2) + (h1 >>> 0)
+  return combined.toString(36)
 }
 
 function parseDate(dateString: string | undefined): Date {
@@ -128,7 +135,7 @@ function parseRssItems(
     const { imageUrl: inlineImage, html: cleanedHtml } =
       extractLeadingImage(descriptionHtml)
     return {
-      id: hashString(link),
+      id: `${source}:${hashString53(link)}`,
       title: extractText(item.title),
       description: stripHtml(dedicatedImage ? descriptionHtml : cleanedHtml),
       link,
@@ -176,7 +183,7 @@ function parseAtomEntries(
     const { imageUrl: inlineImage, descriptionHtml } =
       extractAtomInlineImage(entry)
     return {
-      id: hashString(link),
+      id: `${source}:${hashString53(link)}`,
       title: extractText(entry.title),
       description: stripHtml(
         dedicatedImage

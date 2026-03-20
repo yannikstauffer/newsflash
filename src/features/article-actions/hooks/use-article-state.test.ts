@@ -14,7 +14,7 @@ const READLIST_KEY = "newsflash:readlist"
 
 function makeArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedArticle {
   return {
-    id: "abc123",
+    id: "heise:abc123",
     title: "Test Article",
     description: "A test article",
     link: "https://example.com/article",
@@ -88,57 +88,57 @@ describe("useArticleState", () => {
 
   describe("hideArticle pruning", () => {
     it("does not prune when list is under the limit", () => {
-      const ids = Array.from({ length: 10 }, (_, index) => `id-${index}`)
+      const ids = Array.from({ length: 10 }, (_, index) => `src:id-${index}`)
       localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
 
       const { result } = renderHook(() => useArticleState())
 
       act(() => {
-        result.current.hideArticle("new-id")
+        result.current.hideArticle("src:new-id")
       })
 
       expect(result.current.hiddenIds).toHaveLength(11)
-      expect(result.current.hiddenIds[0]).toBe("new-id")
+      expect(result.current.hiddenIds[0]).toBe("src:new-id")
     })
 
     it("drops the oldest entry when hiding at exactly max capacity", () => {
-      const ids = Array.from({ length: MAX_HIDDEN_IDS }, (_, index) => `id-${index}`)
+      const ids = Array.from({ length: MAX_HIDDEN_IDS }, (_, index) => `src:id-${index}`)
       localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
 
       const { result } = renderHook(() => useArticleState())
 
       act(() => {
-        result.current.hideArticle("new-id")
+        result.current.hideArticle("src:new-id")
       })
 
       expect(result.current.hiddenIds).toHaveLength(MAX_HIDDEN_IDS)
-      expect(result.current.hiddenIds[0]).toBe("new-id")
-      expect(result.current.hiddenIds).not.toContain(`id-${MAX_HIDDEN_IDS - 1}`)
+      expect(result.current.hiddenIds[0]).toBe("src:new-id")
+      expect(result.current.hiddenIds).not.toContain(`src:id-${MAX_HIDDEN_IDS - 1}`)
     })
 
     it("truncates an oversized existing list to max on next write", () => {
-      const ids = Array.from({ length: MAX_HIDDEN_IDS + 50 }, (_, index) => `id-${index}`)
+      const ids = Array.from({ length: MAX_HIDDEN_IDS + 50 }, (_, index) => `src:id-${index}`)
       localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
 
       const { result } = renderHook(() => useArticleState())
 
       act(() => {
-        result.current.hideArticle("new-id")
+        result.current.hideArticle("src:new-id")
       })
 
       expect(result.current.hiddenIds).toHaveLength(MAX_HIDDEN_IDS)
-      expect(result.current.hiddenIds[0]).toBe("new-id")
+      expect(result.current.hiddenIds[0]).toBe("src:new-id")
     })
 
     it("does not change the list when hiding a duplicate ID", () => {
-      const ids = Array.from({ length: MAX_HIDDEN_IDS }, (_, index) => `id-${index}`)
+      const ids = Array.from({ length: MAX_HIDDEN_IDS }, (_, index) => `src:id-${index}`)
       localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
 
       const { result } = renderHook(() => useArticleState())
       const before = result.current.hiddenIds
 
       act(() => {
-        result.current.hideArticle("id-0")
+        result.current.hideArticle("src:id-0")
       })
 
       expect(result.current.hiddenIds).toBe(before)
@@ -151,7 +151,7 @@ describe("useArticleState", () => {
 
       act(() => {
         for (let index = 0; index < 10; index++) {
-          result.current.addToReadList(makeArticle({ id: `art-${index}` }))
+          result.current.addToReadList(makeArticle({ id: `heise:art-${index}` }))
         }
       })
 
@@ -163,24 +163,24 @@ describe("useArticleState", () => {
 
       act(() => {
         for (let index = 0; index < MAX_READLIST_ITEMS; index++) {
-          result.current.addToReadList(makeArticle({ id: `art-${index}` }))
+          result.current.addToReadList(makeArticle({ id: `heise:art-${index}` }))
         }
       })
 
       expect(result.current.readListArticles).toHaveLength(MAX_READLIST_ITEMS)
 
       act(() => {
-        result.current.addToReadList(makeArticle({ id: "new-art" }))
+        result.current.addToReadList(makeArticle({ id: "heise:new-art" }))
       })
 
       expect(result.current.readListArticles).toHaveLength(MAX_READLIST_ITEMS)
-      expect(result.current.readListIds[0]).toBe("new-art")
-      expect(result.current.readListIds).not.toContain("art-0")
+      expect(result.current.readListIds[0]).toBe("heise:new-art")
+      expect(result.current.readListIds).not.toContain("heise:art-0")
     })
 
     it("truncates an oversized existing list to max on next write", () => {
       const stored = Array.from({ length: MAX_READLIST_ITEMS + 30 }, (_, index) => ({
-        id: `art-${index}`,
+        id: `heise:art-${index}`,
         title: "Title",
         description: "Desc",
         link: "https://example.com",
@@ -193,24 +193,24 @@ describe("useArticleState", () => {
       const { result } = renderHook(() => useArticleState())
 
       act(() => {
-        result.current.addToReadList(makeArticle({ id: "new-art" }))
+        result.current.addToReadList(makeArticle({ id: "heise:new-art" }))
       })
 
       expect(result.current.readListArticles).toHaveLength(MAX_READLIST_ITEMS)
-      expect(result.current.readListIds[0]).toBe("new-art")
+      expect(result.current.readListIds[0]).toBe("heise:new-art")
     })
 
     it("does not change the list when adding a duplicate article", () => {
       const { result } = renderHook(() => useArticleState())
 
       act(() => {
-        result.current.addToReadList(makeArticle({ id: "art-1" }))
+        result.current.addToReadList(makeArticle({ id: "heise:art-1" }))
       })
 
       const before = result.current.readListArticles
 
       act(() => {
-        result.current.addToReadList(makeArticle({ id: "art-1" }))
+        result.current.addToReadList(makeArticle({ id: "heise:art-1" }))
       })
 
       expect(result.current.readListArticles).toBe(before)
@@ -219,8 +219,8 @@ describe("useArticleState", () => {
 
   describe("removeReadListBySource", () => {
     it("removes read list entries matching the source", () => {
-      const heiseArticle = makeArticle({ id: "h1", source: "heise" })
-      const srfArticle = makeArticle({ id: "s1", source: "srf" })
+      const heiseArticle = makeArticle({ id: "heise:h1", source: "heise" })
+      const srfArticle = makeArticle({ id: "srf:s1", source: "srf" })
 
       const { result } = renderHook(() => useArticleState())
 
@@ -235,14 +235,14 @@ describe("useArticleState", () => {
         result.current.removeReadListBySource("heise")
       })
 
-      expect(result.current.readListIds).toEqual(["s1"])
+      expect(result.current.readListIds).toEqual(["srf:s1"])
       expect(result.current.readListArticles).toHaveLength(1)
       expect(result.current.readListArticles[0].source).toBe("srf")
     })
 
     it("does not remove entries from other sources", () => {
-      const srfArticle = makeArticle({ id: "s1", source: "srf" })
-      const engadgetArticle = makeArticle({ id: "e1", source: "engadget" })
+      const srfArticle = makeArticle({ id: "srf:s1", source: "srf" })
+      const engadgetArticle = makeArticle({ id: "engadget:e1", source: "engadget" })
 
       const { result } = renderHook(() => useArticleState())
 
@@ -255,7 +255,7 @@ describe("useArticleState", () => {
         result.current.removeReadListBySource("heise")
       })
 
-      expect(result.current.readListIds).toEqual(["e1", "s1"])
+      expect(result.current.readListIds).toEqual(["engadget:e1", "srf:s1"])
     })
 
     it("handles empty read list", () => {
@@ -269,7 +269,7 @@ describe("useArticleState", () => {
     })
 
     it("persists cleanup to localStorage", () => {
-      const heiseArticle = makeArticle({ id: "h1", source: "heise" })
+      const heiseArticle = makeArticle({ id: "heise:h1", source: "heise" })
 
       const { result } = renderHook(() => useArticleState())
 
@@ -283,6 +283,97 @@ describe("useArticleState", () => {
 
       const stored = JSON.parse(localStorage.getItem(READLIST_KEY) ?? "[]")
       expect(stored).toEqual([])
+    })
+  })
+
+  describe("Set-based lookups", () => {
+    it("isHidden uses Set for O(1) lookup", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["heise:abc", "srf:def"]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      expect(result.current.isHidden("heise:abc")).toBe(true)
+      expect(result.current.isHidden("srf:def")).toBe(true)
+      expect(result.current.isHidden("unknown:xyz")).toBe(false)
+    })
+
+    it("isInReadList uses Set for O(1) lookup", () => {
+      const article = makeArticle({ id: "heise:abc" })
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.addToReadList(article)
+      })
+
+      expect(result.current.isInReadList("heise:abc")).toBe(true)
+      expect(result.current.isInReadList("unknown:xyz")).toBe(false)
+    })
+  })
+
+  describe("legacy data migration", () => {
+    it("clears legacy hidden IDs without colon separator", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["abc123", "def456", "heise:valid"]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      // After migration effect runs
+      expect(result.current.hiddenIds).toEqual(["heise:valid"])
+    })
+
+    it("clears legacy read list entries without colon separator in ID", () => {
+      const stored = [
+        {
+          id: "legacy123",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+        {
+          id: "heise:valid456",
+          title: "Valid",
+          description: "New",
+          link: "https://example.com/valid",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+
+      expect(result.current.readListIds).toEqual(["heise:valid456"])
+    })
+
+    it("preserves all IDs when all have source prefix", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["heise:abc", "srf:def"]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      expect(result.current.hiddenIds).toEqual(["heise:abc", "srf:def"])
+    })
+
+    it("clears all IDs when none have source prefix", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["abc123", "def456"]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      expect(result.current.hiddenIds).toEqual([])
     })
   })
 })

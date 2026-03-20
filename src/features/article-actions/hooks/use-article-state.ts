@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
@@ -9,6 +9,10 @@ export const MAX_READLIST_ITEMS = 200
 
 const HIDDEN_KEY = "newsflash:hidden"
 const READLIST_KEY = "newsflash:readlist"
+
+function hasSourcePrefix(id: string): boolean {
+  return id.includes(":")
+}
 
 interface StoredArticle {
   id: string
@@ -62,18 +66,40 @@ export function useArticleState(): {
     [],
   )
 
+  const hiddenMigrated = useRef(false)
+  const readListMigrated = useRef(false)
+
+  useEffect(() => {
+    if (!hiddenMigrated.current && hiddenIds.some((id) => !hasSourcePrefix(id))) {
+      hiddenMigrated.current = true
+      setHiddenIds((previous) => previous.filter(hasSourcePrefix))
+    }
+  }, [hiddenIds, setHiddenIds])
+
+  useEffect(() => {
+    if (!readListMigrated.current && storedReadList.some((a) => !hasSourcePrefix(a.id))) {
+      readListMigrated.current = true
+      setStoredReadList((previous) => previous.filter((a) => hasSourcePrefix(a.id)))
+    }
+  }, [storedReadList, setStoredReadList])
+
+  const hiddenSet = useMemo(() => new Set(hiddenIds), [hiddenIds])
+  const readListIdSet = useMemo(
+    () => new Set(storedReadList.map((a) => a.id)),
+    [storedReadList],
+  )
+
   const readListIds = useMemo(() => storedReadList.map((a) => a.id), [storedReadList])
   const readListArticles = useMemo(() => storedReadList.map(fromStored), [storedReadList])
 
   const isHidden = useCallback(
-    (articleId: string): boolean => hiddenIds.includes(articleId),
-    [hiddenIds],
+    (articleId: string): boolean => hiddenSet.has(articleId),
+    [hiddenSet],
   )
 
   const isInReadList = useCallback(
-    (articleId: string): boolean =>
-      storedReadList.some((a) => a.id === articleId),
-    [storedReadList],
+    (articleId: string): boolean => readListIdSet.has(articleId),
+    [readListIdSet],
   )
 
   const hideArticle = useCallback(

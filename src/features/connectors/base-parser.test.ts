@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { parseRss } from "./base-parser"
+import { hashString53, parseRss } from "./base-parser"
 
 const RSS_FEED = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -62,7 +62,7 @@ describe("parseRss", () => {
         category: "Tech",
       })
       expect(articles[0].publishedAt).toEqual(new Date("2024-01-01T12:00:00Z"))
-      expect(articles[0].id).toBeTruthy()
+      expect(articles[0].id).toMatch(/^test:/)
     })
 
     it("generates deterministic IDs from link", () => {
@@ -70,6 +70,13 @@ describe("parseRss", () => {
       const articles2 = parseRss(RSS_FEED, "test", "en")
 
       expect(articles[0].id).toBe(articles2[0].id)
+    })
+
+    it("generates IDs with source prefix", () => {
+      const articles = parseRss(RSS_FEED, "heise", "en")
+
+      expect(articles[0].id).toMatch(/^heise:/)
+      expect(articles[1].id).toMatch(/^heise:/)
     })
 
     it("sets undefined for missing optional fields", () => {
@@ -334,5 +341,42 @@ describe("parseRss", () => {
       expect(articles).toHaveLength(1)
       expect(articles[0].language).toBe("de")
     })
+  })
+})
+
+describe("hashString53", () => {
+  it("produces consistent output for the same input", () => {
+    const result1 = hashString53("https://example.com/article-1")
+    const result2 = hashString53("https://example.com/article-1")
+
+    expect(result1).toBe(result2)
+  })
+
+  it("produces distinct output for different inputs", () => {
+    const urls = [
+      "https://example.com/article-1",
+      "https://example.com/article-2",
+      "https://example.com/article-3",
+      "https://other.com/article-1",
+      "https://example.com/a",
+      "https://example.com/b",
+    ]
+
+    const hashes = urls.map(hashString53)
+    const unique = new Set(hashes)
+
+    expect(unique.size).toBe(urls.length)
+  })
+
+  it("returns a non-empty string", () => {
+    expect(hashString53("")).toBeTruthy()
+    expect(hashString53("https://example.com")).toBeTruthy()
+  })
+
+  it("handles empty string input", () => {
+    const result1 = hashString53("")
+    const result2 = hashString53("")
+
+    expect(result1).toBe(result2)
   })
 })
