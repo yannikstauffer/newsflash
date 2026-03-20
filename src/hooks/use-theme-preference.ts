@@ -6,6 +6,16 @@ type ThemePreference = "light" | "dark"
 
 const STORAGE_KEY = "newsflash:theme"
 
+function getOsThemePreference(): ThemePreference {
+  if (
+    typeof globalThis.matchMedia === "function" &&
+    globalThis.matchMedia("(prefers-color-scheme: dark)").matches
+  ) {
+    return "dark"
+  }
+  return "light"
+}
+
 export function useThemePreference(): {
   readonly theme: ThemePreference
   readonly setTheme: (theme: ThemePreference) => void
@@ -13,7 +23,7 @@ export function useThemePreference(): {
 } {
   const [theme, setThemeValue] = useLocalStorage<ThemePreference>(
     STORAGE_KEY,
-    "light",
+    getOsThemePreference(),
   )
 
   useEffect(() => {

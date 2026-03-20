@@ -1,20 +1,54 @@
 import { act, renderHook } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { useThemePreference } from "./use-theme-preference"
+
+function mockMatchMedia(prefersDark: boolean) {
+  globalThis.matchMedia = vi.fn((query: string) => ({
+    matches: query === "(prefers-color-scheme: dark)" ? prefersDark : false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })) as unknown as typeof globalThis.matchMedia
+}
 
 describe("useThemePreference", () => {
   beforeEach(() => {
     localStorage.clear()
     document.documentElement.classList.remove("dark")
+    mockMatchMedia(false)
   })
 
   afterEach(() => {
     localStorage.clear()
     document.documentElement.classList.remove("dark")
+    vi.restoreAllMocks()
   })
 
-  it("defaults to light theme when no preference is stored", () => {
+  it("defaults to light theme when no preference is stored and OS prefers light", () => {
+    mockMatchMedia(false)
+    const { result } = renderHook(() => useThemePreference())
+
+    expect(result.current.theme).toBe("light")
+    expect(document.documentElement.classList.contains("dark")).toBe(false)
+  })
+
+  it("defaults to dark theme when no preference is stored and OS prefers dark", () => {
+    mockMatchMedia(true)
+    const { result } = renderHook(() => useThemePreference())
+
+    expect(result.current.theme).toBe("dark")
+    expect(document.documentElement.classList.contains("dark")).toBe(true)
+  })
+
+  it("uses saved localStorage preference over OS dark preference", () => {
+    mockMatchMedia(true)
+    localStorage.setItem("newsflash:theme", JSON.stringify("light"))
+
     const { result } = renderHook(() => useThemePreference())
 
     expect(result.current.theme).toBe("light")

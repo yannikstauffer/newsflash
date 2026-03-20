@@ -84,14 +84,14 @@ describe("FilterBar", () => {
     ).toBeTruthy()
   })
 
-  it("renders Next day button before Previous day button (left-to-right)", () => {
+  it("renders Previous day button before Next day button (left-to-right)", () => {
     render(<FilterBar {...defaultProps} />)
 
-    const nextDayButton = screen.getByLabelText("Next day")
     const previousDayButton = screen.getByLabelText("Previous day")
+    const nextDayButton = screen.getByLabelText("Next day")
 
     expect(
-      nextDayButton.compareDocumentPosition(previousDayButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+      previousDayButton.compareDocumentPosition(nextDayButton) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 
@@ -105,6 +105,21 @@ describe("FilterBar", () => {
     render(<FilterBar {...defaultProps} showHidden={true} />)
 
     expect(screen.getByRole("button", { name: /hidden/i }).getAttribute("aria-pressed")).toBe("true")
+  })
+
+  it("calls onNext when next day button is clicked", () => {
+    const onNext = vi.fn()
+    render(<FilterBar {...defaultProps} isToday={false} onNext={onNext} />)
+
+    fireEvent.click(screen.getByLabelText("Next day"))
+
+    expect(onNext).toHaveBeenCalledOnce()
+  })
+
+  it("has maxLength of 200 on the search input", () => {
+    render(<FilterBar {...defaultProps} />)
+
+    expect(screen.getByLabelText("Search articles").getAttribute("maxlength")).toBe("200")
   })
 
   it("calls onSearchChange when typing in search input", () => {

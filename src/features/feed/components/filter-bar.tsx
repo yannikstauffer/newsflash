@@ -65,9 +65,8 @@ export function FilterBar({
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={onNext}
-            disabled={isToday}
-            aria-label="Next day"
+            onClick={onPrev}
+            aria-label="Previous day"
             className="min-h-[44px] min-w-[44px] md:min-h-[28px] md:min-w-[28px]"
           >
             <ChevronLeft className="size-4" />
@@ -80,8 +79,9 @@ export function FilterBar({
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={onPrev}
-            aria-label="Previous day"
+            onClick={onNext}
+            disabled={isToday}
+            aria-label="Next day"
             className="min-h-[44px] min-w-[44px] md:min-h-[28px] md:min-w-[28px]"
           >
             <ChevronRight className="size-4" />
@@ -96,6 +96,7 @@ export function FilterBar({
           type="search"
           placeholder="Search articles..."
           value={searchQuery}
+          maxLength={200}
           onChange={(event) => onSearchChange(event.target.value)}
           className="min-h-[44px] w-full rounded-full border border-border bg-background py-1.5 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:min-h-[32px]"
           aria-label="Search articles"
