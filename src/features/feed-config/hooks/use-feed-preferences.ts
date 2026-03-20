@@ -7,7 +7,7 @@ const LANGUAGE_FIELD = "_language"
 
 export type LanguagePreference = "all" | "de" | "en"
 
-interface FeedPrefsStore extends Record<string, boolean | LanguagePreference> {
+interface FeedPrefsStore extends Record<string, boolean | LanguagePreference | undefined> {
   [LANGUAGE_FIELD]?: LanguagePreference
 }
 
@@ -24,8 +24,8 @@ export function useFeedPreferences(): {
 
   // Extract language and feed preferences from the combined store
   const language: LanguagePreference =
-    // eslint-disable-next-line security/detect-object-injection -- LANGUAGE_FIELD is a constant
-    (store[LANGUAGE_FIELD] as LanguagePreference | undefined) ?? "all"
+  // eslint-disable-next-line security/detect-object-injection -- LANGUAGE_FIELD is a constant
+    store[LANGUAGE_FIELD] ?? "all"
   const preferences: Record<string, boolean> = Object.fromEntries(
     Object.entries(store).filter(([key]) => key !== LANGUAGE_FIELD),
   ) as Record<string, boolean>

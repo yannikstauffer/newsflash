@@ -14,7 +14,7 @@ function hashString(input: string): string {
   let hash = 0
   for (let index = 0; index < input.length; index++) {
     const char = input.codePointAt(index) ?? 0
-    hash = ((hash << 5) - hash + char) | 0
+    hash = Math.trunc((hash << 5) - hash + char)
   }
   return Math.abs(hash).toString(36)
 }
@@ -81,7 +81,7 @@ function extractImageUrl(item: RssItem | AtomEntry): string | undefined {
     return item["media:thumbnail"]["@_url"]
   }
   if ("media:content" in item) {
-    const media = (item as RssItem)["media:content"]
+    const media = item["media:content"]
     if (Array.isArray(media)) {
       const first = media.find((m) => m["@_url"])
       if (first?.["@_url"]) {
@@ -92,7 +92,7 @@ function extractImageUrl(item: RssItem | AtomEntry): string | undefined {
     }
   }
   if ("enclosure" in item) {
-    const enclosure = (item as RssItem).enclosure
+    const enclosure = item.enclosure
     if (enclosure?.["@_type"]?.startsWith("image/")) {
       return enclosure["@_url"]
     }
