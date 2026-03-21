@@ -24,11 +24,11 @@ describe("ArticleActionButtons", () => {
     expect(wrapper.className).toContain("group-hover:flex")
   })
 
-  it("includes touch-device:flex class for touch device visibility", () => {
+  it("includes touch-device:md:flex class for touch device visibility on md+ screens", () => {
     const { container } = render(<ArticleActionButtons {...defaultProps} />)
 
     const wrapper = container.firstElementChild as HTMLElement
-    expect(wrapper.className).toContain("touch-device:flex")
+    expect(wrapper.className).toContain("touch-device:md:flex")
   })
 
   it("renders hide and save buttons with aria labels", () => {

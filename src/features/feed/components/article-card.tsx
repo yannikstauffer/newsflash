@@ -24,8 +24,8 @@ export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
           alt=""
           loading="lazy"
           width={96}
-          height={64}
-          className="size-16 shrink-0 self-center rounded-lg object-cover md:h-20 md:w-24"
+          height={96}
+          className="size-24 shrink-0 self-center rounded-lg object-cover"
         />
       )}
       <div className="min-w-0 text-left">
@@ -53,12 +53,12 @@ export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
           rel="noopener noreferrer"
           className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
-          <h3 className="mb-1 line-clamp-2 text-base font-semibold text-foreground">
+          <h3 className="mb-1 line-clamp-4 text-base font-medium text-foreground md:line-clamp-2 md:font-semibold">
             {article.title}
           </h3>
         </a>
         {article.description && (
-          <p className="line-clamp-2 text-sm text-muted-foreground">
+          <p className="hidden text-sm text-muted-foreground md:line-clamp-2 md:block">
             {article.description}
           </p>
         )}
