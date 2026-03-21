@@ -29,8 +29,7 @@ export function extractLeadingImage(html: string): ExtractLeadingImageResult {
 
   // Remove the img, its <a> wrapper, and/or its <p> wrapper if they become empty
   const imgParent = firstImg.parentElement
-  const removeTarget =
-      imgParent?.tagName === "A" ? imgParent : firstImg
+  const removeTarget = imgParent?.tagName === "A" ? imgParent : firstImg
   const wrapperParent = removeTarget.parentElement
   if (
     wrapperParent?.tagName === "P" &&

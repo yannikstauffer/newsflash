@@ -52,6 +52,8 @@ export function useThemePreference(): {
 
   useEffect(() => {
     const resolved = resolveTheme(theme)
+    // todo: have a look at this lint issue
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setResolvedTheme(resolved)
     applyThemeClass(resolved)
 

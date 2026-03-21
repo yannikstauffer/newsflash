@@ -1,12 +1,11 @@
 import { useFeedPreferences } from "../hooks/use-feed-preferences"
 
 import type { LanguagePreference } from "../hooks/use-feed-preferences"
+import type { ThemePreference } from "@/hooks/use-theme-preference"
 
 import { useArticleState } from "@/features/article-actions/hooks/use-article-state"
 import { connectors } from "@/features/connectors/registry"
 import { useThemePreference } from "@/hooks/use-theme-preference"
-
-import type { ThemePreference } from "@/hooks/use-theme-preference"
 
 const THEME_OPTIONS: Array<{ readonly value: ThemePreference; readonly label: string }> = [
   { value: "system", label: "System" },
