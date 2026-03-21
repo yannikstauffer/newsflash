@@ -3,17 +3,38 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { useThemePreference } from "./use-theme-preference"
 
-function mockMatchMedia(prefersDark: boolean) {
-  globalThis.matchMedia = vi.fn((query: string) => ({
-    matches: query === "(prefers-color-scheme: dark)" ? prefersDark : false,
-    media: query,
+type ChangeHandler = (event: MediaQueryListEvent) => void
+
+function createMockMediaQueryList(prefersDark: boolean) {
+  const listeners: ChangeHandler[] = []
+
+  return {
+    matches: prefersDark,
+    media: "(prefers-color-scheme: dark)",
     onchange: null,
     addListener: vi.fn(),
     removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
+    addEventListener: vi.fn((_event: string, handler: ChangeHandler) => {
+      listeners.push(handler)
+    }),
+    removeEventListener: vi.fn((_event: string, handler: ChangeHandler) => {
+      const index = listeners.indexOf(handler)
+      if (index >= 0) listeners.splice(index, 1)
+    }),
     dispatchEvent: vi.fn(),
-  })) as unknown as typeof globalThis.matchMedia
+    _listeners: listeners,
+    _simulateChange(dark: boolean) {
+      for (const listener of listeners) {
+        listener({ matches: dark } as MediaQueryListEvent)
+      }
+    },
+  }
+}
+
+function mockMatchMedia(prefersDark: boolean) {
+  const mockMql = createMockMediaQueryList(prefersDark)
+  globalThis.matchMedia = vi.fn(() => mockMql) as unknown as typeof globalThis.matchMedia
+  return mockMql
 }
 
 describe("useThemePreference", () => {
@@ -29,93 +50,237 @@ describe("useThemePreference", () => {
     vi.restoreAllMocks()
   })
 
-  it("defaults to light theme when no preference is stored and OS prefers light", () => {
-    mockMatchMedia(false)
-    const { result } = renderHook(() => useThemePreference())
+  describe("default behavior (system preference)", () => {
+    it("defaults to system theme when no preference is stored", () => {
+      const { result } = renderHook(() => useThemePreference())
 
-    expect(result.current.theme).toBe("light")
-    expect(document.documentElement.classList.contains("dark")).toBe(false)
-  })
-
-  it("defaults to dark theme when no preference is stored and OS prefers dark", () => {
-    mockMatchMedia(true)
-    const { result } = renderHook(() => useThemePreference())
-
-    expect(result.current.theme).toBe("dark")
-    expect(document.documentElement.classList.contains("dark")).toBe(true)
-  })
-
-  it("uses saved localStorage preference over OS dark preference", () => {
-    mockMatchMedia(true)
-    localStorage.setItem("newsflash:theme", JSON.stringify("light"))
-
-    const { result } = renderHook(() => useThemePreference())
-
-    expect(result.current.theme).toBe("light")
-    expect(document.documentElement.classList.contains("dark")).toBe(false)
-  })
-
-  it("restores dark theme from localStorage", () => {
-    localStorage.setItem("newsflash:theme", JSON.stringify("dark"))
-
-    const { result } = renderHook(() => useThemePreference())
-
-    expect(result.current.theme).toBe("dark")
-    expect(document.documentElement.classList.contains("dark")).toBe(true)
-  })
-
-  it("applies dark class when switching to dark theme", () => {
-    const { result } = renderHook(() => useThemePreference())
-
-    act(() => {
-      result.current.setTheme("dark")
+      expect(result.current.theme).toBe("system")
     })
 
-    expect(result.current.theme).toBe("dark")
-    expect(document.documentElement.classList.contains("dark")).toBe(true)
+    it("resolves to light when OS prefers light and no preference stored", () => {
+      mockMatchMedia(false)
+      const { result } = renderHook(() => useThemePreference())
+
+      expect(result.current.theme).toBe("system")
+      expect(result.current.resolvedTheme).toBe("light")
+      expect(document.documentElement.classList.contains("dark")).toBe(false)
+    })
+
+    it("resolves to dark when OS prefers dark and no preference stored", () => {
+      mockMatchMedia(true)
+      const { result } = renderHook(() => useThemePreference())
+
+      expect(result.current.theme).toBe("system")
+      expect(result.current.resolvedTheme).toBe("dark")
+      expect(document.documentElement.classList.contains("dark")).toBe(true)
+    })
   })
 
-  it("removes dark class when switching to light theme", () => {
-    localStorage.setItem("newsflash:theme", JSON.stringify("dark"))
+  describe("explicit preferences", () => {
+    it("uses saved light preference from localStorage over OS dark", () => {
+      mockMatchMedia(true)
+      localStorage.setItem("newsflash:theme", JSON.stringify("light"))
 
-    const { result } = renderHook(() => useThemePreference())
-    expect(document.documentElement.classList.contains("dark")).toBe(true)
+      const { result } = renderHook(() => useThemePreference())
 
-    act(() => {
-      result.current.setTheme("light")
+      expect(result.current.theme).toBe("light")
+      expect(result.current.resolvedTheme).toBe("light")
+      expect(document.documentElement.classList.contains("dark")).toBe(false)
     })
 
-    expect(result.current.theme).toBe("light")
-    expect(document.documentElement.classList.contains("dark")).toBe(false)
+    it("restores dark theme from localStorage", () => {
+      localStorage.setItem("newsflash:theme", JSON.stringify("dark"))
+
+      const { result } = renderHook(() => useThemePreference())
+
+      expect(result.current.theme).toBe("dark")
+      expect(result.current.resolvedTheme).toBe("dark")
+      expect(document.documentElement.classList.contains("dark")).toBe(true)
+    })
+
+    it("restores system preference from localStorage", () => {
+      mockMatchMedia(true)
+      localStorage.setItem("newsflash:theme", JSON.stringify("system"))
+
+      const { result } = renderHook(() => useThemePreference())
+
+      expect(result.current.theme).toBe("system")
+      expect(result.current.resolvedTheme).toBe("dark")
+      expect(document.documentElement.classList.contains("dark")).toBe(true)
+    })
   })
 
-  it("toggles between light and dark", () => {
-    const { result } = renderHook(() => useThemePreference())
+  describe("setTheme", () => {
+    it("applies dark class when switching to dark theme", () => {
+      const { result } = renderHook(() => useThemePreference())
 
-    act(() => {
-      result.current.toggleTheme()
+      act(() => {
+        result.current.setTheme("dark")
+      })
+
+      expect(result.current.theme).toBe("dark")
+      expect(result.current.resolvedTheme).toBe("dark")
+      expect(document.documentElement.classList.contains("dark")).toBe(true)
     })
 
-    expect(result.current.theme).toBe("dark")
-    expect(document.documentElement.classList.contains("dark")).toBe(true)
+    it("removes dark class when switching to light theme", () => {
+      localStorage.setItem("newsflash:theme", JSON.stringify("dark"))
 
-    act(() => {
-      result.current.toggleTheme()
+      const { result } = renderHook(() => useThemePreference())
+      expect(document.documentElement.classList.contains("dark")).toBe(true)
+
+      act(() => {
+        result.current.setTheme("light")
+      })
+
+      expect(result.current.theme).toBe("light")
+      expect(result.current.resolvedTheme).toBe("light")
+      expect(document.documentElement.classList.contains("dark")).toBe(false)
     })
 
-    expect(result.current.theme).toBe("light")
-    expect(document.documentElement.classList.contains("dark")).toBe(false)
+    it("switches to system and resolves based on OS preference", () => {
+      mockMatchMedia(true)
+      localStorage.setItem("newsflash:theme", JSON.stringify("light"))
+
+      const { result } = renderHook(() => useThemePreference())
+      expect(result.current.resolvedTheme).toBe("light")
+
+      act(() => {
+        result.current.setTheme("system")
+      })
+
+      expect(result.current.theme).toBe("system")
+      expect(result.current.resolvedTheme).toBe("dark")
+      expect(document.documentElement.classList.contains("dark")).toBe(true)
+    })
   })
 
-  it("persists preference to localStorage", () => {
-    const { result } = renderHook(() => useThemePreference())
+  describe("toggleTheme", () => {
+    it("toggles between light and dark", () => {
+      localStorage.setItem("newsflash:theme", JSON.stringify("light"))
+      const { result } = renderHook(() => useThemePreference())
 
-    act(() => {
-      result.current.setTheme("dark")
+      act(() => {
+        result.current.toggleTheme()
+      })
+
+      expect(result.current.theme).toBe("dark")
+      expect(document.documentElement.classList.contains("dark")).toBe(true)
+
+      act(() => {
+        result.current.toggleTheme()
+      })
+
+      expect(result.current.theme).toBe("light")
+      expect(document.documentElement.classList.contains("dark")).toBe(false)
+    })
+  })
+
+  describe("matchMedia listener (system mode)", () => {
+    it("attaches matchMedia listener when preference is system", () => {
+      const mql = mockMatchMedia(false)
+      renderHook(() => useThemePreference())
+
+      expect(mql.addEventListener).toHaveBeenCalledWith(
+        "change",
+        expect.any(Function),
+      )
     })
 
-    expect(JSON.parse(localStorage.getItem("newsflash:theme") ?? "")).toBe(
-      "dark",
-    )
+    it("does not attach listener when preference is explicit light", () => {
+      const mql = mockMatchMedia(false)
+      localStorage.setItem("newsflash:theme", JSON.stringify("light"))
+
+      renderHook(() => useThemePreference())
+
+      expect(mql.addEventListener).not.toHaveBeenCalled()
+    })
+
+    it("does not attach listener when preference is explicit dark", () => {
+      const mql = mockMatchMedia(false)
+      localStorage.setItem("newsflash:theme", JSON.stringify("dark"))
+
+      renderHook(() => useThemePreference())
+
+      expect(mql.addEventListener).not.toHaveBeenCalled()
+    })
+
+    it("reacts to OS theme change when in system mode", () => {
+      const mql = mockMatchMedia(false)
+      const { result } = renderHook(() => useThemePreference())
+
+      expect(result.current.resolvedTheme).toBe("light")
+
+      act(() => {
+        mql._simulateChange(true)
+      })
+
+      expect(result.current.resolvedTheme).toBe("dark")
+      expect(document.documentElement.classList.contains("dark")).toBe(true)
+
+      act(() => {
+        mql._simulateChange(false)
+      })
+
+      expect(result.current.resolvedTheme).toBe("light")
+      expect(document.documentElement.classList.contains("dark")).toBe(false)
+    })
+
+    it("detaches listener when switching from system to explicit", () => {
+      const mql = mockMatchMedia(false)
+      const { result } = renderHook(() => useThemePreference())
+
+      expect(mql.addEventListener).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        result.current.setTheme("dark")
+      })
+
+      expect(mql.removeEventListener).toHaveBeenCalledWith(
+        "change",
+        expect.any(Function),
+      )
+    })
+
+    it("cleans up listener on unmount", () => {
+      const mql = mockMatchMedia(false)
+      const { unmount } = renderHook(() => useThemePreference())
+
+      expect(mql.addEventListener).toHaveBeenCalledTimes(1)
+
+      unmount()
+
+      expect(mql.removeEventListener).toHaveBeenCalledWith(
+        "change",
+        expect.any(Function),
+      )
+    })
+  })
+
+  describe("persistence", () => {
+    it("persists preference to localStorage", () => {
+      const { result } = renderHook(() => useThemePreference())
+
+      act(() => {
+        result.current.setTheme("dark")
+      })
+
+      expect(JSON.parse(localStorage.getItem("newsflash:theme") ?? "")).toBe(
+        "dark",
+      )
+    })
+
+    it("persists system preference to localStorage", () => {
+      localStorage.setItem("newsflash:theme", JSON.stringify("light"))
+      const { result } = renderHook(() => useThemePreference())
+
+      act(() => {
+        result.current.setTheme("system")
+      })
+
+      expect(JSON.parse(localStorage.getItem("newsflash:theme") ?? "")).toBe(
+        "system",
+      )
+    })
   })
 })

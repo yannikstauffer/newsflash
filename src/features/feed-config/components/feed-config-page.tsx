@@ -6,6 +6,14 @@ import { useArticleState } from "@/features/article-actions/hooks/use-article-st
 import { connectors } from "@/features/connectors/registry"
 import { useThemePreference } from "@/hooks/use-theme-preference"
 
+import type { ThemePreference } from "@/hooks/use-theme-preference"
+
+const THEME_OPTIONS: Array<{ readonly value: ThemePreference; readonly label: string }> = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+]
+
 const LANGUAGE_OPTIONS: Array<{ readonly value: LanguagePreference; readonly label: string }> = [
   { value: "all", label: "All" },
   { value: "de", label: "DE" },
@@ -73,20 +81,20 @@ export default function FeedConfigPage() {
           role="radiogroup"
           aria-label="Theme preference"
         >
-          {(["light", "dark"] as const).map((option) => (
+          {THEME_OPTIONS.map((option) => (
             <button
-              key={option}
+              key={option.value}
               type="button"
               role="radio"
-              aria-checked={theme === option}
-              onClick={() => setTheme(option)}
-              className={`min-h-[44px] px-4 text-sm font-medium capitalize transition-colors first:rounded-l-lg last:rounded-r-lg md:min-h-0 md:py-2 ${
-                theme === option
+              aria-checked={theme === option.value}
+              onClick={() => setTheme(option.value)}
+              className={`min-h-[44px] px-4 text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg md:min-h-0 md:py-2 ${
+                theme === option.value
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted"
               }`}
             >
-              {option}
+              {option.label}
             </button>
           ))}
         </div>

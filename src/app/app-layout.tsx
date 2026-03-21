@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react"
 
 import { ErrorBoundary } from "@/components/error-boundary"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { useThemePreference } from "@/hooks/use-theme-preference"
 
 interface NavItem {
   readonly to: string
@@ -20,6 +21,8 @@ const NAV_ITEMS: readonly NavItem[] = [
 ]
 
 export function AppLayout() {
+  useThemePreference()
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col">
       <a
