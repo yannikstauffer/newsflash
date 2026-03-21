@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react"
 
 import { ErrorBoundary } from "@/components/error-boundary"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { useArticleState } from "@/features/article-actions"
 import { useThemePreference } from "@/hooks/use-theme-preference"
 
 interface NavItem {
@@ -20,8 +21,14 @@ const NAV_ITEMS: readonly NavItem[] = [
   { to: "/settings", label: "Settings", icon: Settings },
 ]
 
+function formatBadgeCount(count: number): string {
+  return count > 99 ? "99+" : String(count)
+}
+
 export function AppLayout() {
   useThemePreference()
+  const { readListIds } = useArticleState()
+  const readListCount = readListIds.length
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col">
@@ -36,18 +43,38 @@ export function AppLayout() {
         aria-label="Main navigation"
       >
         <div className="mx-auto flex max-w-3xl">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-            <Link
-              key={to}
-              to={to}
-              activeOptions={{ exact: true }}
-              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring text-muted-foreground hover:text-foreground [&.active]:border-t-2 [&.active]:border-primary [&.active]:text-foreground sm:[&.active]:border-b-2 sm:[&.active]:border-t-0"
-              activeProps={{ "aria-current": "page" }}
-            >
-              <Icon className="size-4" />
-              <span className="hidden sm:inline">{label}</span>
-            </Link>
-          ))}
+          {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
+            const isReadList = to === "/read-list"
+            const ariaLabel =
+              isReadList && readListCount > 0
+                ? `${label} (${readListCount} saved)`
+                : undefined
+
+            return (
+              <Link
+                key={to}
+                to={to}
+                activeOptions={{ exact: true }}
+                className="flex min-h-[48px] flex-1 items-center justify-center gap-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring text-muted-foreground hover:text-foreground [&.active]:border-t-2 [&.active]:border-primary [&.active]:text-foreground sm:[&.active]:border-b-2 sm:[&.active]:border-t-0"
+                activeProps={{ "aria-current": "page" }}
+                aria-label={ariaLabel}
+              >
+                <span className="relative">
+                  <Icon className="size-4" />
+                  {isReadList && readListCount > 0 && (
+                    <span
+                      className="absolute -right-2.5 -top-1.5 flex min-w-[18px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium leading-[18px] text-muted-foreground"
+                      aria-hidden="true"
+                      data-testid="read-list-badge"
+                    >
+                      {formatBadgeCount(readListCount)}
+                    </span>
+                  )}
+                </span>
+                <span className="hidden sm:inline">{label}</span>
+              </Link>
+            )
+          })}
         </div>
       </nav>
 

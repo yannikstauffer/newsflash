@@ -10,6 +10,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AppLayout } from "./app-layout"
 
+function makeStoredArticle(id: string) {
+  return {
+    id,
+    title: `Article ${id}`,
+    description: "Description",
+    link: `https://example.com/${id}`,
+    publishedAt: new Date().toISOString(),
+    source: "test-source",
+    language: "en" as const,
+  }
+}
+
 function renderWithRouter() {
   const rootRoute = createRootRoute({ component: AppLayout })
   const indexRoute = createRoute({
@@ -70,14 +82,14 @@ describe("AppLayout", () => {
     })
   })
 
-  it("places skip link before the header in DOM order", async () => {
+  it("places skip link before the nav in DOM order", async () => {
     renderWithRouter()
 
     const skipLink = await screen.findByText("Skip to content")
-    const header = document.querySelector("header")
+    const nav = document.querySelector("nav")
 
     expect(
-      skipLink.compareDocumentPosition(header!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      skipLink.compareDocumentPosition(nav!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 
@@ -120,6 +132,81 @@ describe("AppLayout", () => {
 
       await screen.findByText("Feed Content")
       expect(document.documentElement.classList.contains("dark")).toBe(true)
+    })
+  })
+
+  describe("read list badge", () => {
+    it("does not show badge when read list is empty", async () => {
+      renderWithRouter()
+
+      await screen.findByText("Feed Content")
+      const badge = screen.queryByTestId("read-list-badge")
+      expect(badge).not.toBeInTheDocument()
+    })
+
+    it("shows badge with count when read list has articles", async () => {
+      const articles = [
+        makeStoredArticle("test-source:1"),
+        makeStoredArticle("test-source:2"),
+        makeStoredArticle("test-source:3"),
+      ]
+      localStorage.setItem("newsflash:readlist", JSON.stringify(articles))
+
+      renderWithRouter()
+
+      await waitFor(() => {
+        const badge = screen.queryByTestId("read-list-badge")
+        expect(badge).toBeInTheDocument()
+        expect(badge?.textContent).toBe("3")
+      })
+    })
+
+    it("shows 99+ when count exceeds 99", async () => {
+      const articles = Array.from({ length: 100 }, (_, index) =>
+        makeStoredArticle(`test-source:${index}`),
+      )
+      localStorage.setItem("newsflash:readlist", JSON.stringify(articles))
+
+      renderWithRouter()
+
+      await waitFor(() => {
+        const badge = screen.queryByTestId("read-list-badge")
+        expect(badge).toBeInTheDocument()
+        expect(badge?.textContent).toBe("99+")
+      })
+    })
+
+    it("sets aria-label with count on Read List nav link", async () => {
+      const articles = [makeStoredArticle("test-source:1")]
+      localStorage.setItem("newsflash:readlist", JSON.stringify(articles))
+
+      renderWithRouter()
+
+      await waitFor(() => {
+        const readListLink = screen.getByLabelText("Read List (1 saved)")
+        expect(readListLink).toBeInTheDocument()
+      })
+    })
+
+    it("does not set aria-label on Read List link when list is empty", async () => {
+      renderWithRouter()
+
+      await screen.findByText("Feed Content")
+      const readListLink = document.querySelector('a[href="/read-list"]')
+      expect(readListLink?.getAttribute("aria-label")).toBeNull()
+    })
+
+    it("badge has aria-hidden attribute", async () => {
+      const articles = [makeStoredArticle("test-source:1")]
+      localStorage.setItem("newsflash:readlist", JSON.stringify(articles))
+
+      renderWithRouter()
+
+      await waitFor(() => {
+        const badge = screen.queryByTestId("read-list-badge")
+        expect(badge).toBeInTheDocument()
+        expect(badge?.getAttribute("aria-hidden")).toBe("true")
+      })
     })
   })
 })
