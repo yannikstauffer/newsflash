@@ -31,24 +31,27 @@ export function AppLayout() {
       >
         {"Skip to content"}
       </a>
-      <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <nav className="flex" aria-label="Main navigation">
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-10 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:sticky sm:top-0 sm:border-b sm:border-t-0 sm:pb-0"
+        aria-label="Main navigation"
+      >
+        <div className="mx-auto flex max-w-3xl">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
               to={to}
               activeOptions={{ exact: true }}
-              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring text-muted-foreground hover:text-foreground [&.active]:border-b-2 [&.active]:border-primary [&.active]:text-foreground"
+              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring text-muted-foreground hover:text-foreground [&.active]:border-t-2 [&.active]:border-primary [&.active]:text-foreground sm:[&.active]:border-b-2 sm:[&.active]:border-t-0"
               activeProps={{ "aria-current": "page" }}
             >
               <Icon className="size-4" />
               <span className="hidden sm:inline">{label}</span>
             </Link>
           ))}
-        </nav>
-      </header>
+        </div>
+      </nav>
 
-      <main id="main-content" className="flex-1 p-3 md:p-6">
+      <main id="main-content" className="flex-1 p-3 pb-16 sm:pb-0 md:p-6">
         <ErrorBoundary>
           <Suspense fallback={<LoadingSpinner />}>
             <Outlet />
