@@ -1,4 +1,13 @@
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Search } from "lucide-react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  List,
+  Search,
+  X,
+} from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 import { formatDayLabel } from "../utils/format-day-label"
 import { formatRelativeTime } from "../utils/format-time"
@@ -17,6 +26,8 @@ interface FilterBarProps {
   readonly onNext: () => void
   readonly onToggleAllArticles: () => void
   readonly lastRefreshedAt: Date | null
+  readonly articleCount: number
+  readonly hiddenCount: number
 }
 
 export function FilterBar({
@@ -31,40 +42,161 @@ export function FilterBar({
   onNext,
   onToggleAllArticles,
   lastRefreshedAt,
+  articleCount,
+  hiddenCount,
 }: FilterBarProps) {
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Left section: toggles */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant={allArticles ? "secondary" : "outline"}
-          size="sm"
-          onClick={onToggleAllArticles}
-          aria-pressed={allArticles}
-          className="h-8 min-h-[44px] rounded-full px-3 text-xs md:min-h-[28px]"
-        >
-          {"All articles"}
-        </Button>
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchFocused, setSearchFocused] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null)
 
-        <Button
-          variant={showHidden ? "secondary" : "outline"}
-          size="sm"
-          onClick={onToggleShowHidden}
-          aria-pressed={showHidden}
-          className="h-8 min-h-[44px] rounded-full px-3 text-xs md:min-h-[28px]"
-        >
-          {showHidden ? (
-            <Eye className="size-3.5" data-icon="inline-start" />
-          ) : (
-            <EyeOff className="size-3.5" data-icon="inline-start" />
+  useEffect(() => {
+    if (searchOpen && mobileSearchInputRef.current) {
+      mobileSearchInputRef.current.focus()
+    }
+  }, [searchOpen])
+
+  function handleClearOrCollapse() {
+    if (searchQuery) {
+      onSearchChange("")
+    } else {
+      setSearchOpen(false)
+    }
+  }
+
+  function handleMobileSearchKeyDown(event: React.KeyboardEvent) {
+    if (event.key === "Escape") {
+      setSearchOpen(false)
+    }
+  }
+
+  function handleDesktopClear() {
+    onSearchChange("")
+  }
+
+  const showClearDesktop = searchQuery || searchFocused
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Row 1: status, toggles, search */}
+      <div className="flex items-center gap-2">
+        {/* Mobile: when search is open, show full-width search input */}
+        {searchOpen ? (
+          <div className="relative flex flex-1 md:hidden">
+            <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              ref={mobileSearchInputRef}
+              type="search"
+              placeholder="Search articles..."
+              value={searchQuery}
+              maxLength={200}
+              onChange={(event) => onSearchChange(event.target.value)}
+              onKeyDown={handleMobileSearchKeyDown}
+              className="min-h-[44px] w-full rounded-full border border-border bg-background py-1.5 pl-9 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              aria-label="Search articles"
+            />
+            <button
+              type="button"
+              onClick={handleClearOrCollapse}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Left: refresh status + article count */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              {lastRefreshedAt && (
+                <span aria-label="Last refreshed">
+                  {`Refreshed ${formatRelativeTime(lastRefreshedAt)}`}
+                </span>
+              )}
+              <span aria-label="Article count">
+                {showHidden && hiddenCount > 0
+                  ? `${articleCount} + ${hiddenCount} hidden`
+                  : `${articleCount} articles`}
+              </span>
+            </div>
+
+            {/* Toggles */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant={allArticles ? "secondary" : "outline"}
+                size="sm"
+                onClick={onToggleAllArticles}
+                aria-pressed={allArticles}
+                aria-label="All articles"
+                className="h-8 min-h-[44px] rounded-full px-3 text-xs md:min-h-[28px]"
+              >
+                <List className="size-3.5" />
+                <span className="hidden md:inline">{"All articles"}</span>
+              </Button>
+
+              <Button
+                variant={showHidden ? "secondary" : "outline"}
+                size="sm"
+                onClick={onToggleShowHidden}
+                aria-pressed={showHidden}
+                aria-label="Hidden"
+                className="h-8 min-h-[44px] rounded-full px-3 text-xs md:min-h-[28px]"
+              >
+                {showHidden ? (
+                  <Eye className="size-3.5" />
+                ) : (
+                  <EyeOff className="size-3.5" />
+                )}
+                <span className="hidden md:inline">{"Hidden"}</span>
+              </Button>
+            </div>
+
+            {/* Mobile search icon button */}
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Open search"
+              className={`min-h-[44px] min-w-[44px] rounded-full md:hidden ${
+                searchQuery ? "border-primary text-primary" : ""
+              }`}
+            >
+              <Search className="size-3.5" />
+            </Button>
+          </>
+        )}
+
+        {/* Desktop search: always visible */}
+        <div className="relative hidden min-w-[120px] flex-1 md:flex">
+          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            ref={searchInputRef}
+            type="search"
+            placeholder="Search articles..."
+            value={searchQuery}
+            maxLength={200}
+            onChange={(event) => onSearchChange(event.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            className="min-h-[32px] w-full rounded-full border border-border bg-background py-1.5 pl-9 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            aria-label="Search articles"
+          />
+          {showClearDesktop && (
+            <button
+              type="button"
+              onClick={handleDesktopClear}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="size-4" />
+            </button>
           )}
-          {"Hidden"}
-        </Button>
+        </div>
       </div>
 
-      {/* Center section: day navigation */}
+      {/* Row 2: day navigation (centered) */}
       {!allArticles && (
-        <div className="flex flex-1 items-center justify-center gap-1">
+        <div className="flex items-center justify-center gap-1">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -90,26 +222,6 @@ export function FilterBar({
             <ChevronRight className="size-4" />
           </Button>
         </div>
-      )}
-
-      {/* Right section: search */}
-      <div className="relative min-w-[120px] flex-1">
-        <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="search"
-          placeholder="Search articles..."
-          value={searchQuery}
-          maxLength={200}
-          onChange={(event) => onSearchChange(event.target.value)}
-          className="min-h-[44px] w-full rounded-full border border-border bg-background py-1.5 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:min-h-[32px]"
-          aria-label="Search articles"
-        />
-      </div>
-
-      {lastRefreshedAt && (
-        <span className="text-xs text-muted-foreground" aria-label="Last refreshed">
-          {`Refreshed ${formatRelativeTime(lastRefreshedAt)}`}
-        </span>
       )}
     </div>
   )
