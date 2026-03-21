@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 .tmp/
+coverage/
+playwright-report/
