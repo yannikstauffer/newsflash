@@ -1,83 +1,57 @@
 ## ADDED Requirements
 
-### Requirement: Hide article via swipe right on mobile
-On touch devices, swiping an article card to the right SHALL mark it as hidden.
+### Requirement: Article IDs include source prefix
+Article IDs SHALL be formatted as `${sourceId}:${hash}` where `sourceId` is the feed source identifier and `hash` is the hash of the article link. This format ensures source-based filtering operations can identify which source an article belongs to.
 
-#### Scenario: Swipe right hides article
-- **WHEN** the user swipes an article card to the right on a touch device
-- **THEN** the article SHALL be marked as hidden and removed from the feed (unless "Show hidden" is on)
+#### Scenario: Generated article ID contains source prefix
+- **WHEN** an article is parsed from a feed with source identifier "techcrunch"
+- **THEN** the article ID SHALL start with "techcrunch:" followed by the hash value
 
-#### Scenario: Swipe does not trigger navigation
-- **WHEN** the user swipes an article card
-- **THEN** the browser SHALL NOT navigate to the article's link
+#### Scenario: removeHiddenBySource matches prefixed IDs
+- **WHEN** `removeHiddenBySource("techcrunch")` is called
+- **THEN** all hidden IDs starting with "techcrunch:" SHALL be removed from the hidden list
 
-### Requirement: Hide article via hover button on desktop
-On desktop, hovering over an article card SHALL reveal a hide button. Clicking it SHALL mark the article as hidden.
+### Requirement: Hash function uses 53-bit output
+The hash function used for article ID generation SHALL produce values using up to 53 bits (the safe integer range in JavaScript) to minimize collision probability across tens of thousands of articles.
 
-#### Scenario: Hover reveals hide button
-- **WHEN** the user hovers over an article card on desktop
-- **THEN** a hide button SHALL become visible
+#### Scenario: Different article links produce distinct hashes
+- **WHEN** two distinct article link URLs are hashed
+- **THEN** the hash values SHALL differ (collision probability SHALL be less than 1 in 1 billion for up to 10,000 articles)
 
-#### Scenario: Clicking hide button hides article
-- **WHEN** the user clicks the hide button
-- **THEN** the article SHALL be marked as hidden and the click SHALL NOT navigate to the article
+#### Scenario: Same article link produces consistent hash
+- **WHEN** the same article link URL is hashed multiple times
+- **THEN** the hash value SHALL be identical each time
 
-### Requirement: Hide article via keyboard shortcut
-Pressing `H` while an article is focused or hovered SHALL mark it as hidden.
+### Requirement: Set-based O(1) lookups for article state
+The `isHidden` and `isInReadList` functions SHALL use Set-based data structures for O(1) membership checks instead of linear array scans.
 
-#### Scenario: H key hides focused article
-- **WHEN** the user presses `H` while an article card is focused or hovered
-- **THEN** the article SHALL be marked as hidden
+#### Scenario: isHidden performs constant-time lookup
+- **WHEN** `isHidden` is called with an article ID and there are 500 hidden IDs
+- **THEN** the lookup SHALL complete in O(1) time using a Set
 
-### Requirement: Save to Read List via swipe left on mobile
-On touch devices, swiping an article card to the left SHALL add it to the Read List.
+#### Scenario: isInReadList performs constant-time lookup
+- **WHEN** `isInReadList` is called with an article ID and there are 200 read list items
+- **THEN** the lookup SHALL complete in O(1) time using a Set
 
-#### Scenario: Swipe left saves article
-- **WHEN** the user swipes an article card to the left on a touch device
-- **THEN** the article SHALL be added to the Read List
+### Requirement: Legacy localStorage data migration
+On first load, the application SHALL detect and clear legacy article IDs that do not contain the source prefix separator (colon character).
 
-#### Scenario: Swipe does not trigger navigation
-- **WHEN** the user swipes an article card to save it
-- **THEN** the browser SHALL NOT navigate to the article's link
+#### Scenario: Legacy hidden IDs without prefix are cleared
+- **WHEN** the application loads and `newsflash:hidden` contains IDs without a colon separator
+- **THEN** those legacy IDs SHALL be removed from storage
 
-### Requirement: Save to Read List via hover button on desktop
-On desktop, hovering over an article card SHALL reveal a save/bookmark button. Clicking it SHALL add the article to the Read List.
+#### Scenario: Legacy read list entries without prefixed IDs are cleared
+- **WHEN** the application loads and `newsflash:readlist` contains articles with IDs without a colon separator
+- **THEN** those legacy entries SHALL be removed from storage
 
-#### Scenario: Hover reveals save button
-- **WHEN** the user hovers over an article card on desktop
-- **THEN** a save/bookmark button SHALL become visible
+#### Scenario: Valid prefixed IDs are preserved during migration
+- **WHEN** the application loads and storage contains a mix of legacy and prefixed IDs
+- **THEN** only IDs containing the colon prefix separator SHALL be retained
 
-#### Scenario: Clicking save button adds to Read List
-- **WHEN** the user clicks the save button
-- **THEN** the article SHALL be added to the Read List and the click SHALL NOT navigate to the article
-
-### Requirement: Save to Read List via keyboard shortcut
-Pressing `S` while an article is focused or hovered SHALL add it to the Read List.
-
-#### Scenario: S key saves focused article
-- **WHEN** the user presses `S` while an article card is focused or hovered
-- **THEN** the article SHALL be added to the Read List
-
-### Requirement: Read List view
-The application SHALL provide a separate Read List view displaying all saved articles in the order they were saved (newest first).
-
-#### Scenario: Read List shows saved articles
-- **WHEN** the user navigates to the Read List view
-- **THEN** all saved articles SHALL be displayed, newest-saved first
-
-#### Scenario: Remove from Read List
-- **WHEN** the user removes an article from the Read List
-- **THEN** the article SHALL return to normal state in the main feed
-
-### Requirement: Hidden articles are recoverable
-Hidden articles SHALL be visible when the "Show hidden" filter is active. Users SHALL be able to unhide articles.
-
-#### Scenario: Unhide an article
-- **WHEN** the user unhides a previously hidden article (via button or gesture)
-- **THEN** the article SHALL return to normal state and appear in the feed without the "Show hidden" filter
+## MODIFIED Requirements
 
 ### Requirement: Article states persist in localStorage
-Hidden article IDs and Read List article IDs SHALL be persisted in localStorage so they survive page refreshes.
+Hidden article IDs and Read List article IDs SHALL be persisted in localStorage so they survive page refreshes. Article IDs SHALL use the `${sourceId}:${hash}` format. On first load after upgrade, legacy IDs without the source prefix SHALL be cleared.
 
 #### Scenario: Hidden state persists
 - **WHEN** the user hides an article and refreshes the page
@@ -86,3 +60,7 @@ Hidden article IDs and Read List article IDs SHALL be persisted in localStorage 
 #### Scenario: Read List persists
 - **WHEN** the user saves an article and refreshes the page
 - **THEN** the article SHALL still appear in the Read List
+
+#### Scenario: Legacy data is cleared on upgrade
+- **WHEN** the user loads the application for the first time after the ID format upgrade
+- **THEN** legacy hidden IDs and read list entries without source prefix SHALL be cleared

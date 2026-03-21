@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
 
 // Desktop-only tests: hover-based button actions
 test.describe("desktop button actions", () => {
-  test.beforeEach(async (_fixtures, testInfo) => {
+  test.beforeEach(async ({ page: _page }, testInfo) => {
     if (testInfo.project.name === "mobile-chrome") {
       test.skip()
     }
@@ -168,7 +168,7 @@ test("empty read list shows guidance message", async ({ page }) => {
 
 // Mobile-only tests: swipe gestures
 test.describe("mobile swipe actions", () => {
-  test.beforeEach(async (_fixtures, testInfo) => {
+  test.beforeEach(async ({ page: _page }, testInfo) => {
     if (testInfo.project.name !== "mobile-chrome") {
       test.skip()
     }

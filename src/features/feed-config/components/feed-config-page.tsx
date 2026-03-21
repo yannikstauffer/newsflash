@@ -12,7 +12,7 @@ const LANGUAGE_OPTIONS: Array<{ readonly value: LanguagePreference; readonly lab
   { value: "en", label: "EN" },
 ]
 
-export function FeedConfigPage() {
+export default function FeedConfigPage() {
   const {
     isFeedEnabled,
     toggleFeed,

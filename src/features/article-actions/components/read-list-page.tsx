@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { ArticleCard } from "@/features/feed/components/article-card"
 import { useLazyList } from "@/hooks/use-lazy-list"
 
-export function ReadListPage() {
+export default function ReadListPage() {
   const { readListArticles, removeFromReadList } = useArticleState()
   const { visibleItems, sentinelRef } = useLazyList(readListArticles)
 
