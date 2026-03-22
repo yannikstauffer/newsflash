@@ -210,7 +210,6 @@ describe("ReadListPage", () => {
           }),
         }),
       )
-
     })
 
     it("undo callback calls restoreReadList with captured snapshot", () => {
