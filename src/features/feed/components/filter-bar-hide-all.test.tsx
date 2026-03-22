@@ -148,7 +148,7 @@ describe("FilterBar Hide All", () => {
 
       // Extract the undo callback from the toast call
       const toastCall = vi.mocked(toast).mock.calls[0]
-      const toastOptions = toastCall[1] as { action: { onClick: () => void } }
+      const toastOptions = toastCall[1] as unknown as { action: { onClick: () => void } }
       toastOptions.action.onClick()
 
       expect(mockUnhideArticles).toHaveBeenCalledWith(ids)
