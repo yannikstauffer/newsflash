@@ -26,8 +26,27 @@ The feed SHALL provide a search input that filters articles by matching the quer
 - **WHEN** the search input is empty
 - **THEN** all articles (subject to other active filters) SHALL be displayed
 
+### Requirement: Article count display
+The filter bar SHALL display the count of non-hidden articles that match the current filters. When the "show hidden" toggle is active and hidden articles exist, the count SHALL be annotated with the hidden count.
+
+#### Scenario: Count shows non-hidden articles
+- **WHEN** the feed displays filtered articles with "show hidden" off
+- **THEN** the filter bar SHALL show "{count} articles" (e.g., "14 articles")
+
+#### Scenario: Count annotated when show hidden is active
+- **WHEN** the "show hidden" toggle is active and there are hidden articles matching filters
+- **THEN** the filter bar SHALL show "{visible} + {hidden} hidden" (e.g., "14 + 3 hidden")
+
+#### Scenario: Count updates when filters change
+- **WHEN** the user changes any filter (search, date, all articles, show hidden)
+- **THEN** the article count SHALL update to reflect the new filtered result
+
+#### Scenario: Zero articles
+- **WHEN** no articles match the current filters
+- **THEN** the count SHALL display "0 articles"
+
 ### Requirement: Filters combine with AND logic
-All active filters (show hidden, search) SHALL be combined with AND logic.
+All active filters (~~language,~~ show hidden, search) SHALL be combined with AND logic.
 
 #### Scenario: Multiple filters applied
 - **WHEN** the user has "show hidden" on AND types "apple" in search

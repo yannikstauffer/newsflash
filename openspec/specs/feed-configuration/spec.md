@@ -1,15 +1,23 @@
 ## ADDED Requirements
 
 ### Requirement: Feed configuration UI lists all pre-defined feeds
-The feed configuration view SHALL display all feeds from the connector registry, grouped by source, with a toggle for each feed.
+The feed configuration view SHALL display all feeds from the connector registry, grouped by source. Within each source, feeds with a `group` property SHALL be rendered in collapsible group sections. Feeds without a `group` property SHALL render flat as individual checkboxes.
 
 #### Scenario: All feeds are listed
 - **WHEN** the user opens feed configuration
 - **THEN** all feeds from all connectors SHALL be listed, grouped by source name
 
-#### Scenario: SRF sub-feeds are individually toggleable
-- **WHEN** the user views the SRF source in feed configuration
-- **THEN** each SRF sub-feed (e.g., "Latest", "Switzerland", "Football") SHALL have its own toggle
+#### Scenario: Grouped feeds render in collapsible sections
+- **WHEN** a connector has feeds with `group` properties
+- **THEN** feeds SHALL be clustered by group into collapsible sections within the connector's card
+
+#### Scenario: Ungrouped feeds render flat
+- **WHEN** a connector has feeds without `group` properties
+- **THEN** those feeds SHALL render as individual checkboxes directly under the connector header (existing behavior)
+
+#### Scenario: Mixed grouped and ungrouped feeds
+- **WHEN** a connector has both grouped and ungrouped feeds
+- **THEN** ungrouped feeds SHALL render flat and grouped feeds SHALL render in their collapsible sections
 
 ### Requirement: Feeds default to enabled
 All feeds SHALL be enabled by default when the user first loads the application (no prior preferences in localStorage).
@@ -30,18 +38,22 @@ Enabled/disabled state for each feed SHALL be stored in localStorage and restore
 - **THEN** feed preferences SHALL be restored from localStorage
 
 ### Requirement: Source-level toggle
-Each source SHALL have a master toggle that enables or disables all of its sub-feeds at once.
+Each source SHALL have a master toggle that enables or disables all of its sub-feeds at once, including feeds across all groups.
 
 #### Scenario: Disable entire source
 - **WHEN** the user toggles off a source (e.g., "SRF")
-- **THEN** all sub-feeds under that source SHALL be disabled
+- **THEN** all sub-feeds under that source SHALL be disabled, across all groups
 
 #### Scenario: Enable entire source
 - **WHEN** the user toggles on a source
-- **THEN** all sub-feeds under that source SHALL be enabled
+- **THEN** all sub-feeds under that source SHALL be enabled, across all groups
+
+#### Scenario: Source checkbox indeterminate with groups
+- **WHEN** some feeds across different groups are enabled and others are disabled
+- **THEN** the source-level checkbox SHALL display in an indeterminate state
 
 ### Requirement: Language selector on settings page
-The settings page SHALL include a language selector with two options ("Deutsch", "English") that controls the app locale. Selecting a language calls `i18next.changeLanguage()` and persists the preference to `localStorage("newsflash:locale")`. The labels SHALL always display in their native language regardless of the active locale.
+The settings page language selector SHALL be repurposed from a feed language filter to an app locale selector.
 
 #### Scenario: Language selector rendering
 - **WHEN** the settings page is displayed
