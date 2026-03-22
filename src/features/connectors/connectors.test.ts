@@ -99,8 +99,8 @@ describe("galaxusConnector", () => {
 })
 
 describe("srfConnector", () => {
-  it("exposes multiple topic-level feeds", () => {
-    expect(srfConnector.feeds.length).toBeGreaterThan(1)
+  it("exposes 26 topic-level feeds", () => {
+    expect(srfConnector.feeds).toHaveLength(26)
   })
 
   it("includes expected topic feeds", () => {
@@ -110,11 +110,33 @@ describe("srfConnector", () => {
     expect(feedNames).toContain("International")
     expect(feedNames).toContain("Fussball")
     expect(feedNames).toContain("Technik")
+    expect(feedNames).toContain("Eishockey")
+    expect(feedNames).toContain("Film & Serien")
+    expect(feedNames).toContain("Gesundheit")
   })
 
   it("has unique sub-feed IDs", () => {
     const ids = srfConnector.feeds.map((f) => f.id)
     expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it("assigns all feeds to one of the 4 groups", () => {
+    const validGroups = ["News", "Sport", "Kultur", "Wissen"]
+    for (const feed of srfConnector.feeds) {
+      expect(validGroups).toContain(feed.group)
+    }
+  })
+
+  it("has correct feed counts per group", () => {
+    const groupCounts = new Map<string, number>()
+    for (const feed of srfConnector.feeds) {
+      const group = feed.group ?? "ungrouped"
+      groupCounts.set(group, (groupCounts.get(group) ?? 0) + 1)
+    }
+    expect(groupCounts.get("News")).toBe(5)
+    expect(groupCounts.get("Sport")).toBe(8)
+    expect(groupCounts.get("Kultur")).toBe(7)
+    expect(groupCounts.get("Wissen")).toBe(6)
   })
 })
 

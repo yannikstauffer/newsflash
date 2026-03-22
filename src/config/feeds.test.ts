@@ -10,18 +10,36 @@ describe("feedUrls", () => {
     "srf-switzerland",
     "srf-international",
     "srf-economy",
+    "srf-news",
     "srf-sport",
     "srf-football",
+    "srf-ice-hockey",
+    "srf-tennis",
+    "srf-ski",
+    "srf-athletics",
+    "srf-motorsport",
+    "srf-more-sport",
     "srf-culture",
+    "srf-film",
+    "srf-society",
+    "srf-literature",
+    "srf-music",
+    "srf-art",
+    "srf-theater",
     "srf-technology",
+    "srf-health",
+    "srf-sustainability",
+    "srf-humanity",
+    "srf-nature",
+    "srf-knowledge",
     "winfuture",
     "engadget",
     "heise",
     "ubergizmo",
   ]
 
-  it("contains exactly 14 feed entries", () => {
-    expect(Object.keys(feedUrls)).toHaveLength(14)
+  it("contains exactly 32 feed entries", () => {
+    expect(Object.keys(feedUrls)).toHaveLength(32)
   })
 
   it.each(expectedFeedIds)("contains feed ID '%s'", (feedId) => {

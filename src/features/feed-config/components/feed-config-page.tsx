@@ -1,6 +1,10 @@
+import { useState } from "react"
+
+import { FeedGroup } from "./feed-group"
 import { useFeedPreferences } from "../hooks/use-feed-preferences"
 
 import type { LanguagePreference } from "../hooks/use-feed-preferences"
+import type { FeedConfig } from "@/features/connectors/types"
 import type { ThemePreference } from "@/hooks/use-theme-preference"
 
 import { useArticleState } from "@/features/article-actions/hooks/use-article-state"
@@ -19,6 +23,29 @@ const LANGUAGE_OPTIONS: Array<{ readonly value: LanguagePreference; readonly lab
   { value: "en", label: "EN" },
 ]
 
+function groupFeedsByGroup(feeds: FeedConfig[]): {
+  groups: Map<string, FeedConfig[]>
+  ungrouped: FeedConfig[]
+} {
+  const groups = new Map<string, FeedConfig[]>()
+  const ungrouped: FeedConfig[] = []
+
+  for (const feed of feeds) {
+    if (feed.group) {
+      const existing = groups.get(feed.group)
+      if (existing) {
+        existing.push(feed)
+      } else {
+        groups.set(feed.group, [feed])
+      }
+    } else {
+      ungrouped.push(feed)
+    }
+  }
+
+  return { groups, ungrouped }
+}
+
 export default function FeedConfigPage() {
   const {
     isFeedEnabled,
@@ -29,8 +56,34 @@ export default function FeedConfigPage() {
   } = useFeedPreferences()
   const { removeHiddenBySource, removeReadListBySource } = useArticleState()
   const { theme, setTheme } = useThemePreference()
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
   function handleToggleAllForSource(
+    connectorId: string,
+    feedIds: string[],
+    enable: boolean,
+  ) {
+    setAllForSource(feedIds, enable)
+
+    if (!enable) {
+      removeHiddenBySource(connectorId)
+      removeReadListBySource(connectorId)
+    }
+  }
+
+  function handleToggleGroupExpand(groupKey: string) {
+    setExpandedGroups((previous) => {
+      const next = new Set(previous)
+      if (next.has(groupKey)) {
+        next.delete(groupKey)
+      } else {
+        next.add(groupKey)
+      }
+      return next
+    })
+  }
+
+  function handleToggleGroup(
     connectorId: string,
     feedIds: string[],
     enable: boolean,
@@ -110,6 +163,9 @@ export default function FeedConfigPage() {
               isFeedEnabled(feed.id),
             )
 
+            const { groups, ungrouped } = groupFeedsByGroup(connector.feeds)
+            const hasGroups = groups.size > 0
+
             return (
               <div key={connector.id} className="p-4">
                 <div className="flex items-center gap-3">
@@ -140,9 +196,34 @@ export default function FeedConfigPage() {
                   </span>
                 </div>
 
-                {connector.feeds.length > 1 && (
+                {hasGroups && (
+                  <div className="space-y-1">
+                    {[...groups.entries()].map(([groupName, feeds]) => {
+                      const groupKey = `${connector.id}:${groupName}`
+                      return (
+                        <FeedGroup
+                          key={groupKey}
+                          connectorId={connector.id}
+                          groupName={groupName}
+                          feeds={feeds}
+                          isExpanded={expandedGroups.has(groupKey)}
+                          isFeedEnabled={isFeedEnabled}
+                          onToggleExpand={() =>
+                            handleToggleGroupExpand(groupKey)
+                          }
+                          onToggleFeed={toggleFeed}
+                          onToggleGroup={(feedIds, enable) =>
+                            handleToggleGroup(connector.id, feedIds, enable)
+                          }
+                        />
+                      )
+                    })}
+                  </div>
+                )}
+
+                {ungrouped.length > 0 && connector.feeds.length > 1 && (
                   <div className="ml-6 mt-2 space-y-1">
-                    {connector.feeds.map((feed) => (
+                    {ungrouped.map((feed) => (
                       <label
                         key={feed.id}
                         className="flex min-h-[44px] cursor-pointer items-center gap-2 md:min-h-0"

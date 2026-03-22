@@ -1,6 +1,7 @@
 export interface FeedConfig {
   id: string
   name: string
+  group?: string
 }
 
 export interface Connector {
