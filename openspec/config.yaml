@@ -11,6 +11,8 @@ schema: spec-driven
 
 rules:
   tasks:
+    - Create/update unit tests
+    - Create e2e test for functionalities that cannot be tested with a unit test
     - |
       Every tasks.md MUST end with a "Quality Gates" task group as the final group.
       This group is mandatory and must always be included exactly as shown below
