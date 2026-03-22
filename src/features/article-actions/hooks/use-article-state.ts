@@ -55,8 +55,12 @@ export function useArticleState(): {
   isInReadList: (articleId: string) => boolean
   hideArticle: (articleId: string) => void
   unhideArticle: (articleId: string) => void
+  hideArticles: (ids: string[]) => void
+  unhideArticles: (ids: string[]) => void
   addToReadList: (article: NormalizedArticle) => void
   removeFromReadList: (articleId: string) => void
+  clearReadList: () => void
+  restoreReadList: (articles: NormalizedArticle[]) => void
   removeHiddenBySource: (sourceId: string) => void
   removeReadListBySource: (sourceId: string) => void
 } {
@@ -142,6 +146,48 @@ export function useArticleState(): {
     [setStoredReadList],
   )
 
+  const hideArticles = useCallback(
+    (ids: string[]) => {
+      setHiddenIds((previous) => {
+        const existing = new Set(previous)
+        const newIds = ids.filter((id) => !existing.has(id))
+        if (newIds.length === 0) return previous
+        const next = [...newIds, ...previous]
+        return next.length > MAX_HIDDEN_IDS ? next.slice(0, MAX_HIDDEN_IDS) : next
+      })
+    },
+    [setHiddenIds],
+  )
+
+  const unhideArticles = useCallback(
+    (ids: string[]) => {
+      const idsToRemove = new Set(ids)
+      setHiddenIds((previous) => previous.filter((id) => !idsToRemove.has(id)))
+    },
+    [setHiddenIds],
+  )
+
+  const clearReadList = useCallback(
+    () => {
+      setStoredReadList([])
+    },
+    [setStoredReadList],
+  )
+
+  const restoreReadList = useCallback(
+    (articles: NormalizedArticle[]) => {
+      setStoredReadList((previous) => {
+        const existingIds = new Set(previous.map((a) => a.id))
+        const newEntries = articles
+          .filter((a) => !existingIds.has(a.id))
+          .map(toStored)
+        const next = [...newEntries, ...previous]
+        return next.length > MAX_READLIST_ITEMS ? next.slice(0, MAX_READLIST_ITEMS) : next
+      })
+    },
+    [setStoredReadList],
+  )
+
   const removeHiddenBySource = useCallback(
     (sourceId: string) => {
       setHiddenIds((previous) =>
@@ -168,8 +214,12 @@ export function useArticleState(): {
     isInReadList,
     hideArticle,
     unhideArticle,
+    hideArticles,
+    unhideArticles,
     addToReadList,
     removeFromReadList,
+    clearReadList,
+    restoreReadList,
     removeHiddenBySource,
     removeReadListBySource,
   }

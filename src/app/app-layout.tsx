@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react"
 
 import { ErrorBoundary } from "@/components/error-boundary"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { Toaster } from "@/components/ui/sonner"
 import { useArticleState } from "@/features/article-actions"
 import { useThemePreference } from "@/hooks/use-theme-preference"
 
@@ -85,6 +86,8 @@ export function AppLayout() {
           </Suspense>
         </ErrorBoundary>
       </main>
+
+      <Toaster />
     </div>
   )
 }

@@ -7,12 +7,25 @@ import {
   Search,
   X,
 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 
 import { formatDayLabel } from "../utils/format-day-label"
 import { formatRelativeTime } from "../utils/format-time"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { useArticleState } from "@/features/article-actions"
 
 interface FilterBarProps {
   readonly showHidden: boolean
@@ -28,6 +41,8 @@ interface FilterBarProps {
   readonly lastRefreshedAt: Date | null
   readonly articleCount: number
   readonly hiddenCount: number
+  readonly onHideAll: () => void
+  readonly visibleArticleIds: string[]
 }
 
 export function FilterBar({
@@ -44,11 +59,15 @@ export function FilterBar({
   lastRefreshedAt,
   articleCount,
   hiddenCount,
+  onHideAll,
+  visibleArticleIds,
 }: FilterBarProps) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
+  const [hideAllOpen, setHideAllOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const mobileSearchInputRef = useRef<HTMLInputElement>(null)
+  const { unhideArticles } = useArticleState()
 
   useEffect(() => {
     if (searchOpen && mobileSearchInputRef.current) {
@@ -74,7 +93,23 @@ export function FilterBar({
     onSearchChange("")
   }
 
+  const handleConfirmHideAll = useCallback(() => {
+    const snapshot = [...visibleArticleIds]
+    onHideAll()
+    setHideAllOpen(false)
+    toast(`${snapshot.length} articles hidden`, {
+      duration: 5000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          unhideArticles(snapshot)
+        },
+      },
+    })
+  }, [visibleArticleIds, onHideAll, unhideArticles])
+
   const showClearDesktop = searchQuery || searchFocused
+  const dayLabel = allArticles ? "all days" : formatDayLabel(selectedDate)
 
   return (
     <div className="flex flex-col gap-2">
@@ -149,6 +184,33 @@ export function FilterBar({
                 )}
                 <span className="hidden md:inline">{"Hidden"}</span>
               </Button>
+
+              <AlertDialog open={hideAllOpen} onOpenChange={setHideAllOpen}>
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 min-h-[44px] rounded-full px-3 text-xs md:min-h-[28px]"
+                      disabled={visibleArticleIds.length === 0}
+                    />
+                  }
+                >
+                  {"Hide All"}
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{`Hide all articles for ${dayLabel}?`}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {`This will hide ${visibleArticleIds.length} articles. You can show them again using Show Hidden.`}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{"Cancel"}</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmHideAll}>{"Hide All"}</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
 
             {/* Mobile search icon button */}
