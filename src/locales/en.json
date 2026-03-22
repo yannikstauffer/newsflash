@@ -54,6 +54,9 @@
     "saveToReadList": "Save to read list",
     "removeFromReadList": "Remove from read list"
   },
+  "feedConfig": {
+    "enabledCount": "{{enabled}}/{{total}} on"
+  },
   "error": {
     "heading": "Something went wrong",
     "message": "An unexpected error occurred. Please reload the page to try again.",

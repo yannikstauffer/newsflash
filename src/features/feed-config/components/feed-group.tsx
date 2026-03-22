@@ -1,9 +1,10 @@
 import { useId } from "react"
+import { useTranslation } from "react-i18next"
 
 import type { FeedConfig } from "@/features/connectors/types"
 
 interface FeedGroupProps {
-  readonly connectorId: string
+  readonly connectorId: string // nosonar typescript:S6767
   readonly groupName: string
   readonly feeds: readonly FeedConfig[]
   readonly isExpanded: boolean
@@ -22,6 +23,7 @@ export function FeedGroup({
   onToggleFeed,
   onToggleGroup,
 }: FeedGroupProps) {
+  const { t } = useTranslation()
   const headerId = useId()
   const groupId = useId()
 
@@ -74,13 +76,13 @@ export function FeedGroup({
             {groupName}
           </span>
           <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-            {enabledCount}/{totalCount} on
+            {t("feedConfig.enabledCount", { enabled: enabledCount, total: totalCount })}
           </span>
         </button>
       </div>
 
       {isExpanded && (
-        <div
+        <optgroup
           id={groupId}
           role="group"
           aria-labelledby={headerId}
@@ -100,7 +102,7 @@ export function FeedGroup({
               <span className="text-sm text-foreground">{feed.name}</span>
             </label>
           ))}
-        </div>
+        </optgroup>
       )}
     </div>
   )

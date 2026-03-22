@@ -43,8 +43,11 @@ describe("feedUrls", () => {
   })
 
   it.each(expectedFeedIds)("contains feed ID '%s'", (feedId) => {
-    expect(feedUrls[feedId]).toBeDefined()
-    expect(feedUrls[feedId]).toMatch(/^https?:\/\//)
+    const url = Object.hasOwn(feedUrls, feedId)
+      ? feedUrls[feedId as keyof typeof feedUrls]
+      : undefined
+    expect(url).toBeDefined()
+    expect(url).toMatch(/^https?:\/\//)
   })
 })
 

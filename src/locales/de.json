@@ -54,6 +54,9 @@
     "saveToReadList": "Zur Leseliste hinzufügen",
     "removeFromReadList": "Aus Leseliste entfernen"
   },
+  "feedConfig": {
+    "enabledCount": "{{enabled}}/{{total}} an"
+  },
   "error": {
     "heading": "Etwas ist schiefgelaufen",
     "message": "Ein unerwarteter Fehler ist aufgetreten. Bitte lade die Seite neu, um es erneut zu versuchen.",

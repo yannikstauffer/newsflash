@@ -8,7 +8,9 @@ export default async function handler(request: Request): Promise<Response> {
   const url = new URL(request.url)
   const feedId = url.pathname.replace(/^\/api\/rss\//, "")
 
-  const upstreamUrl = feedUrls[feedId]
+  const upstreamUrl = Object.hasOwn(feedUrls, feedId)
+    ? feedUrls[feedId as keyof typeof feedUrls]
+    : undefined
   if (!upstreamUrl) {
     return new Response(JSON.stringify({ error: `Unknown feed: ${feedId}` }), {
       status: 404,

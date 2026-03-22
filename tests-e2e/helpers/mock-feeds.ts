@@ -6,11 +6,13 @@ import type { Page } from "@playwright/test"
 const FIXTURES_DIR = path.resolve(import.meta.dirname, "../fixtures")
 
 function readFixture(name: string): string {
-  return fs.readFileSync(path.join(FIXTURES_DIR, name), "utf8")
+  const filePath = path.join(FIXTURES_DIR, name)
+  return fs.readFileSync(filePath, "utf8") // eslint-disable-line security/detect-non-literal-fs-filename
 }
 
 function readPlaceholderPng(): Buffer {
-  return fs.readFileSync(path.join(FIXTURES_DIR, "placeholder.png"))
+  const filePath = path.join(FIXTURES_DIR, "placeholder.png")
+  return fs.readFileSync(filePath) // eslint-disable-line security/detect-non-literal-fs-filename
 }
 
 /**
@@ -22,14 +24,14 @@ export async function mockAllFeeds(
   fixtureMap: Record<string, string>,
 ): Promise<void> {
   const emptyXml = readFixture("empty.xml")
-  const resolvedFixtures: Record<string, string> = {}
+  const resolvedFixtures = new Map<string, string>()
   for (const [pattern, fixtureName] of Object.entries(fixtureMap)) {
-    resolvedFixtures[pattern] = readFixture(fixtureName)
+    resolvedFixtures.set(pattern, readFixture(fixtureName))
   }
 
   await page.route("**/api/rss/**", (route) => {
     const url = route.request().url()
-    for (const [pattern, xml] of Object.entries(resolvedFixtures)) {
+    for (const [pattern, xml] of resolvedFixtures) {
       if (url.includes(pattern)) {
         return route.fulfill({
           contentType: "application/xml",

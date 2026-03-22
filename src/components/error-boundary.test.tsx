@@ -8,6 +8,7 @@ function ThrowingChild(): never {
 }
 
 function GoodChild() {
+  // eslint-disable-next-line i18next/no-literal-string
   return <p>All good</p>
 }
 
