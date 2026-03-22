@@ -9,12 +9,18 @@ schema: spec-driven
 #     We use conventional commits
 #     Domain: e-commerce platform
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  tasks:
+    - |
+      Every tasks.md MUST end with a "Quality Gates" task group as the final group.
+      This group is mandatory and must always be included exactly as shown below
+      (adjust the group number to follow the last implementation group):
+
+      ## N. Quality Gates
+
+      - [ ] N.1 Run `npm run lint` and fix any issues
+      - [ ] N.2 Run `npx tsc --noEmit` and fix any type errors
+      - [ ] N.3 Run `npm run test` and fix any issues
+      - [ ] N.4 Run `npm run test:e2e` and fix any issues
+      - [ ] N.5 Run `mcp__jetbrains__get_file_problems` on all created/changed files and fix genuine issues
+      - [ ] N.6 Check whether anything learned should update `docs/` or `README.md` and apply changes if needed
