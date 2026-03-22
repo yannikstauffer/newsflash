@@ -35,13 +35,35 @@ E2E tests (92 tests across 6 files) all pass locally but are commented out in th
 
 **Alternative considered:** New dedicated test files — rejected to avoid duplication and keep tests colocated with existing suites.
 
-### Decision 3: Re-enable E2E in release CI, remove redundant E2E tests
+### Decision 3: Rewrite connector E2E tests as live (no mocks), delete feed.spec.ts
 
-**Choice:** Uncomment the Playwright steps in `release.yml`. Review E2E test overlap with unit tests and remove E2E tests that only validate logic already covered by unit tests (e.g., individual filter logic). Keep E2E tests that validate full user flows spanning multiple components.
+**Choice:** Remove all `page.route()` mocking from `connectors.spec.ts`. Tests hit real RSS feeds via the Vite dev server proxy (`/api/rss/*` → real URLs). Each connector gets one parameterized smoke test asserting articles render and thumbnails load (where `allHaveImages` is true). Delete `feed.spec.ts` entirely — its smoke test role is absorbed by the connector tests.
 
-**Rationale:** E2E tests pass locally and in `ci.yml`. The release workflow should have the same quality gate. Removing redundant tests keeps the E2E suite fast and focused.
+**Alternative considered:** Keep mocked fixtures — rejected because live tests catch upstream feed format changes that mocks can never detect, and the mock infrastructure adds maintenance overhead.
 
-### Decision 4: Do not add unit tests for `loading-spinner.tsx` or `hidden-article-actions.tsx`
+**Rationale:** The Vite proxy already routes `/api/rss/<id>` to real feed URLs. Removing mocks tests the full pipeline: real XML → proxy → parse → render. Flakiness from feed downtime is accepted; Playwright's 1-retry mitigates transient errors.
+
+### Decision 4: Reduce E2E suite from 92 to ~20 tests
+
+**Choice:** Consolidate tests that duplicate unit-tested logic:
+- `connectors.spec.ts`: 26 → 7 (one smoke test per connector, no field-by-field checks)
+- `feed.spec.ts`: 6 → 0 (deleted, covered by connector smoke tests)
+- `filter.spec.ts`: 14 → 4 (1 search flow + 1 day nav, desktop only)
+- `article-actions.spec.ts`: 22 → 10 (hide+unhide, save+remove, empty readlist on desktop; 2 swipe tests on mobile)
+- `navigation.spec.ts`: 8 → 2 (1 full tab cycle test, desktop only)
+- `settings.spec.ts`: 14 → 8 (1 language, 1 persistence, 1 theme, 1 source toggle, desktop only)
+
+Mobile Chrome project runs only for swipe gesture tests in `article-actions.spec.ts`.
+
+### Decision 5: Add scheduled workflow for live connector tests
+
+**Choice:** Create `.github/workflows/e2e-live.yml` with `schedule: cron "0 4 * * 4"` (weekly Thursday 04:00 UTC) and `workflow_dispatch` for manual triggers. Runs only `connectors.spec.ts` on Desktop Chrome. Add a status badge to `README.md`.
+
+**Rationale:** Acts as a weekly canary for upstream feed changes between code pushes. The badge gives at-a-glance visibility. Live connector tests also run in regular CI (`ci.yml`) for immediate feedback on PRs.
+
+### Decision 6: Do not add unit tests for `loading-spinner.tsx` or `hidden-article-actions.tsx`
+
+### Decision 7: Do not add unit tests for `loading-spinner.tsx` or `hidden-article-actions.tsx`
 
 **Choice:** Skip these zero-coverage files. `loading-spinner.tsx` is a simple presentational component. `hidden-article-actions.tsx` is a thin wrapper with one button — tested by E2E.
 
@@ -51,4 +73,5 @@ E2E tests (92 tests across 6 files) all pass locally but are commented out in th
 
 - **Risk:** Mocking `useFeedData` and `useArticleState` in `use-feed-page` tests may drift from real behavior → **Mitigation:** E2E tests cover the integrated path; unit tests focus on callback logic and memoization.
 - **Risk:** Removing E2E tests reduces integration coverage → **Mitigation:** Only remove tests whose exact scenarios are fully covered by unit tests; keep all flow-level tests.
+- **Risk:** Live connector tests may fail if upstream feeds are down → **Mitigation:** Playwright config has 1 retry. Flakiness is accepted — catching real feed breakage outweighs occasional false failures.
 - **Risk:** Coverage may still be marginal (just above 80%) → **Mitigation:** Focus on the highest-impact files first; `use-feed-page.ts` alone should push functions from 74% to ~82%.

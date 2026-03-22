@@ -26,23 +26,34 @@
 
 - [ ] 4.1 Add tests for uncovered functions: all feed groups rendered, language selector triggers change, theme toggle updates preference
 
-## 5. E2E Test Maintenance
+## 5. E2E Suite Reduction
 
-- [ ] 5.1 Review `connectors.spec.ts` for redundancy with `article-card.test.tsx` and `connectors.test.ts` — remove or simplify redundant tests
-- [ ] 5.2 Review `filter.spec.ts` for redundancy with `filter-articles.test.ts` — keep only tests that verify full UI interaction flow
-- [ ] 5.3 Uncomment Playwright steps in `.github/workflows/release.yml` to re-enable E2E in release CI
-- [ ] 5.4 Uncomment `playwright-report.zip` upload in release assets
+- [ ] 5.1 Rewrite `connectors.spec.ts` as live tests: remove all RSS mocking, use parameterized smoke test per connector (assert articles render + thumbnails load where `allHaveImages` is true), keep image mocking only
+- [ ] 5.2 Create `tests-e2e/helpers/connector-setup.ts` helper to seed localStorage preferences without RSS mocking (split from current setup which does both)
+- [ ] 5.3 Delete `feed.spec.ts` — covered by connector smoke tests
+- [ ] 5.4 Consolidate `filter.spec.ts`: merge search tests into 1 flow test (narrow + empty + clear), merge day nav tests into 1 test (toggle + prev/next + today disabled), remove hidden toggle test (covered by article-actions)
+- [ ] 5.5 Consolidate `article-actions.spec.ts`: keep hide+unhide flow, save+remove flow, empty read list (desktop); keep 2 swipe tests (mobile); remove keyboard shortcut tests and duplicate hidden toggle (unit tested)
+- [ ] 5.6 Consolidate `navigation.spec.ts`: merge 4 tests into 1 full tab cycle test
+- [ ] 5.7 Consolidate `settings.spec.ts`: merge language tests into 1, merge theme tests into 1, merge source tests into 1, keep persistence test
+- [ ] 5.8 Configure Playwright mobile-chrome project to only run `article-actions.spec.ts`
 
-## 6. Coverage Verification
+## 6. CI and Scheduled Workflow
 
-- [ ] 6.1 Run `npm run test:coverage` and verify all three metrics (lines, branches, functions) are at or above 80%
-- [ ] 6.2 If any metric is still below 80%, identify remaining gaps and add targeted tests
+- [ ] 6.1 Uncomment Playwright steps in `.github/workflows/release.yml` to re-enable E2E in release CI
+- [ ] 6.2 Uncomment `playwright-report.zip` upload in release assets
+- [ ] 6.3 Create `.github/workflows/e2e-live.yml` with `schedule: cron "0 4 * * 4"` (Thu 04:00 UTC) and `workflow_dispatch`, running `npx playwright test --project=chromium tests-e2e/connectors.spec.ts`
+- [ ] 6.4 Add status badge for `e2e-live.yml` workflow to `README.md`
 
-## 7. Quality Gates
+## 7. Coverage Verification
 
-- [ ] 7.1 Run `npm run lint` and fix any issues
-- [ ] 7.2 Run `npx tsc --noEmit` and fix any type errors
-- [ ] 7.3 Run `npm run test` and fix any issues
-- [ ] 7.4 Run `npm run test:e2e` and fix any issues
-- [ ] 7.5 Run `mcp__jetbrains__get_file_problems` on all created/changed files and fix genuine issues
-- [ ] 7.6 Check whether anything learned should update `docs/` or `README.md` and apply changes if needed
+- [ ] 7.1 Run `npm run test:coverage` and verify all three metrics (lines, branches, functions) are at or above 80%
+- [ ] 7.2 If any metric is still below 80%, identify remaining gaps and add targeted tests
+
+## 8. Quality Gates
+
+- [ ] 8.1 Run `npm run lint` and fix any issues
+- [ ] 8.2 Run `npx tsc --noEmit` and fix any type errors
+- [ ] 8.3 Run `npm run test` and fix any issues
+- [ ] 8.4 Run `npm run test:e2e` and fix any issues
+- [ ] 8.5 Run `mcp__jetbrains__get_file_problems` on all created/changed files and fix genuine issues
+- [ ] 8.6 Check whether anything learned should update `docs/` or `README.md` and apply changes if needed
