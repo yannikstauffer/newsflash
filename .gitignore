@@ -26,3 +26,4 @@ dist-ssr
 .tmp/
 coverage/
 playwright-report/
+test-results/
