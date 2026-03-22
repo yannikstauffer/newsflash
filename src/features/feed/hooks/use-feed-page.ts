@@ -1,9 +1,11 @@
+import { Bookmark, EyeOff } from "lucide-react"
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useFeedData } from "./use-feed-data"
 import { filterArticles } from "../utils/filter-articles"
 import { filterByDay } from "../utils/filter-by-day"
 
+import type { SwipeableCardHandle } from "@/features/article-actions"
 import type { NormalizedArticle } from "@/features/connectors/types"
 import type { ReactNode } from "react"
 
@@ -30,6 +32,8 @@ interface FilterBarProps {
   readonly lastRefreshedAt: Date | null
   readonly articleCount: number
   readonly hiddenCount: number
+  readonly onHideAll: () => void
+  readonly visibleArticleIds: string[]
 }
 
 interface FeedListProps {
@@ -61,12 +65,13 @@ export function useFeedPage(): UseFeedPageResult {
     hideArticle,
     unhideArticle,
     addToReadList,
-    removeFromReadList,
+    hideArticles,
   } = useArticleState()
 
   const hoveredArticleRef = useRef<string | undefined>(undefined)
   const focusedArticleRef = useRef<string | undefined>(undefined)
   const articlesRef = useRef<NormalizedArticle[]>([])
+  const cardReferencesMap = useRef<Map<string, SwipeableCardHandle>>(new Map())
 
   const [showHidden, setShowHidden] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -94,14 +99,22 @@ export function useFeedPage(): UseFeedPageResult {
     hiddenIds, searchQuery, allArticles, selectedDate,
   ])
 
-  const { articleCount, hiddenCount } = useMemo(() => {
+  const { articleCount, hiddenCount, visibleArticleIds } = useMemo(() => {
     const hiddenSet = new Set(hiddenIds)
     const nonHidden = filteredArticles.filter((a) => !hiddenSet.has(a.id))
     const hidden = filteredArticles.length - nonHidden.length
     if (showHidden) {
-      return { articleCount: nonHidden.length, hiddenCount: hidden }
+      return {
+        articleCount: nonHidden.length,
+        hiddenCount: hidden,
+        visibleArticleIds: nonHidden.map((a) => a.id),
+      }
     }
-    return { articleCount: filteredArticles.length, hiddenCount: 0 }
+    return {
+      articleCount: filteredArticles.length,
+      hiddenCount: 0,
+      visibleArticleIds: filteredArticles.map((a) => a.id),
+    }
   }, [filteredArticles, hiddenIds, showHidden])
 
   const isToday = useMemo(() => {
@@ -146,7 +159,12 @@ export function useFeedPage(): UseFeedPageResult {
 
   const handleKeyboardHide = useCallback(
     (articleId: string) => {
-      hideArticle(articleId)
+      const cardHandle = cardReferencesMap.current.get(articleId)
+      if (cardHandle) {
+        cardHandle.triggerRemoval("right")
+      } else {
+        hideArticle(articleId)
+      }
     },
     [hideArticle],
   )
@@ -155,13 +173,16 @@ export function useFeedPage(): UseFeedPageResult {
     (articleId: string) => {
       const article = articlesRef.current.find((a) => a.id === articleId)
       if (!article) return
-      if (isInReadList(articleId)) {
-        removeFromReadList(articleId)
+      if (isInReadList(articleId)) return
+      const cardHandle = cardReferencesMap.current.get(articleId)
+      if (cardHandle) {
+        cardHandle.triggerRemoval("left")
       } else {
         addToReadList(article)
+        hideArticle(articleId)
       }
     },
-    [isInReadList, removeFromReadList, addToReadList],
+    [isInReadList, addToReadList, hideArticle],
   )
 
   const getFocusedArticleId = useCallback(
@@ -199,6 +220,10 @@ export function useFeedPage(): UseFeedPageResult {
     [],
   )
 
+  const handleHideAll = useCallback(() => {
+    hideArticles(visibleArticleIds)
+  }, [hideArticles, visibleArticleIds])
+
   const renderActions = useCallback(
     (article: NormalizedArticle) => {
       if (showHidden && isHidden(article.id)) {
@@ -207,12 +232,22 @@ export function useFeedPage(): UseFeedPageResult {
         })
       }
       return createElement(ArticleActionButtons, {
-        onHide: () => hideArticle(article.id),
+        onHide: () => {
+          const cardHandle = cardReferencesMap.current.get(article.id)
+          if (cardHandle) {
+            cardHandle.triggerRemoval()
+          } else {
+            hideArticle(article.id)
+          }
+        },
         onSave: () => {
-          if (isInReadList(article.id)) {
-            removeFromReadList(article.id)
+          if (isInReadList(article.id)) return
+          const cardHandle = cardReferencesMap.current.get(article.id)
+          if (cardHandle) {
+            cardHandle.triggerRemoval()
           } else {
             addToReadList(article)
+            hideArticle(article.id)
           }
         },
         isSaved: isInReadList(article.id),
@@ -220,7 +255,7 @@ export function useFeedPage(): UseFeedPageResult {
     },
     [
       showHidden, isHidden, unhideArticle, hideArticle,
-      isInReadList, removeFromReadList, addToReadList,
+      isInReadList, addToReadList,
     ],
   )
 
@@ -235,19 +270,37 @@ export function useFeedPage(): UseFeedPageResult {
         SwipeableCard,
         {
           key: article.id,
-          onSwipeRight: () => hideArticle(article.id),
-          onSwipeLeft: () => {
-            if (isInReadList(article.id)) {
-              removeFromReadList(article.id)
+          ref: (handle: SwipeableCardHandle | null) => {
+            if (handle) {
+              cardReferencesMap.current.set(article.id, handle)
             } else {
-              addToReadList(article)
+              cardReferencesMap.current.delete(article.id)
             }
+          },
+          swipeRight: {
+            bgClassName: "bg-amber-100 dark:bg-amber-900/30",
+            icon: createElement("span", {
+              className: "text-amber-700 dark:text-amber-400",
+              "aria-hidden": "true",
+            }, createElement(EyeOff, { className: "size-5" })),
+            onAction: () => hideArticle(article.id),
+          },
+          swipeLeft: {
+            bgClassName: "bg-blue-100 dark:bg-blue-900/30",
+            icon: createElement("span", {
+              className: "text-blue-700 dark:text-blue-400",
+              "aria-hidden": "true",
+            }, createElement(Bookmark, { className: "size-5" })),
+            onAction: () => {
+              addToReadList(article)
+              hideArticle(article.id)
+            },
           },
           children: hoverDiv,
         },
       )
     },
-    [hideArticle, isInReadList, removeFromReadList, addToReadList, createInteractionRef],
+    [hideArticle, addToReadList, createInteractionRef],
   )
 
   const handleToggleShowHidden = useCallback(() => {
@@ -268,10 +321,13 @@ export function useFeedPage(): UseFeedPageResult {
     lastRefreshedAt,
     articleCount,
     hiddenCount,
+    onHideAll: handleHideAll,
+    visibleArticleIds,
   }), [
     showHidden, handleToggleShowHidden, searchQuery, selectedDate,
     allArticles, isToday, handlePreviousDay, handleNextDay,
     handleToggleAllArticles, lastRefreshedAt, articleCount, hiddenCount,
+    handleHideAll, visibleArticleIds,
   ])
 
   const emptyMessage = !allArticles && !loading

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
 import { ArticleActionButtons } from "./article-action-buttons"
@@ -42,5 +42,39 @@ describe("ArticleActionButtons", () => {
     render(<ArticleActionButtons {...defaultProps} isSaved={true} />)
 
     expect(screen.getByLabelText("Remove from read list")).toBeDefined()
+  })
+
+  it("calls onHide and stops event propagation when hide button is clicked", () => {
+    const onHide = vi.fn()
+    render(<ArticleActionButtons {...defaultProps} onHide={onHide} />)
+
+    const hideButton = screen.getByLabelText("Hide article")
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true })
+    Object.defineProperty(event, "stopPropagation", { value: vi.fn() })
+    Object.defineProperty(event, "preventDefault", { value: vi.fn() })
+    fireEvent(hideButton, event)
+
+    expect(onHide).toHaveBeenCalledOnce()
+  })
+
+  it("calls onSave and stops event propagation when save button is clicked", () => {
+    const onSave = vi.fn()
+    render(<ArticleActionButtons {...defaultProps} onSave={onSave} />)
+
+    const saveButton = screen.getByLabelText("Save to read list")
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true })
+    Object.defineProperty(event, "stopPropagation", { value: vi.fn() })
+    Object.defineProperty(event, "preventDefault", { value: vi.fn() })
+    fireEvent(saveButton, event)
+
+    expect(onSave).toHaveBeenCalledOnce()
+  })
+
+  it("applies fill-current class to bookmark icon when saved", () => {
+    render(<ArticleActionButtons {...defaultProps} isSaved={true} />)
+
+    const saveButton = screen.getByLabelText("Remove from read list")
+    const svg = saveButton.querySelector("svg")
+    expect(svg?.className.baseVal || svg?.getAttribute("class") || "").toContain("fill-current")
   })
 })

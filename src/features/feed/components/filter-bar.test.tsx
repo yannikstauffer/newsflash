@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from "vitest"
 
 import { FilterBar } from "./filter-bar"
 
+vi.mock("@/features/article-actions", () => ({
+  useArticleState: () => ({
+    unhideArticles: vi.fn(),
+  }),
+}))
+
 const defaultProps = {
   showHidden: false,
   onToggleShowHidden: vi.fn(),
@@ -17,6 +23,8 @@ const defaultProps = {
   lastRefreshedAt: null as Date | null,
   articleCount: 10,
   hiddenCount: 0,
+  onHideAll: vi.fn(),
+  visibleArticleIds: ["a1", "a2", "a3"],
 }
 
 describe("FilterBar", () => {

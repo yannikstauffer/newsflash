@@ -4,9 +4,25 @@ import {
   RouterProvider,
 } from "@tanstack/react-router"
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, beforeAll, describe, expect, it } from "vitest"
 
 import { router } from "./router"
+
+beforeAll(() => {
+  Object.defineProperty(globalThis, "matchMedia", {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  })
+})
 
 function renderWithRouter(initialPath: string) {
   const memoryHistory = createMemoryHistory({
