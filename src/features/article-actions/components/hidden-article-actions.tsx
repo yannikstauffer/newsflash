@@ -1,4 +1,5 @@
 import { Eye } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
 
@@ -7,6 +8,8 @@ interface HiddenArticleActionsProps {
 }
 
 export function HiddenArticleActions({ onUnhide }: HiddenArticleActionsProps) {
+  const { t } = useTranslation()
+
   return (
     <Button
       variant="ghost"
@@ -16,7 +19,7 @@ export function HiddenArticleActions({ onUnhide }: HiddenArticleActionsProps) {
         event.preventDefault()
         onUnhide()
       }}
-      aria-label="Unhide article"
+      aria-label={t("actions.unhideArticle")}
       className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
     >
       <Eye className="size-3.5" />

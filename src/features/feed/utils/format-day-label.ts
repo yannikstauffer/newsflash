@@ -1,21 +1,3 @@
-const WEEKDAYS = [
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-]
-
-function pad(value: number): string {
-  return String(value).padStart(2, "0")
-}
-
-function formatDate(date: Date): string {
-  return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`
-}
-
 function isSameDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -24,21 +6,33 @@ function isSameDay(a: Date, b: Date): boolean {
   )
 }
 
-export function formatDayLabel(date: Date, now?: Date): string {
+function formatDate(date: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+  }).format(date)
+}
+
+export function formatDayLabel(date: Date, now?: Date, locale: string = "en"): string {
   const today = now ?? new Date()
-  const formatted = formatDate(date)
+  const formatted = formatDate(date, locale)
 
   if (isSameDay(date, today)) {
-    return `today, ${formatted}`
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" })
+    const todayLabel = rtf.format(0, "day")
+    return `${todayLabel}, ${formatted}`
   }
 
   const yesterday = new Date(today)
   yesterday.setDate(yesterday.getDate() - 1)
 
   if (isSameDay(date, yesterday)) {
-    return `yesterday, ${formatted}`
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" })
+    const yesterdayLabel = rtf.format(-1, "day")
+    return `${yesterdayLabel}, ${formatted}`
   }
 
-  const weekday = WEEKDAYS[date.getDay()]
-  return `${weekday}, ${formatted}`
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(date)
+  return `${weekday.toLowerCase()}, ${formatted}`
 }

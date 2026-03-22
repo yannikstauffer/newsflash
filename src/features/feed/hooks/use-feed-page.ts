@@ -1,5 +1,6 @@
 import { Bookmark, EyeOff } from "lucide-react"
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { useFeedData } from "./use-feed-data"
 import { filterArticles } from "../utils/filter-articles"
@@ -56,7 +57,8 @@ interface UseFeedPageResult {
 }
 
 export function useFeedPage(): UseFeedPageResult {
-  const { isFeedEnabled, language } = useFeedPreferences()
+  const { t } = useTranslation()
+  const { isFeedEnabled } = useFeedPreferences()
   const { articles, loading, errors, lastRefreshedAt } = useFeedData(isFeedEnabled)
   const {
     hiddenIds,
@@ -85,7 +87,6 @@ export function useFeedPage(): UseFeedPageResult {
   const filteredArticles = useMemo(() => {
     const filtered = filterArticles(articles, {
       isFeedEnabled,
-      language,
       showHidden,
       hiddenIds,
       searchQuery,
@@ -95,7 +96,7 @@ export function useFeedPage(): UseFeedPageResult {
     }
     return filterByDay(filtered, selectedDate)
   }, [
-    articles, isFeedEnabled, language, showHidden,
+    articles, isFeedEnabled, showHidden,
     hiddenIds, searchQuery, allArticles, selectedDate,
   ])
 
@@ -331,7 +332,7 @@ export function useFeedPage(): UseFeedPageResult {
   ])
 
   const emptyMessage = !allArticles && !loading
-    ? "No articles for this day."
+    ? t("feed.emptyDay")
     : undefined
 
   const feedListProps: FeedListProps = useMemo(() => ({

@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 
 import { formatDayLabel } from "../utils/format-day-label"
@@ -62,6 +63,8 @@ export function FilterBar({
   onHideAll,
   visibleArticleIds,
 }: FilterBarProps) {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
   const [hideAllOpen, setHideAllOpen] = useState(false)
@@ -97,19 +100,19 @@ export function FilterBar({
     const snapshot = [...visibleArticleIds]
     onHideAll()
     setHideAllOpen(false)
-    toast(`${snapshot.length} articles hidden`, {
+    toast(t("feed.hideAllToast", { count: snapshot.length }), {
       duration: 5000,
       action: {
-        label: "Undo",
+        label: t("feed.undo"),
         onClick: () => {
           unhideArticles(snapshot)
         },
       },
     })
-  }, [visibleArticleIds, onHideAll, unhideArticles])
+  }, [visibleArticleIds, onHideAll, unhideArticles, t])
 
   const showClearDesktop = searchQuery || searchFocused
-  const dayLabel = allArticles ? "all days" : formatDayLabel(selectedDate)
+  const dayLabel = allArticles ? t("feed.allDays") : formatDayLabel(selectedDate, undefined, locale)
 
   return (
     <div className="flex flex-col gap-2">
@@ -122,19 +125,19 @@ export function FilterBar({
             <input
               ref={mobileSearchInputRef}
               type="search"
-              placeholder="Search articles..."
+              placeholder={t("feed.searchPlaceholder")}
               value={searchQuery}
               maxLength={200}
               onChange={(event) => onSearchChange(event.target.value)}
               onKeyDown={handleMobileSearchKeyDown}
               className="min-h-[44px] w-full rounded-full border border-border bg-background py-1.5 pl-9 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              aria-label="Search articles"
+              aria-label={t("feed.searchLabel")}
             />
             <button
               type="button"
               onClick={handleClearOrCollapse}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
+              aria-label={t("feed.clearSearch")}
             >
               <X className="size-4" />
             </button>
@@ -144,14 +147,14 @@ export function FilterBar({
             {/* Left: refresh status + article count */}
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               {lastRefreshedAt && (
-                <span aria-label="Last refreshed">
-                  {`Refreshed ${formatRelativeTime(lastRefreshedAt)}`}
+                <span aria-label={t("feed.refreshed", { time: "" }).trim()}>
+                  {t("feed.refreshed", { time: formatRelativeTime(lastRefreshedAt, new Date(), locale) })}
                 </span>
               )}
-              <span aria-label="Article count">
+              <span aria-label={t("feed.articleCount", { count: articleCount })}>
                 {showHidden && hiddenCount > 0
-                  ? `${articleCount} + ${hiddenCount} hidden`
-                  : `${articleCount} articles`}
+                  ? t("feed.articleCountWithHidden", { count: articleCount, hiddenCount })
+                  : t("feed.articleCount", { count: articleCount })}
               </span>
             </div>
 
@@ -162,11 +165,11 @@ export function FilterBar({
                 size="sm"
                 onClick={onToggleAllArticles}
                 aria-pressed={allArticles}
-                aria-label="All articles"
+                aria-label={t("feed.allArticles")}
                 className="h-8 min-h-[44px] rounded-full px-3 text-xs md:min-h-[28px]"
               >
                 <List className="size-3.5" />
-                <span className="hidden md:inline">{"All articles"}</span>
+                <span className="hidden md:inline">{t("feed.allArticles")}</span>
               </Button>
 
               <Button
@@ -174,7 +177,7 @@ export function FilterBar({
                 size="sm"
                 onClick={onToggleShowHidden}
                 aria-pressed={showHidden}
-                aria-label="Hidden"
+                aria-label={t("feed.hidden")}
                 className="h-8 min-h-[44px] rounded-full px-3 text-xs md:min-h-[28px]"
               >
                 {showHidden ? (
@@ -182,7 +185,7 @@ export function FilterBar({
                 ) : (
                   <EyeOff className="size-3.5" />
                 )}
-                <span className="hidden md:inline">{"Hidden"}</span>
+                <span className="hidden md:inline">{t("feed.hidden")}</span>
               </Button>
 
               <AlertDialog open={hideAllOpen} onOpenChange={setHideAllOpen}>
@@ -196,18 +199,18 @@ export function FilterBar({
                     />
                   }
                 >
-                  {"Hide All"}
+                  {t("feed.hideAll")}
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>{`Hide all articles for ${dayLabel}?`}</AlertDialogTitle>
+                    <AlertDialogTitle>{t("feed.hideAllTitle", { dayLabel })}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {`This will hide ${visibleArticleIds.length} articles. You can show them again using Show Hidden.`}
+                      {t("feed.hideAllDescription", { count: visibleArticleIds.length })}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>{"Cancel"}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmHideAll}>{"Hide All"}</AlertDialogAction>
+                    <AlertDialogCancel>{t("feed.cancel")}</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmHideAll}>{t("feed.hideAll")}</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -218,7 +221,7 @@ export function FilterBar({
               variant="outline"
               size="icon-sm"
               onClick={() => setSearchOpen(true)}
-              aria-label="Open search"
+              aria-label={t("feed.openSearch")}
               className={`min-h-[44px] min-w-[44px] rounded-full md:hidden ${
                 searchQuery ? "border-primary text-primary" : ""
               }`}
@@ -234,21 +237,21 @@ export function FilterBar({
           <input
             ref={searchInputRef}
             type="search"
-            placeholder="Search articles..."
+            placeholder={t("feed.searchPlaceholder")}
             value={searchQuery}
             maxLength={200}
             onChange={(event) => onSearchChange(event.target.value)}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             className="min-h-[32px] w-full rounded-full border border-border bg-background py-1.5 pl-9 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            aria-label="Search articles"
+            aria-label={t("feed.searchLabel")}
           />
           {showClearDesktop && (
             <button
               type="button"
               onClick={handleDesktopClear}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
+              aria-label={t("feed.clearSearch")}
             >
               <X className="size-4" />
             </button>
@@ -263,14 +266,14 @@ export function FilterBar({
             variant="ghost"
             size="icon-sm"
             onClick={onPrev}
-            aria-label="Previous day"
+            aria-label={t("feed.previousDay")}
             className="min-h-[44px] min-w-[44px] md:min-h-[28px] md:min-w-[28px]"
           >
             <ChevronLeft className="size-4" />
           </Button>
 
           <span className="min-w-0 text-sm font-medium text-foreground">
-            {formatDayLabel(selectedDate)}
+            {formatDayLabel(selectedDate, undefined, locale)}
           </span>
 
           <Button
@@ -278,7 +281,7 @@ export function FilterBar({
             size="icon-sm"
             onClick={onNext}
             disabled={isToday}
-            aria-label="Next day"
+            aria-label={t("feed.nextDay")}
             className="min-h-[44px] min-w-[44px] md:min-h-[28px] md:min-w-[28px]"
           >
             <ChevronRight className="size-4" />

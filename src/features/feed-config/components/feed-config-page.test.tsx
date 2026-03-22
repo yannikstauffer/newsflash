@@ -10,8 +10,6 @@ vi.mock("../hooks/use-feed-preferences", () => ({
     isFeedEnabled: (id: string) => !mockDisabledFeeds.has(id),
     toggleFeed: mockToggleFeed,
     setAllForSource: mockSetAllForSource,
-    language: "all" as const,
-    setLanguage: vi.fn(),
   }),
 }))
 

@@ -146,14 +146,14 @@ describe("FilterBar", () => {
     const lastRefreshedAt = new Date()
     render(<FilterBar {...defaultProps} lastRefreshedAt={lastRefreshedAt} />)
 
-    expect(screen.getByLabelText("Last refreshed")).toBeDefined()
-    expect(screen.getByLabelText("Last refreshed").textContent).toContain("Refreshed")
+    expect(screen.getByLabelText("Refreshed")).toBeDefined()
+    expect(screen.getByLabelText("Refreshed").textContent).toContain("Refreshed")
   })
 
   it("does not display last refreshed timestamp when null", () => {
     render(<FilterBar {...defaultProps} lastRefreshedAt={null} />)
 
-    expect(screen.queryByLabelText("Last refreshed")).toBeNull()
+    expect(screen.queryByLabelText("Refreshed")).toBeNull()
   })
 
   // 7.1 Icon-only rendering tests
@@ -200,13 +200,13 @@ describe("FilterBar", () => {
     it("displays article count normally", () => {
       render(<FilterBar {...defaultProps} articleCount={14} />)
 
-      expect(screen.getByLabelText("Article count").textContent).toBe("14 articles")
+      expect(screen.getByLabelText("14 articles").textContent).toBe("14 articles")
     })
 
     it("displays zero articles", () => {
       render(<FilterBar {...defaultProps} articleCount={0} />)
 
-      expect(screen.getByLabelText("Article count").textContent).toBe("0 articles")
+      expect(screen.getByLabelText("0 articles").textContent).toBe("0 articles")
     })
 
     it("displays hidden annotation when showHidden is active", () => {
@@ -219,7 +219,7 @@ describe("FilterBar", () => {
         />,
       )
 
-      expect(screen.getByLabelText("Article count").textContent).toBe("14 + 3 hidden")
+      expect(screen.getByLabelText("14 articles").textContent).toBe("14 + 3 hidden")
     })
 
     it("displays normal count when showHidden is active but hiddenCount is zero", () => {
@@ -232,7 +232,7 @@ describe("FilterBar", () => {
         />,
       )
 
-      expect(screen.getByLabelText("Article count").textContent).toBe("14 articles")
+      expect(screen.getByLabelText("14 articles").textContent).toBe("14 articles")
     })
   })
 

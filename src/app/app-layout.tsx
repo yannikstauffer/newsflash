@@ -1,6 +1,7 @@
 import { Link, Outlet } from "@tanstack/react-router"
 import { Bookmark, Newspaper, Settings } from "lucide-react"
 import { Suspense } from "react"
+import { useTranslation } from "react-i18next"
 
 import type { LucideIcon } from "lucide-react"
 
@@ -12,14 +13,14 @@ import { useThemePreference } from "@/hooks/use-theme-preference"
 
 interface NavItem {
   readonly to: string
-  readonly label: string
+  readonly labelKey: string
   readonly icon: LucideIcon
 }
 
 const NAV_ITEMS: readonly NavItem[] = [
-  { to: "/", label: "Feed", icon: Newspaper },
-  { to: "/read-list", label: "Read List", icon: Bookmark },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/", labelKey: "nav.feed", icon: Newspaper },
+  { to: "/read-list", labelKey: "nav.readList", icon: Bookmark },
+  { to: "/settings", labelKey: "nav.settings", icon: Settings },
 ]
 
 function formatBadgeCount(count: number): string {
@@ -27,6 +28,7 @@ function formatBadgeCount(count: number): string {
 }
 
 export function AppLayout() {
+  const { t } = useTranslation()
   useThemePreference()
   const { readListIds } = useArticleState()
   const readListCount = readListIds.length
@@ -37,18 +39,19 @@ export function AppLayout() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:outline-2 focus:outline-offset-2 focus:outline-ring"
       >
-        {"Skip to content"}
+        {t("nav.skipToContent")}
       </a>
       <nav
         className="fixed bottom-0 left-0 right-0 z-10 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:sticky sm:top-0 sm:border-b sm:border-t-0 sm:pb-0"
-        aria-label="Main navigation"
+        aria-label={t("nav.mainNavigation")}
       >
         <div className="mx-auto flex max-w-3xl">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
+          {NAV_ITEMS.map(({ to, labelKey, icon: Icon }) => {
+            const label = t(labelKey)
             const isReadList = to === "/read-list"
             const ariaLabel =
               isReadList && readListCount > 0
-                ? `${label} (${readListCount} saved)`
+                ? t("nav.readListCount", { label, count: readListCount })
                 : undefined
 
             return (

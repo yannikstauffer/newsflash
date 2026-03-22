@@ -232,8 +232,26 @@ const eslintConfig = defineConfig([
       "security/detect-pseudoRandomBytes": "error",
       "security/detect-unsafe-regex": "error",
 
-      // Internationalization (disabled until an i18n system is adopted)
-      "i18next/no-literal-string": "off",
+      // Internationalization
+      "i18next/no-literal-string": ["warn", {
+        ignoreAttribute: [
+          "role",
+          "data-testid",
+          "className",
+          "htmlFor",
+          "type",
+          "name",
+          "id",
+          "href",
+          "target",
+          "rel",
+          "to",
+          "variant",
+          "size",
+          "aria-current",
+          "activeOptions",
+        ],
+      }],
 
       // Prevent secrets in code
       "no-secrets/no-secrets": ["error", {

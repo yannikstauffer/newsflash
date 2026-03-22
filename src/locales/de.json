@@ -1,0 +1,62 @@
+{
+  "nav": {
+    "feed": "Feed",
+    "readList": "Leseliste",
+    "settings": "Einstellungen",
+    "skipToContent": "Zum Inhalt springen",
+    "mainNavigation": "Hauptnavigation",
+    "readListCount": "{{label}} ({{count}} gespeichert)"
+  },
+  "feed": {
+    "allArticles": "Alle Artikel",
+    "hidden": "Ausgeblendet",
+    "searchPlaceholder": "Artikel suchen...",
+    "searchLabel": "Artikel suchen",
+    "clearSearch": "Suche leeren",
+    "openSearch": "Suche öffnen",
+    "refreshed": "Aktualisiert {{time}}",
+    "loading": "Feeds werden geladen...",
+    "loadingLabel": "Feeds werden geladen",
+    "empty": "Keine Artikel gefunden. Versuche, die Filter anzupassen.",
+    "emptyDay": "Keine Artikel für diesen Tag.",
+    "loadError": "Einige Feeds konnten nicht geladen werden:",
+    "articleCount": "{{count}} Artikel",
+    "articleCountWithHidden": "{{count}} + {{hiddenCount}} ausgeblendet",
+    "previousDay": "Vorheriger Tag",
+    "nextDay": "Nächster Tag",
+    "allDays": "alle Tage",
+    "hideAll": "Alle ausblenden",
+    "hideAllTitle": "Alle Artikel für {{dayLabel}} ausblenden?",
+    "hideAllDescription": "{{count}} Artikel werden ausgeblendet. Du kannst sie mit «Ausgeblendet anzeigen» wieder einblenden.",
+    "hideAllToast": "{{count}} Artikel ausgeblendet",
+    "cancel": "Abbrechen",
+    "undo": "Rückgängig"
+  },
+  "settings": {
+    "heading": "Einstellungen",
+    "language": "Sprache",
+    "languagePreference": "Spracheinstellung",
+    "appearance": "Erscheinungsbild",
+    "sources": "Quellen"
+  },
+  "readList": {
+    "empty": "Noch keine gespeicherten Artikel. Wische nach links oder klicke auf das Lesezeichen-Symbol, um Artikel zu speichern.",
+    "removeAll": "Alle entfernen",
+    "removeAllTitle": "Alle aus der Leseliste entfernen?",
+    "removeAllDescription": "{{count}} Artikel werden aus der Leseliste entfernt. Sie bleiben im Hauptfeed ausgeblendet.",
+    "removeAllToast": "{{count}} Artikel aus der Leseliste entfernt",
+    "cancel": "Abbrechen",
+    "undo": "Rückgängig"
+  },
+  "actions": {
+    "hideArticle": "Artikel ausblenden",
+    "unhideArticle": "Artikel einblenden",
+    "saveToReadList": "Zur Leseliste hinzufügen",
+    "removeFromReadList": "Aus Leseliste entfernen"
+  },
+  "error": {
+    "heading": "Etwas ist schiefgelaufen",
+    "message": "Ein unerwarteter Fehler ist aufgetreten. Bitte lade die Seite neu, um es erneut zu versuchen.",
+    "reload": "Neu laden"
+  }
+}

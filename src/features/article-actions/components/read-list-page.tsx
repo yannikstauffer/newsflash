@@ -1,5 +1,6 @@
 import { BookmarkMinus, XCircle } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 
 import { SwipeableCard } from "./swipeable-card"
@@ -24,6 +25,7 @@ import { ArticleCard } from "@/features/feed/components/article-card"
 import { useLazyList } from "@/hooks/use-lazy-list"
 
 export default function ReadListPage() {
+  const { t } = useTranslation()
   const { readListArticles, removeFromReadList, clearReadList, restoreReadList } = useArticleState()
   const { visibleItems, sentinelRef } = useLazyList(readListArticles)
   const cardReferencesMap = useRef<Map<string, SwipeableCardHandle>>(new Map())
@@ -33,21 +35,21 @@ export default function ReadListPage() {
     const snapshot = [...readListArticles]
     clearReadList()
     setRemoveAllOpen(false)
-    toast(`${snapshot.length} articles removed from read list`, {
+    toast(t("readList.removeAllToast", { count: snapshot.length }), {
       duration: 5000,
       action: {
-        label: "Undo",
+        label: t("readList.undo"),
         onClick: () => {
           restoreReadList(snapshot)
         },
       },
     })
-  }, [readListArticles, clearReadList, restoreReadList])
+  }, [readListArticles, clearReadList, restoreReadList, t])
 
   if (readListArticles.length === 0) {
     return (
       <p className="py-12 text-center text-muted-foreground">
-        {"No saved articles yet. Swipe left or click the bookmark icon to save articles."}
+        {t("readList.empty")}
       </p>
     )
   }
@@ -65,18 +67,18 @@ export default function ReadListPage() {
               />
             }
           >
-            {"Remove All"}
+            {t("readList.removeAll")}
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>{"Remove all from read list?"}</AlertDialogTitle>
+              <AlertDialogTitle>{t("readList.removeAllTitle")}</AlertDialogTitle>
               <AlertDialogDescription>
-                {`This will remove ${readListArticles.length} articles from your read list. They will remain hidden in the main feed.`}
+                {t("readList.removeAllDescription", { count: readListArticles.length })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>{"Cancel"}</AlertDialogCancel>
-              <AlertDialogAction onClick={handleRemoveAll}>{"Remove All"}</AlertDialogAction>
+              <AlertDialogCancel>{t("readList.cancel")}</AlertDialogCancel>
+              <AlertDialogAction onClick={handleRemoveAll}>{t("readList.removeAll")}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -118,7 +120,7 @@ export default function ReadListPage() {
                     removeFromReadList(article.id)
                   }
                 }}
-                aria-label="Remove from read list"
+                aria-label={t("actions.removeFromReadList")}
                 className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
               >
                 <BookmarkMinus className="size-3.5" />

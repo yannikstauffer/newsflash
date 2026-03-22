@@ -1,0 +1,62 @@
+{
+  "nav": {
+    "feed": "Feed",
+    "readList": "Read List",
+    "settings": "Settings",
+    "skipToContent": "Skip to content",
+    "mainNavigation": "Main navigation",
+    "readListCount": "{{label}} ({{count}} saved)"
+  },
+  "feed": {
+    "allArticles": "All articles",
+    "hidden": "Hidden",
+    "searchPlaceholder": "Search articles...",
+    "searchLabel": "Search articles",
+    "clearSearch": "Clear search",
+    "openSearch": "Open search",
+    "refreshed": "Refreshed {{time}}",
+    "loading": "Loading feeds...",
+    "loadingLabel": "Loading feeds",
+    "empty": "No articles found. Try adjusting your filters.",
+    "emptyDay": "No articles for this day.",
+    "loadError": "Some feeds failed to load:",
+    "articleCount": "{{count}} articles",
+    "articleCountWithHidden": "{{count}} + {{hiddenCount}} hidden",
+    "previousDay": "Previous day",
+    "nextDay": "Next day",
+    "allDays": "all days",
+    "hideAll": "Hide All",
+    "hideAllTitle": "Hide all articles for {{dayLabel}}?",
+    "hideAllDescription": "This will hide {{count}} articles. You can show them again using Show Hidden.",
+    "hideAllToast": "{{count}} articles hidden",
+    "cancel": "Cancel",
+    "undo": "Undo"
+  },
+  "settings": {
+    "heading": "Settings",
+    "language": "Language",
+    "languagePreference": "Language preference",
+    "appearance": "Appearance",
+    "sources": "Sources"
+  },
+  "readList": {
+    "empty": "No saved articles yet. Swipe left or click the bookmark icon to save articles.",
+    "removeAll": "Remove All",
+    "removeAllTitle": "Remove all from read list?",
+    "removeAllDescription": "This will remove {{count}} articles from your read list. They will remain hidden in the main feed.",
+    "removeAllToast": "{{count}} articles removed from read list",
+    "cancel": "Cancel",
+    "undo": "Undo"
+  },
+  "actions": {
+    "hideArticle": "Hide article",
+    "unhideArticle": "Unhide article",
+    "saveToReadList": "Save to read list",
+    "removeFromReadList": "Remove from read list"
+  },
+  "error": {
+    "heading": "Something went wrong",
+    "message": "An unexpected error occurred. Please reload the page to try again.",
+    "reload": "Reload"
+  }
+}

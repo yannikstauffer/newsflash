@@ -41,22 +41,22 @@ Each source SHALL have a master toggle that enables or disables all of its sub-f
 - **THEN** all sub-feeds under that source SHALL be enabled
 
 ### Requirement: Language selector on settings page
-The settings page SHALL include a language selector (All / DE / EN) that persists the user's language preference in localStorage. The selector SHALL appear as a segmented control above the sources list.
+The settings page SHALL include a language selector with two options ("Deutsch", "English") that controls the app locale. Selecting a language calls `i18next.changeLanguage()` and persists the preference to `localStorage("newsflash:locale")`. The labels SHALL always display in their native language regardless of the active locale.
 
 #### Scenario: Language selector rendering
 - **WHEN** the settings page is displayed
-- **THEN** a "Language" section with a segmented control (All / DE / EN) SHALL appear above the "Sources" section
+- **THEN** a language section with two options ("Deutsch", "English") SHALL appear above the "Sources" section
 
-#### Scenario: Language selection persists
-- **WHEN** the user selects "DE" and navigates away from settings
-- **THEN** the language preference SHALL be saved to localStorage and applied to the feed
+#### Scenario: Language selection changes app locale
+- **WHEN** the user selects "Deutsch"
+- **THEN** the app UI SHALL switch to German AND the preference SHALL be saved to `localStorage("newsflash:locale")`
 
 ### Requirement: Settings page structured layout
 The settings page SHALL use a structured layout with clearly labeled sections, card-style grouping for sources, and visual dividers between sources. The layout SHALL include a page heading.
 
 #### Scenario: Settings page rendering
 - **WHEN** the user opens the settings page
-- **THEN** the page SHALL display a "Settings" heading, a "Language" section with the segmented control, and a "Sources" section with each source in a card-like group separated by dividers
+- **THEN** the page SHALL display a translated "Settings" heading, a "Language" section with the locale selector, and a "Sources" section with each source in a card-like group separated by dividers
 
 #### Scenario: Source card display
 - **WHEN** a source with sub-feeds is rendered
@@ -76,3 +76,8 @@ When all feeds for a source are deactivated, the application SHALL remove relate
 #### Scenario: Deactivating a single sub-feed
 - **WHEN** the user disables a single sub-feed but other feeds from the same source remain active
 - **THEN** no cleanup SHALL occur (cleanup only triggers when all feeds for a source are disabled)
+
+## REMOVED Requirements
+
+### ~~Requirement: Language selector uses feed preferences storage~~
+The language preference is no longer stored in the `newsflash:feed-prefs` localStorage entry under `_language`. It is now stored separately in `newsflash:locale` and controls the app locale rather than feed filtering.

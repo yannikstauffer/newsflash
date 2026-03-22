@@ -1,4 +1,5 @@
 import { Bookmark, EyeOff } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
 
@@ -13,6 +14,8 @@ export function ArticleActionButtons({
   onSave,
   isSaved,
 }: ArticleActionButtonsProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="hidden gap-1 group-hover:flex group-focus-within:flex touch-device:md:flex touch-device:gap-0.5">
       <Button
@@ -23,7 +26,7 @@ export function ArticleActionButtons({
           event.preventDefault()
           onHide()
         }}
-        aria-label="Hide article"
+        aria-label={t("actions.hideArticle")}
         className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
       >
         <EyeOff className="size-3.5" />
@@ -36,7 +39,7 @@ export function ArticleActionButtons({
           event.preventDefault()
           onSave()
         }}
-        aria-label={isSaved ? "Remove from read list" : "Save to read list"}
+        aria-label={isSaved ? t("actions.removeFromReadList") : t("actions.saveToReadList")}
         className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
       >
         <Bookmark

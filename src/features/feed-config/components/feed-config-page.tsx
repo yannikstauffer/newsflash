@@ -1,9 +1,9 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { FeedGroup } from "./feed-group"
 import { useFeedPreferences } from "../hooks/use-feed-preferences"
 
-import type { LanguagePreference } from "../hooks/use-feed-preferences"
 import type { FeedConfig } from "@/features/connectors/types"
 import type { ThemePreference } from "@/hooks/use-theme-preference"
 
@@ -17,10 +17,9 @@ const THEME_OPTIONS: Array<{ readonly value: ThemePreference; readonly label: st
   { value: "dark", label: "Dark" },
 ]
 
-const LANGUAGE_OPTIONS: Array<{ readonly value: LanguagePreference; readonly label: string }> = [
-  { value: "all", label: "All" },
-  { value: "de", label: "DE" },
-  { value: "en", label: "EN" },
+const LOCALE_OPTIONS: Array<{ readonly value: string; readonly label: string }> = [
+  { value: "de", label: "Deutsch" },
+  { value: "en", label: "English" },
 ]
 
 function groupFeedsByGroup(feeds: FeedConfig[]): {
@@ -47,16 +46,21 @@ function groupFeedsByGroup(feeds: FeedConfig[]): {
 }
 
 export default function FeedConfigPage() {
+  const { t, i18n } = useTranslation()
   const {
     isFeedEnabled,
     toggleFeed,
     setAllForSource,
-    language,
-    setLanguage,
   } = useFeedPreferences()
   const { removeHiddenBySource, removeReadListBySource } = useArticleState()
   const { theme, setTheme } = useThemePreference()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+
+  const currentLocale = i18n.language.startsWith("de") ? "de" : "en"
+
+  function handleLocaleChange(locale: string) {
+    i18n.changeLanguage(locale)
+  }
 
   function handleToggleAllForSource(
     connectorId: string,
@@ -98,24 +102,24 @@ export default function FeedConfigPage() {
 
   return (
     <div className="space-y-8">
-      <h2 className="text-xl font-bold text-foreground">Settings</h2>
+      <h2 className="text-xl font-bold text-foreground">{t("settings.heading")}</h2>
 
       <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">Language</h3>
+        <h3 className="text-base font-semibold text-foreground">{t("settings.language")}</h3>
         <div
           className="inline-flex rounded-lg border border-border"
           role="radiogroup"
-          aria-label="Language preference"
+          aria-label={t("settings.languagePreference")}
         >
-          {LANGUAGE_OPTIONS.map((option) => (
+          {LOCALE_OPTIONS.map((option) => (
             <button
               key={option.value}
               type="button"
               role="radio"
-              aria-checked={language === option.value}
-              onClick={() => setLanguage(option.value)}
+              aria-checked={currentLocale === option.value}
+              onClick={() => handleLocaleChange(option.value)}
               className={`min-h-[44px] px-4 text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg md:min-h-0 md:py-2 ${
-                language === option.value
+                currentLocale === option.value
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted"
               }`}
@@ -127,11 +131,11 @@ export default function FeedConfigPage() {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">Appearance</h3>
+        <h3 className="text-base font-semibold text-foreground">{t("settings.appearance")}</h3>
         <div
           className="inline-flex rounded-lg border border-border"
           role="radiogroup"
-          aria-label="Theme preference"
+          aria-label={t("settings.appearance")}
         >
           {THEME_OPTIONS.map((option) => (
             <button
@@ -153,7 +157,7 @@ export default function FeedConfigPage() {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">Sources</h3>
+        <h3 className="text-base font-semibold text-foreground">{t("settings.sources")}</h3>
         <div className="divide-y divide-border rounded-lg border border-border">
           {connectors.map((connector) => {
             const allEnabled = connector.feeds.every((feed) =>

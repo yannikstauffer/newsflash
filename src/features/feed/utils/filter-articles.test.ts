@@ -20,7 +20,6 @@ function makeArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedArti
 
 const defaultOptions: FilterOptions = {
   isFeedEnabled: () => true,
-  language: "all",
   showHidden: false,
   hiddenIds: [],
   searchQuery: "",
@@ -51,46 +50,13 @@ describe("filterArticles", () => {
     expect(result[0].source).toBe("engadget")
   })
 
-  it("filters by language DE", () => {
+  it("shows articles of all languages regardless of article language", () => {
     const articles = [
       makeArticle({ language: "en" }),
       makeArticle({ id: "2", language: "de", source: "heise" }),
     ]
 
-    const result = filterArticles(articles, {
-      ...defaultOptions,
-      language: "de",
-    })
-
-    expect(result).toHaveLength(1)
-    expect(result[0].language).toBe("de")
-  })
-
-  it("filters by language EN", () => {
-    const articles = [
-      makeArticle({ language: "en" }),
-      makeArticle({ id: "2", language: "de", source: "heise" }),
-    ]
-
-    const result = filterArticles(articles, {
-      ...defaultOptions,
-      language: "en",
-    })
-
-    expect(result).toHaveLength(1)
-    expect(result[0].language).toBe("en")
-  })
-
-  it("shows all languages when set to all", () => {
-    const articles = [
-      makeArticle({ language: "en" }),
-      makeArticle({ id: "2", language: "de", source: "heise" }),
-    ]
-
-    const result = filterArticles(articles, {
-      ...defaultOptions,
-      language: "all",
-    })
+    const result = filterArticles(articles, defaultOptions)
 
     expect(result).toHaveLength(2)
   })
@@ -175,13 +141,12 @@ describe("filterArticles", () => {
 
     const result = filterArticles(articles, {
       isFeedEnabled: (id: string) => id === "engadget" || id === "srf",
-      language: "en",
       showHidden: false,
       hiddenIds: [],
       searchQuery: "apple",
     })
 
-    expect(result).toHaveLength(1)
-    expect(result[0].id).toBe("1")
+    expect(result).toHaveLength(2)
+    expect(result.map((a) => a.id)).toEqual(["1", "2"])
   })
 })

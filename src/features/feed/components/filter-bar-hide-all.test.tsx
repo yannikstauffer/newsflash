@@ -138,6 +138,7 @@ describe("FilterBar Hide All", () => {
       )
     })
 
+
     it("undo callback calls unhideArticles with captured IDs", () => {
       const ids = ["heise:x1", "heise:x2"]
       render(<FilterBar {...defaultProps} visibleArticleIds={ids} />)
