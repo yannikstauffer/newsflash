@@ -99,4 +99,62 @@ describe("extractLeadingImage", () => {
 
     expect(result.imageUrl).toBeUndefined()
   })
+
+  it("returns undefined when HTML has no images at all", () => {
+    const result = extractLeadingImage(
+      "<div><p>No images here</p><span>Just text</span></div>",
+    )
+
+    expect(result.imageUrl).toBeUndefined()
+    expect(result.html).toContain("No images here")
+  })
+
+  it("skips img with empty string src", () => {
+    const result = extractLeadingImage('<img src=""><p>Text</p>')
+
+    expect(result.imageUrl).toBeUndefined()
+  })
+
+  it("returns relative URL as-is without resolution", () => {
+    const result = extractLeadingImage(
+      '<img src="/images/photo.jpg"><p>Text</p>',
+    )
+
+    expect(result.imageUrl).toBe("/images/photo.jpg")
+    expect(result.html).not.toContain("<img")
+  })
+
+  it("returns data URI as imageUrl", () => {
+    const result = extractLeadingImage(
+      '<img src="data:image/png;base64,abc123"><p>Text</p>',
+    )
+
+    expect(result.imageUrl).toBe("data:image/png;base64,abc123")
+  })
+
+  it("does not extract from <a> without img child", () => {
+    const result = extractLeadingImage(
+      '<a href="https://example.com">Link text</a><p>Content</p>',
+    )
+
+    expect(result.imageUrl).toBeUndefined()
+  })
+
+  it("does not extract from <p> containing <a> without img", () => {
+    const result = extractLeadingImage(
+      '<p><a href="https://example.com">Link text</a></p><p>Content</p>',
+    )
+
+    expect(result.imageUrl).toBeUndefined()
+  })
+
+  it("keeps parent <p> with siblings when extracting img", () => {
+    const result = extractLeadingImage(
+      '<p><img src="https://example.com/photo.jpg"><span>Caption</span></p><p>Body</p>',
+    )
+
+    expect(result.imageUrl).toBe("https://example.com/photo.jpg")
+    expect(result.html).toContain("Caption")
+    expect(result.html).toContain("Body")
+  })
 })

@@ -236,7 +236,7 @@ export function useFeedPage(): UseFeedPageResult {
         onHide: () => {
           const cardHandle = cardReferencesMap.current.get(article.id)
           if (cardHandle) {
-            cardHandle.triggerRemoval()
+            cardHandle.triggerRemoval("right")
           } else {
             hideArticle(article.id)
           }
@@ -245,7 +245,7 @@ export function useFeedPage(): UseFeedPageResult {
           if (isInReadList(article.id)) return
           const cardHandle = cardReferencesMap.current.get(article.id)
           if (cardHandle) {
-            cardHandle.triggerRemoval()
+            cardHandle.triggerRemoval("left")
           } else {
             addToReadList(article)
             hideArticle(article.id)

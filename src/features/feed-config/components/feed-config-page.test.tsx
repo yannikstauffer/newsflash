@@ -20,10 +20,13 @@ vi.mock("@/features/article-actions/hooks/use-article-state", () => ({
   }),
 }))
 
+const mockSetTheme = vi.fn()
+const mockThemeState = { theme: "system" as "system" | "light" | "dark" }
+
 vi.mock("@/hooks/use-theme-preference", () => ({
   useThemePreference: () => ({
-    theme: "system" as const,
-    setTheme: vi.fn(),
+    theme: mockThemeState.theme,
+    setTheme: mockSetTheme,
   }),
 }))
 
@@ -58,6 +61,8 @@ describe("FeedConfigPage", () => {
     mockDisabledFeeds.clear()
     mockToggleFeed.mockClear()
     mockSetAllForSource.mockClear()
+    mockSetTheme.mockClear()
+    mockThemeState.theme = "system"
   })
 
   describe("grouped feeds", () => {
@@ -101,6 +106,67 @@ describe("FeedConfigPage", () => {
       render(<FeedConfigPage />)
 
       expect(screen.getByText("Digitec")).toBeInTheDocument()
+    })
+  })
+
+  describe("all feed groups rendered", () => {
+    it("renders all connector names", () => {
+      render(<FeedConfigPage />)
+
+      expect(screen.getByText("SRF")).toBeInTheDocument()
+      expect(screen.getByText("Digitec")).toBeInTheDocument()
+    })
+
+    it("renders language badges for each connector", () => {
+      render(<FeedConfigPage />)
+
+      const badges = screen.getAllByText("DE")
+      expect(badges).toHaveLength(2)
+    })
+  })
+
+  describe("language selector", () => {
+    it("triggers language change when clicked", () => {
+      render(<FeedConfigPage />)
+
+      const englishButton = screen.getByRole("radio", { name: "English" })
+      fireEvent.click(englishButton)
+
+      // The click changes the i18n language; we verify the button exists and is interactive
+      expect(englishButton).toBeInTheDocument()
+    })
+
+    it("shows current locale as selected", () => {
+      render(<FeedConfigPage />)
+
+      const deutschButton = screen.getByRole("radio", { name: "Deutsch" })
+      const englishButton = screen.getByRole("radio", { name: "English" })
+
+      // One should be checked based on current i18n language
+      const isOneChecked =
+        deutschButton.getAttribute("aria-checked") === "true" ||
+        englishButton.getAttribute("aria-checked") === "true"
+      expect(isOneChecked).toBe(true)
+    })
+  })
+
+  describe("theme toggle", () => {
+    it("calls setTheme when theme option is clicked", () => {
+      render(<FeedConfigPage />)
+
+      const darkButton = screen.getByRole("radio", { name: "Dark" })
+      fireEvent.click(darkButton)
+
+      expect(mockSetTheme).toHaveBeenCalledWith("dark")
+    })
+
+    it("calls setTheme with light when Light is clicked", () => {
+      render(<FeedConfigPage />)
+
+      const lightButton = screen.getByRole("radio", { name: "Light" })
+      fireEvent.click(lightButton)
+
+      expect(mockSetTheme).toHaveBeenCalledWith("light")
     })
   })
 

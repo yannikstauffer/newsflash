@@ -56,6 +56,27 @@ const CONNECTOR_FIXTURES = new Map<string, Record<string, string>>([
 ])
 
 /**
+ * Seeds localStorage to enable only one connector's feeds (disables all others).
+ * Does NOT mock any network requests — the app will hit real RSS feeds via the Vite proxy.
+ */
+export async function seedSingleConnector(
+  page: Page,
+  connectorId: string,
+): Promise<void> {
+  const feedIds = CONNECTOR_FEEDS.get(connectorId)
+  if (!feedIds) {
+    throw new Error(`Unknown connector: ${connectorId}`)
+  }
+
+  const preferences = new Map<string, boolean>()
+  for (const feedId of ALL_FEED_IDS) {
+    preferences.set(feedId, feedIds.includes(feedId))
+  }
+
+  await seedFeedPreferences(page, Object.fromEntries(preferences))
+}
+
+/**
  * Enables only one connector's feeds (disables all others),
  * mocks its RSS feeds with fixture data, and returns empty for the rest.
  */

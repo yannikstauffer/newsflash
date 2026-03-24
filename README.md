@@ -1,5 +1,7 @@
 # Newsflash
 
+[![E2E Live Feed Tests](https://github.com/yannikstauffer/newsflash/actions/workflows/e2e-live.yml/badge.svg)](https://github.com/yannikstauffer/newsflash/actions/workflows/e2e-live.yml)
+
 A multi-source news feed aggregator built with React 19 and TypeScript. Newsflash pulls RSS/XML feeds from tech and news outlets, normalizes them into a unified format, and presents them in a mobile-first interface with filtering, read lists, and swipe gestures.
 
 Currently aggregating from Digitec, Galaxus, SRF (7 channels), WinFuture, Engadget, Heise, and Ubergizmo.
