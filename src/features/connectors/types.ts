@@ -4,11 +4,19 @@ export interface FeedConfig {
   group?: string
 }
 
+export interface ArticleFilter {
+  readonly id: string
+  readonly label: string
+  readonly enabledByDefault: boolean
+  readonly match: (article: NormalizedArticle) => boolean
+}
+
 export interface Connector {
   id: string
   name: string
   language: "de" | "en"
   feeds: FeedConfig[]
+  filters?: readonly ArticleFilter[]
   parse(xml: string): NormalizedArticle[]
 }
 

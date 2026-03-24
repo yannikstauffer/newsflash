@@ -13,6 +13,19 @@ vi.mock("../hooks/use-feed-preferences", () => ({
   }),
 }))
 
+const mockDisabledFilters = new Set<string>()
+const mockToggleFilter = vi.fn()
+
+vi.mock("../hooks/use-filter-preferences", () => ({
+  useFilterPreferences: () => ({
+    isFilterEnabled: (filterId: string, enabledByDefault: boolean) => {
+      if (mockDisabledFilters.has(filterId)) return false
+      return enabledByDefault
+    },
+    toggleFilter: mockToggleFilter,
+  }),
+}))
+
 vi.mock("@/features/article-actions/hooks/use-article-state", () => ({
   useArticleState: () => ({
     removeHiddenBySource: vi.fn(),
@@ -49,6 +62,20 @@ vi.mock("@/features/connectors/registry", () => ({
       name: "Digitec",
       language: "de",
       feeds: [{ id: "digitec", name: "Digitec" }],
+      filters: [
+        {
+          id: "digitec-produkttest",
+          label: "Produkttest",
+          enabledByDefault: true,
+          match: () => false,
+        },
+        {
+          id: "digitec-meinung",
+          label: "Meinung",
+          enabledByDefault: true,
+          match: () => false,
+        },
+      ],
       parse: () => [],
     },
   ],
@@ -59,7 +86,9 @@ const { default: FeedConfigPage } = await import("./feed-config-page")
 describe("FeedConfigPage", () => {
   beforeEach(() => {
     mockDisabledFeeds.clear()
+    mockDisabledFilters.clear()
     mockToggleFeed.mockClear()
+    mockToggleFilter.mockClear()
     mockSetAllForSource.mockClear()
     mockSetTheme.mockClear()
     mockThemeState.theme = "system"
@@ -167,6 +196,50 @@ describe("FeedConfigPage", () => {
       fireEvent.click(lightButton)
 
       expect(mockSetTheme).toHaveBeenCalledWith("light")
+    })
+  })
+
+  describe("filter section", () => {
+    it("shows filter checkboxes for connectors with filters", () => {
+      render(<FeedConfigPage />)
+
+      expect(screen.getByText("Produkttest")).toBeInTheDocument()
+      expect(screen.getByText("Meinung")).toBeInTheDocument()
+    })
+
+    it("does not show filter section for connectors without filters", () => {
+      render(<FeedConfigPage />)
+
+      // SRF has no filters — the "Filters" label should appear only once (for Digitec)
+      const filterLabels = screen.getAllByText("Filters")
+      expect(filterLabels).toHaveLength(1)
+    })
+
+    it("reflects enabled state of filter checkboxes", () => {
+      render(<FeedConfigPage />)
+
+      const produkttestLabel = screen.getByText("Produkttest")
+      const checkbox = produkttestLabel.closest("label")?.querySelector("input[type='checkbox']") as HTMLInputElement
+      expect(checkbox.checked).toBe(true)
+    })
+
+    it("reflects disabled state of filter checkboxes", () => {
+      mockDisabledFilters.add("digitec-produkttest")
+      render(<FeedConfigPage />)
+
+      const produkttestLabel = screen.getByText("Produkttest")
+      const checkbox = produkttestLabel.closest("label")?.querySelector("input[type='checkbox']") as HTMLInputElement
+      expect(checkbox.checked).toBe(false)
+    })
+
+    it("calls toggleFilter when filter checkbox is clicked", () => {
+      render(<FeedConfigPage />)
+
+      const produkttestLabel = screen.getByText("Produkttest")
+      const checkbox = produkttestLabel.closest("label")?.querySelector("input[type='checkbox']") as HTMLInputElement
+      fireEvent.click(checkbox)
+
+      expect(mockToggleFilter).toHaveBeenCalledWith("digitec-produkttest", true)
     })
   })
 

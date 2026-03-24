@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 
 import { FeedGroup } from "./feed-group"
 import { useFeedPreferences } from "../hooks/use-feed-preferences"
+import { useFilterPreferences } from "../hooks/use-filter-preferences"
 
 import type { FeedConfig } from "@/features/connectors/types"
 import type { ThemePreference } from "@/hooks/use-theme-preference"
@@ -52,6 +53,7 @@ export default function FeedConfigPage() {
     toggleFeed,
     setAllForSource,
   } = useFeedPreferences()
+  const { isFilterEnabled, toggleFilter } = useFilterPreferences()
   const { removeHiddenBySource, removeReadListBySource } = useArticleState()
   const { theme, setTheme } = useThemePreference()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
@@ -240,6 +242,30 @@ export default function FeedConfigPage() {
                         />
                         <span className="text-sm text-foreground">
                           {feed.name}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {connector.filters && connector.filters.length > 0 && (
+                  <div className="ml-6 mt-3 space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t("settings.filters")}
+                    </span>
+                    {connector.filters.map((filter) => (
+                      <label
+                        key={filter.id}
+                        className="flex min-h-[44px] cursor-pointer items-center gap-2 md:min-h-0"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isFilterEnabled(filter.id, filter.enabledByDefault)}
+                          onChange={() => toggleFilter(filter.id, filter.enabledByDefault)}
+                          className="size-4 accent-primary"
+                        />
+                        <span className="text-sm text-foreground">
+                          {filter.label}
                         </span>
                       </label>
                     ))}

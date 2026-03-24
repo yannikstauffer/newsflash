@@ -37,7 +37,8 @@
     "language": "Sprache",
     "languagePreference": "Spracheinstellung",
     "appearance": "Erscheinungsbild",
-    "sources": "Quellen"
+    "sources": "Quellen",
+    "filters": "Filter"
   },
   "readList": {
     "empty": "Noch keine gespeicherten Artikel. Wische nach links oder klicke auf das Lesezeichen-Symbol, um Artikel zu speichern.",

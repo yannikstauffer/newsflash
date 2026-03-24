@@ -37,7 +37,8 @@
     "language": "Language",
     "languagePreference": "Language preference",
     "appearance": "Appearance",
-    "sources": "Sources"
+    "sources": "Sources",
+    "filters": "Filters"
   },
   "readList": {
     "empty": "No saved articles yet. Swipe left or click the bookmark icon to save articles.",
