@@ -56,7 +56,8 @@
     "removeFromReadList": "Remove from read list"
   },
   "feedConfig": {
-    "enabledCount": "{{enabled}}/{{total}} on"
+    "enabledCount": "{{enabled}}/{{total}} on",
+    "toggleAllFeeds": "Toggle all {{groupName}} feeds"
   },
   "error": {
     "heading": "Something went wrong",

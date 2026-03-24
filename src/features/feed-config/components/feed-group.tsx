@@ -40,7 +40,7 @@ export function FeedGroup({
   return (
     <div className="ml-6 mt-2">
       <div className="flex items-center gap-2">
-        <label className="flex min-h-[44px] cursor-pointer items-center gap-2 md:min-h-0">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 md:min-h-0">
           <input
             type="checkbox"
             checked={allEnabled}
@@ -51,7 +51,7 @@ export function FeedGroup({
             }}
             onChange={handleGroupCheckboxChange}
             className="size-4 accent-primary"
-            aria-label={`Toggle all ${groupName} feeds`}
+            aria-label={t("feedConfig.toggleAllFeeds", { groupName })}
           />
         </label>
         <button
@@ -60,7 +60,7 @@ export function FeedGroup({
           aria-expanded={isExpanded}
           aria-controls={groupId}
           onClick={onToggleExpand}
-          className="flex min-h-[44px] flex-1 items-center gap-2 text-left md:min-h-0"
+          className="flex min-h-11 flex-1 items-center gap-2 text-left md:min-h-0"
         >
           <svg
             className={`size-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`}
@@ -91,7 +91,7 @@ export function FeedGroup({
           {feeds.map((feed) => (
             <label
               key={feed.id}
-              className="flex min-h-[44px] cursor-pointer items-center gap-2 md:min-h-0"
+              className="flex min-h-11 cursor-pointer items-center gap-2 md:min-h-0"
             >
               <input
                 type="checkbox"

@@ -174,6 +174,38 @@ describe("useThemePreference", () => {
       expect(result.current.theme).toBe("light")
       expect(document.documentElement.classList.contains("dark")).toBe(false)
     })
+
+    it("toggles from system to dark when OS is light", () => {
+      mockMatchMedia(false)
+      const { result } = renderHook(() => useThemePreference())
+
+      expect(result.current.theme).toBe("system")
+      expect(result.current.resolvedTheme).toBe("light")
+
+      act(() => {
+        result.current.toggleTheme()
+      })
+
+      expect(result.current.theme).toBe("dark")
+      expect(result.current.resolvedTheme).toBe("dark")
+      expect(document.documentElement.classList.contains("dark")).toBe(true)
+    })
+
+    it("toggles from system to light when OS is dark", () => {
+      mockMatchMedia(true)
+      const { result } = renderHook(() => useThemePreference())
+
+      expect(result.current.theme).toBe("system")
+      expect(result.current.resolvedTheme).toBe("dark")
+
+      act(() => {
+        result.current.toggleTheme()
+      })
+
+      expect(result.current.theme).toBe("light")
+      expect(result.current.resolvedTheme).toBe("light")
+      expect(document.documentElement.classList.contains("dark")).toBe(false)
+    })
   })
 
   describe("matchMedia listener (system mode)", () => {
@@ -254,6 +286,18 @@ describe("useThemePreference", () => {
         "change",
         expect.any(Function),
       )
+    })
+  })
+
+  describe("missing matchMedia", () => {
+    it("does not throw and skips listener when matchMedia is unavailable", () => {
+      // @ts-expect-error -- deliberately removing matchMedia to simulate non-DOM env
+      delete globalThis.matchMedia
+
+      const { result } = renderHook(() => useThemePreference())
+
+      expect(result.current.theme).toBe("system")
+      expect(result.current.resolvedTheme).toBe("light")
     })
   })
 

@@ -141,6 +141,10 @@ test.describe("mobile swipe actions", () => {
       touchPoints: [],
     })
 
+    await expect(
+      page.locator("article", { hasText: firstTitle! }),
+    ).not.toBeVisible({ timeout: 5000 })
+
     const nav = page.locator("nav[aria-label='Main navigation']")
     await nav.getByRole("link", { name: /read list/i }).click()
 

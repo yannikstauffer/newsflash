@@ -56,7 +56,8 @@
     "removeFromReadList": "Aus Leseliste entfernen"
   },
   "feedConfig": {
-    "enabledCount": "{{enabled}}/{{total}} an"
+    "enabledCount": "{{enabled}}/{{total}} an",
+    "toggleAllFeeds": "Alle {{groupName}}-Feeds umschalten"
   },
   "error": {
     "heading": "Etwas ist schiefgelaufen",

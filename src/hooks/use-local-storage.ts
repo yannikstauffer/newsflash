@@ -1,9 +1,25 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+
+import type { SetStateAction } from "react"
+
+const LOCAL_STORAGE_SYNC_EVENT = "newsflash:local-storage-sync"
+
+interface LocalStorageSyncDetail {
+  key: string
+}
+
+function dispatchSyncEvent(key: string): void {
+  globalThis.window?.dispatchEvent(
+    new CustomEvent<LocalStorageSyncDetail>(LOCAL_STORAGE_SYNC_EVENT, {
+      detail: { key },
+    }),
+  )
+}
 
 export function useLocalStorage<T>(
   key: string,
   initialValue: T,
-): [T, (value: T | ((previous: T) => T)) => void] {
+): [T, (value: SetStateAction<T>) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
       const item = globalThis.localStorage.getItem(key)
@@ -13,18 +29,47 @@ export function useLocalStorage<T>(
     }
   })
 
+  const valueRef = useRef(storedValue)
+
+  useEffect(() => {
+    valueRef.current = storedValue
+  }, [storedValue])
+
+  useEffect(() => {
+    function handleSync(event: Event) {
+      const detail = (event as CustomEvent<LocalStorageSyncDetail>).detail
+      if (detail.key !== key) return
+
+      try {
+        const item = globalThis.localStorage.getItem(key)
+        const parsed = item ? (JSON.parse(item) as T) : initialValue
+        valueRef.current = parsed
+        setStoredValue(parsed)
+      } catch {
+        // ignore parse errors
+      }
+    }
+
+    globalThis.window?.addEventListener(LOCAL_STORAGE_SYNC_EVENT, handleSync)
+    return () => {
+      globalThis.window?.removeEventListener(LOCAL_STORAGE_SYNC_EVENT, handleSync)
+    }
+  }, [key, initialValue])
+
   const setValue = useCallback(
-    (value: T | ((previous: T) => T)) => {
-      setStoredValue((current) => {
-        const valueToStore =
-          value instanceof Function ? value(current) : value
-        try {
-          globalThis.localStorage.setItem(key, JSON.stringify(valueToStore))
-        } catch {
-          // localStorage full or unavailable
-        }
-        return valueToStore
-      })
+    (value: SetStateAction<T>) => {
+      const valueToStore =
+        typeof value === "function"
+          ? (value as (previous: T) => T)(valueRef.current)
+          : value
+      valueRef.current = valueToStore
+      try {
+        globalThis.localStorage.setItem(key, JSON.stringify(valueToStore))
+      } catch {
+        // localStorage full or unavailable
+      }
+      setStoredValue(valueToStore)
+      dispatchSyncEvent(key)
     },
     [key],
   )

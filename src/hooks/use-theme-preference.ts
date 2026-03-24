@@ -57,7 +57,7 @@ export function useThemePreference(): {
     setResolvedTheme(resolved)
     applyThemeClass(resolved)
 
-    if (theme === "system") {
+    if (theme === "system" && typeof globalThis.matchMedia === "function") {
       const mediaQuery = globalThis.matchMedia(DARK_MEDIA_QUERY)
       const handleChange = (event: MediaQueryListEvent) => {
         const newResolved: ResolvedTheme = event.matches ? "dark" : "light"
@@ -81,8 +81,13 @@ export function useThemePreference(): {
   )
 
   const toggleTheme = useCallback(() => {
-    setThemeValue((current) => (current === "light" ? "dark" : "light"))
-  }, [setThemeValue])
+    setThemeValue((current) => {
+      if (current === "system") {
+        return resolvedTheme === "light" ? "dark" : "light"
+      }
+      return current === "light" ? "dark" : "light"
+    })
+  }, [setThemeValue, resolvedTheme])
 
   return { theme, resolvedTheme, setTheme, toggleTheme }
 }

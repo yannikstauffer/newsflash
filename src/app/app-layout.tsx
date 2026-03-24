@@ -35,6 +35,7 @@ export function AppLayout() {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col">
+      {/* noinspection HtmlUnknownAnchorTarget - resolves to <main id="main-content"> below */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:outline-2 focus:outline-offset-2 focus:outline-ring"
@@ -75,7 +76,7 @@ export function AppLayout() {
                     </span>
                   )}
                 </span>
-                <span className="hidden sm:inline">{label}</span>
+                <span className="sr-only sm:not-sr-only">{label}</span>
               </Link>
             )
           })}
