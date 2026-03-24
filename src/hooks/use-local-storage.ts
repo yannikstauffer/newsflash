@@ -62,6 +62,7 @@ export function useLocalStorage<T>(
         typeof value === "function"
           ? (value as (previous: T) => T)(valueRef.current)
           : value
+      if (valueToStore === valueRef.current) return
       valueRef.current = valueToStore
       try {
         globalThis.localStorage.setItem(key, JSON.stringify(valueToStore))
