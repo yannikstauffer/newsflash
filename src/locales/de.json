@@ -39,7 +39,12 @@
     "languagePreference": "Spracheinstellung",
     "appearance": "Erscheinungsbild",
     "sources": "Quellen",
-    "filters": "Filter"
+    "filters": "Filter",
+    "languageDescription": "Wähle die Sprache für die Oberfläche und News-Feeds.",
+    "appearanceDescription": "Wähle ein Design für die App.",
+    "sourcesDescription": "Aktiviere oder deaktiviere Nachrichtenquellen, um deinen Feed anzupassen.",
+    "enableAll": "Alle aktivieren",
+    "disableAll": "Alle deaktivieren"
   },
   "readList": {
     "empty": "Noch keine gespeicherten Artikel. Wische nach links oder klicke auf das Lesezeichen-Symbol, um Artikel zu speichern.",

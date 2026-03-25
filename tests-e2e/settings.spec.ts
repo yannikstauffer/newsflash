@@ -63,7 +63,7 @@ test("source: disable and re-enable removes and restores articles", async ({ pag
 
   // Disable Digitec
   await nav.getByRole("link", { name: /settings/i }).click()
-  await page.getByLabel("Digitec").uncheck()
+  await page.getByRole("switch", { name: "Digitec" }).click()
 
   // Go to feed — Digitec gone
   await nav.getByRole("link", { name: /feed/i }).first().click()
@@ -73,7 +73,7 @@ test("source: disable and re-enable removes and restores articles", async ({ pag
 
   // Re-enable Digitec
   await nav.getByRole("link", { name: /settings/i }).click()
-  await page.getByLabel("Digitec").check()
+  await page.getByRole("switch", { name: "Digitec" }).click()
 
   // Go to feed and reload
   await nav.getByRole("link", { name: /feed/i }).first().click()

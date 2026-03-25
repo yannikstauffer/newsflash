@@ -10,6 +10,8 @@ export function useFeedPreferences(): {
   toggleFeed: (feedId: string) => void
   setFeedEnabled: (feedId: string, enabled: boolean) => void
   setAllForSource: (feedIds: string[], enabled: boolean) => void
+  enableAll: (feedIds: string[]) => void
+  disableAll: (feedIds: string[]) => void
 } {
   const [store, setStore] = useLocalStorage<Record<string, boolean>>(STORAGE_KEY, {})
 
@@ -58,11 +60,41 @@ export function useFeedPreferences(): {
     [setStore],
   )
 
+  const enableAll = useCallback(
+    (feedIds: string[]) => {
+      setStore((previous) => {
+        const updated = { ...previous }
+        for (const feedId of feedIds) {
+          // eslint-disable-next-line security/detect-object-injection -- feedId from connector registry
+          updated[feedId] = true
+        }
+        return updated
+      })
+    },
+    [setStore],
+  )
+
+  const disableAll = useCallback(
+    (feedIds: string[]) => {
+      setStore((previous) => {
+        const updated = { ...previous }
+        for (const feedId of feedIds) {
+          // eslint-disable-next-line security/detect-object-injection -- feedId from connector registry
+          updated[feedId] = false
+        }
+        return updated
+      })
+    },
+    [setStore],
+  )
+
   return {
     preferences,
     isFeedEnabled,
     toggleFeed,
     setFeedEnabled,
     setAllForSource,
+    enableAll,
+    disableAll,
   }
 }

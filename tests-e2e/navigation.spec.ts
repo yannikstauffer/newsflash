@@ -29,9 +29,9 @@ test("full tab cycle: Feed → Read List → Settings → Feed", async ({ page }
   await settingsTab.click()
   await expect(settingsTab).toHaveAttribute("aria-current", "page")
   await expect(readListTab).not.toHaveAttribute("aria-current", "page")
-  await expect(page.getByText("Language")).toBeVisible()
-  await expect(page.getByText("Appearance")).toBeVisible()
-  await expect(page.getByText("Sources")).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Language" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Appearance" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Sources" })).toBeVisible()
 
   // Back to Feed
   await feedTab.click()

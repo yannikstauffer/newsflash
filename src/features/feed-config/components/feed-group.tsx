@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next"
 
 import type { FeedConfig } from "@/features/connectors/types"
 
+import { Switch } from "@/components/ui/switch"
+
 interface FeedGroupProps {
   readonly connectorId: string // nosonar typescript:S6767
   readonly groupName: string
@@ -30,30 +32,15 @@ export function FeedGroup({
   const enabledCount = feeds.filter((feed) => isFeedEnabled(feed.id)).length
   const totalCount = feeds.length
   const allEnabled = enabledCount === totalCount
-  const someEnabled = enabledCount > 0 && !allEnabled
 
-  function handleGroupCheckboxChange() {
+  function handleGroupToggleChange(checked: boolean) {
     const feedIds = feeds.map((feed) => feed.id)
-    onToggleGroup(feedIds, !allEnabled)
+    onToggleGroup(feedIds, checked)
   }
 
   return (
     <div className="ml-6 mt-2">
       <div className="flex items-center gap-2">
-        <label className="flex min-h-11 cursor-pointer items-center gap-2 md:min-h-0">
-          <input
-            type="checkbox"
-            checked={allEnabled}
-            ref={(element) => {
-              if (element) {
-                element.indeterminate = someEnabled
-              }
-            }}
-            onChange={handleGroupCheckboxChange}
-            className="size-4 accent-primary"
-            aria-label={t("feedConfig.toggleAllFeeds", { groupName })}
-          />
-        </label>
         <button
           id={headerId}
           type="button"
@@ -79,6 +66,11 @@ export function FeedGroup({
             {t("feedConfig.enabledCount", { enabled: enabledCount, total: totalCount })}
           </span>
         </button>
+        <Switch
+          checked={allEnabled}
+          onCheckedChange={handleGroupToggleChange}
+          aria-label={t("feedConfig.toggleAllFeeds", { groupName })}
+        />
       </div>
 
       {isExpanded && (
@@ -89,18 +81,17 @@ export function FeedGroup({
           className="ml-6 mt-1 space-y-1"
         >
           {feeds.map((feed) => (
-            <label
+            <div
               key={feed.id}
-              className="flex min-h-11 cursor-pointer items-center gap-2 md:min-h-0"
+              className="flex min-h-11 items-center justify-between md:min-h-0"
             >
-              <input
-                type="checkbox"
-                checked={isFeedEnabled(feed.id)}
-                onChange={() => onToggleFeed(feed.id)}
-                className="size-4 accent-primary"
-              />
               <span className="text-sm text-foreground">{feed.name}</span>
-            </label>
+              <Switch
+                checked={isFeedEnabled(feed.id)}
+                onCheckedChange={() => onToggleFeed(feed.id)}
+                aria-label={feed.name}
+              />
+            </div>
           ))}
         </div>
       )}

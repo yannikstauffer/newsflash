@@ -4,12 +4,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mockDisabledFeeds = new Set<string>()
 const mockToggleFeed = vi.fn()
 const mockSetAllForSource = vi.fn()
+const mockEnableAll = vi.fn()
+const mockDisableAll = vi.fn()
 
 vi.mock("../hooks/use-feed-preferences", () => ({
   useFeedPreferences: () => ({
     isFeedEnabled: (id: string) => !mockDisabledFeeds.has(id),
     toggleFeed: mockToggleFeed,
     setAllForSource: mockSetAllForSource,
+    enableAll: mockEnableAll,
+    disableAll: mockDisableAll,
   }),
 }))
 
@@ -90,6 +94,8 @@ describe("FeedConfigPage", () => {
     mockToggleFeed.mockClear()
     mockToggleFilter.mockClear()
     mockSetAllForSource.mockClear()
+    mockEnableAll.mockClear()
+    mockDisableAll.mockClear()
     mockSetTheme.mockClear()
     mockThemeState.theme = "system"
   })
@@ -200,7 +206,7 @@ describe("FeedConfigPage", () => {
   })
 
   describe("filter section", () => {
-    it("shows filter checkboxes for connectors with filters", () => {
+    it("shows filter switches for connectors with filters", () => {
       render(<FeedConfigPage />)
 
       expect(screen.getByText("Produkttest")).toBeInTheDocument()
@@ -215,52 +221,87 @@ describe("FeedConfigPage", () => {
       expect(filterLabels).toHaveLength(1)
     })
 
-    it("reflects enabled state of filter checkboxes", () => {
+    it("reflects enabled state of filter switches", () => {
       render(<FeedConfigPage />)
 
-      const produkttestLabel = screen.getByText("Produkttest")
-      const checkbox = produkttestLabel.closest("label")?.querySelector("input[type='checkbox']") as HTMLInputElement
-      expect(checkbox.checked).toBe(true)
+      const produkttestSwitch = screen.getByRole("switch", { name: "Produkttest" })
+      expect(produkttestSwitch).toHaveAttribute("aria-checked", "true")
     })
 
-    it("reflects disabled state of filter checkboxes", () => {
+    it("reflects disabled state of filter switches", () => {
       mockDisabledFilters.add("digitec-produkttest")
       render(<FeedConfigPage />)
 
-      const produkttestLabel = screen.getByText("Produkttest")
-      const checkbox = produkttestLabel.closest("label")?.querySelector("input[type='checkbox']") as HTMLInputElement
-      expect(checkbox.checked).toBe(false)
+      const produkttestSwitch = screen.getByRole("switch", { name: "Produkttest" })
+      expect(produkttestSwitch).toHaveAttribute("aria-checked", "false")
     })
 
-    it("calls toggleFilter when filter checkbox is clicked", () => {
+    it("calls toggleFilter when filter switch is clicked", () => {
       render(<FeedConfigPage />)
 
-      const produkttestLabel = screen.getByText("Produkttest")
-      const checkbox = produkttestLabel.closest("label")?.querySelector("input[type='checkbox']") as HTMLInputElement
-      fireEvent.click(checkbox)
+      const produkttestSwitch = screen.getByRole("switch", { name: "Produkttest" })
+      fireEvent.click(produkttestSwitch)
 
       expect(mockToggleFilter).toHaveBeenCalledWith("digitec-produkttest", true)
     })
   })
 
   describe("connector-level toggle with groups", () => {
-    it("renders connector-level checkbox for grouped connector", () => {
+    it("renders connector-level switch for grouped connector", () => {
       render(<FeedConfigPage />)
 
-      expect(screen.getByText("SRF")).toBeInTheDocument()
+      expect(screen.getByRole("switch", { name: "SRF" })).toBeInTheDocument()
     })
 
-    it("toggles all feeds across all groups when connector checkbox is clicked", () => {
+    it("toggles all feeds across all groups when connector switch is clicked", () => {
       render(<FeedConfigPage />)
 
-      const srfLabel = screen.getByText("SRF")
-      const srfCheckbox = srfLabel.closest("label")?.querySelector("input[type='checkbox']") as HTMLInputElement
-      fireEvent.click(srfCheckbox)
+      const srfSwitch = screen.getByRole("switch", { name: "SRF" })
+      fireEvent.click(srfSwitch)
 
       expect(mockSetAllForSource).toHaveBeenCalledWith(
         ["srf-latest", "srf-switzerland", "srf-sport", "srf-football"],
         false,
       )
+    })
+  })
+
+  describe("section descriptions", () => {
+    it("renders section description texts", () => {
+      render(<FeedConfigPage />)
+
+      expect(screen.getByText("Choose the language for the interface and news feeds.")).toBeInTheDocument()
+      expect(screen.getByText("Select a theme for the app.")).toBeInTheDocument()
+      expect(screen.getByText("Enable or disable news sources to customize your feed.")).toBeInTheDocument()
+    })
+  })
+
+  describe("bulk toggle buttons", () => {
+    it("renders Enable All and Disable All buttons", () => {
+      render(<FeedConfigPage />)
+
+      expect(screen.getByRole("button", { name: "Enable All" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Disable All" })).toBeInTheDocument()
+    })
+
+    it("calls enableAll when Enable All is clicked", () => {
+      render(<FeedConfigPage />)
+
+      fireEvent.click(screen.getByRole("button", { name: "Enable All" }))
+
+      expect(mockEnableAll).toHaveBeenCalledWith([
+        "srf-latest", "srf-switzerland", "srf-sport", "srf-football", "digitec",
+      ])
+    })
+
+    it("calls disableAll when Disable All is clicked", () => {
+      render(<FeedConfigPage />)
+
+      fireEvent.click(screen.getByRole("button", { name: "Disable All" }))
+
+      expect(mockDisableAll).toHaveBeenCalledWith([
+        "srf-latest", "srf-switzerland", "srf-sport", "srf-football", "digitec",
+      ])
     })
   })
 })
