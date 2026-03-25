@@ -27,13 +27,15 @@ export function clearFeedCache(): void {
 }
 
 function deduplicateArticles(articles: NormalizedArticle[]): NormalizedArticle[] {
-  const seen = new Set<string>()
+  const seenKeys = new Set<string>()
+  const seenLinks = new Set<string>()
   return articles.filter((article) => {
     const key = `${article.title}|${article.publishedAt.getTime()}`
-    if (seen.has(key)) {
+    if (seenKeys.has(key) || seenLinks.has(article.link)) {
       return false
     }
-    seen.add(key)
+    seenKeys.add(key)
+    seenLinks.add(article.link)
     return true
   })
 }
@@ -67,10 +69,10 @@ async function fetchAllFeeds(
 
   const results = await Promise.all(feedPromises)
   const allArticles = results.flat()
-  const deduplicated = deduplicateArticles(allArticles)
-  const sorted = sortChronologically(deduplicated)
+  const sorted = sortChronologically(allArticles)
+  const deduplicated = deduplicateArticles(sorted)
 
-  return { articles: sorted, errors: fetchErrors }
+  return { articles: deduplicated, errors: fetchErrors }
 }
 
 export function useFeedData(
