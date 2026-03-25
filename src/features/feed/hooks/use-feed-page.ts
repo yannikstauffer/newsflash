@@ -17,7 +17,9 @@ import {
   useArticleKeyboardShortcuts,
   useArticleState,
 } from "@/features/article-actions"
+import { connectors } from "@/features/connectors/registry"
 import { useFeedPreferences } from "@/features/feed-config/hooks/use-feed-preferences"
+import { useFilterPreferences } from "@/features/feed-config/hooks/use-filter-preferences"
 
 interface FilterBarProps {
   readonly showHidden: boolean
@@ -59,6 +61,7 @@ interface UseFeedPageResult {
 export function useFeedPage(): UseFeedPageResult {
   const { t } = useTranslation()
   const { isFeedEnabled } = useFeedPreferences()
+  const { isFilterEnabled } = useFilterPreferences()
   const { articles, loading, errors, lastRefreshedAt } = useFeedData(isFeedEnabled)
   const {
     hiddenIds,
@@ -90,13 +93,15 @@ export function useFeedPage(): UseFeedPageResult {
       showHidden,
       hiddenIds,
       searchQuery,
+      connectors,
+      isFilterEnabled,
     })
     if (allArticles) {
       return filtered
     }
     return filterByDay(filtered, selectedDate)
   }, [
-    articles, isFeedEnabled, showHidden,
+    articles, isFeedEnabled, isFilterEnabled, showHidden,
     hiddenIds, searchQuery, allArticles, selectedDate,
   ])
 
@@ -236,7 +241,7 @@ export function useFeedPage(): UseFeedPageResult {
         onHide: () => {
           const cardHandle = cardReferencesMap.current.get(article.id)
           if (cardHandle) {
-            cardHandle.triggerRemoval()
+            cardHandle.triggerRemoval("right")
           } else {
             hideArticle(article.id)
           }
@@ -245,7 +250,7 @@ export function useFeedPage(): UseFeedPageResult {
           if (isInReadList(article.id)) return
           const cardHandle = cardReferencesMap.current.get(article.id)
           if (cardHandle) {
-            cardHandle.triggerRemoval()
+            cardHandle.triggerRemoval("left")
           } else {
             addToReadList(article)
             hideArticle(article.id)

@@ -1,6 +1,6 @@
-import { parseRss } from "./base-parser"
+import { parseRss } from "../base-parser"
 
-import type { Connector, NormalizedArticle } from "./types"
+import type { Connector, NormalizedArticle } from "../types"
 
 export const srfConnector: Connector = {
   id: "srf",

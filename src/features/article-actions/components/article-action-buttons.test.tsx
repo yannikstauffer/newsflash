@@ -49,12 +49,16 @@ describe("ArticleActionButtons", () => {
     render(<ArticleActionButtons {...defaultProps} onHide={onHide} />)
 
     const hideButton = screen.getByLabelText("Hide article")
+    const stopPropagation = vi.fn()
+    const preventDefault = vi.fn()
     const event = new MouseEvent("click", { bubbles: true, cancelable: true })
-    Object.defineProperty(event, "stopPropagation", { value: vi.fn() })
-    Object.defineProperty(event, "preventDefault", { value: vi.fn() })
+    Object.defineProperty(event, "stopPropagation", { value: stopPropagation })
+    Object.defineProperty(event, "preventDefault", { value: preventDefault })
     fireEvent(hideButton, event)
 
     expect(onHide).toHaveBeenCalledOnce()
+    expect(stopPropagation).toHaveBeenCalledOnce()
+    expect(preventDefault).toHaveBeenCalledOnce()
   })
 
   it("calls onSave and stops event propagation when save button is clicked", () => {
@@ -62,12 +66,16 @@ describe("ArticleActionButtons", () => {
     render(<ArticleActionButtons {...defaultProps} onSave={onSave} />)
 
     const saveButton = screen.getByLabelText("Save to read list")
+    const stopPropagation = vi.fn()
+    const preventDefault = vi.fn()
     const event = new MouseEvent("click", { bubbles: true, cancelable: true })
-    Object.defineProperty(event, "stopPropagation", { value: vi.fn() })
-    Object.defineProperty(event, "preventDefault", { value: vi.fn() })
+    Object.defineProperty(event, "stopPropagation", { value: stopPropagation })
+    Object.defineProperty(event, "preventDefault", { value: preventDefault })
     fireEvent(saveButton, event)
 
     expect(onSave).toHaveBeenCalledOnce()
+    expect(stopPropagation).toHaveBeenCalledOnce()
+    expect(preventDefault).toHaveBeenCalledOnce()
   })
 
   it("applies fill-current class to bookmark icon when saved", () => {

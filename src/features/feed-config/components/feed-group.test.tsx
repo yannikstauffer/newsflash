@@ -101,14 +101,14 @@ describe("FeedGroup", () => {
     })
   })
 
-  describe("group checkbox toggle", () => {
+  describe("group switch toggle", () => {
     it("calls onToggleGroup with all feed IDs when clicked", () => {
       const onToggleGroup = vi.fn()
 
       renderFeedGroup({ onToggleGroup, enabledIds: new Set(["srf-sport"]) })
 
-      const checkbox = screen.getByRole("checkbox", { name: /toggle all sport/i })
-      fireEvent.click(checkbox)
+      const groupSwitch = screen.getByRole("switch", { name: /toggle all sport/i })
+      fireEvent.click(groupSwitch)
 
       expect(onToggleGroup).toHaveBeenCalledWith(
         ["srf-sport", "srf-football", "srf-tennis"],
@@ -121,36 +121,13 @@ describe("FeedGroup", () => {
 
       renderFeedGroup({ onToggleGroup })
 
-      const checkbox = screen.getByRole("checkbox", { name: /toggle all sport/i })
-      fireEvent.click(checkbox)
+      const groupSwitch = screen.getByRole("switch", { name: /toggle all sport/i })
+      fireEvent.click(groupSwitch)
 
       expect(onToggleGroup).toHaveBeenCalledWith(
         ["srf-sport", "srf-football", "srf-tennis"],
         false,
       )
-    })
-  })
-
-  describe("indeterminate state", () => {
-    it("sets indeterminate when some feeds are enabled", () => {
-      renderFeedGroup({ enabledIds: new Set(["srf-sport"]) })
-
-      const checkbox = screen.getByRole("checkbox", { name: /toggle all sport/i }) as HTMLInputElement
-      expect(checkbox.indeterminate).toBe(true)
-    })
-
-    it("is not indeterminate when all feeds are enabled", () => {
-      renderFeedGroup()
-
-      const checkbox = screen.getByRole("checkbox", { name: /toggle all sport/i }) as HTMLInputElement
-      expect(checkbox.indeterminate).toBe(false)
-    })
-
-    it("is not indeterminate when no feeds are enabled", () => {
-      renderFeedGroup({ enabledIds: new Set() })
-
-      const checkbox = screen.getByRole("checkbox", { name: /toggle all sport/i }) as HTMLInputElement
-      expect(checkbox.indeterminate).toBe(false)
     })
   })
 
@@ -168,14 +145,13 @@ describe("FeedGroup", () => {
   })
 
   describe("individual feed toggle", () => {
-    it("calls onToggleFeed when individual feed checkbox is clicked", () => {
+    it("calls onToggleFeed when individual feed switch is clicked", () => {
       const onToggleFeed = vi.fn()
 
       renderFeedGroup({ isExpanded: true, onToggleFeed })
 
-      const checkboxes = screen.getAllByRole("checkbox")
-      // First checkbox is the group checkbox, rest are individual feeds
-      fireEvent.click(checkboxes[1])
+      const sportSwitch = screen.getByRole("switch", { name: "Sport" })
+      fireEvent.click(sportSwitch)
 
       expect(onToggleFeed).toHaveBeenCalledWith("srf-sport")
     })

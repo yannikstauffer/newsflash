@@ -13,6 +13,7 @@
     "searchPlaceholder": "Search articles...",
     "searchLabel": "Search articles",
     "clearSearch": "Clear search",
+    "closeSearch": "Close search",
     "openSearch": "Open search",
     "refreshed": "Refreshed {{time}}",
     "loading": "Loading feeds...",
@@ -37,7 +38,13 @@
     "language": "Language",
     "languagePreference": "Language preference",
     "appearance": "Appearance",
-    "sources": "Sources"
+    "sources": "Sources",
+    "filters": "Filters",
+    "languageDescription": "Choose the language for the interface and news feeds.",
+    "appearanceDescription": "Select a theme for the app.",
+    "sourcesDescription": "Enable or disable news sources to customize your feed.",
+    "enableAll": "Enable All",
+    "disableAll": "Disable All"
   },
   "readList": {
     "empty": "No saved articles yet. Swipe left or click the bookmark icon to save articles.",
@@ -55,7 +62,8 @@
     "removeFromReadList": "Remove from read list"
   },
   "feedConfig": {
-    "enabledCount": "{{enabled}}/{{total}} on"
+    "enabledCount": "{{enabled}}/{{total}} on",
+    "toggleAllFeeds": "Toggle all {{groupName}} feeds"
   },
   "error": {
     "heading": "Something went wrong",

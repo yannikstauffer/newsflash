@@ -3,10 +3,13 @@ import { useTranslation } from "react-i18next"
 
 import { FeedGroup } from "./feed-group"
 import { useFeedPreferences } from "../hooks/use-feed-preferences"
+import { useFilterPreferences } from "../hooks/use-filter-preferences"
 
 import type { FeedConfig } from "@/features/connectors/types"
 import type { ThemePreference } from "@/hooks/use-theme-preference"
 
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { useArticleState } from "@/features/article-actions/hooks/use-article-state"
 import { connectors } from "@/features/connectors/registry"
 import { useThemePreference } from "@/hooks/use-theme-preference"
@@ -51,12 +54,19 @@ export default function FeedConfigPage() {
     isFeedEnabled,
     toggleFeed,
     setAllForSource,
+    enableAll,
+    disableAll,
   } = useFeedPreferences()
+  const { isFilterEnabled, toggleFilter } = useFilterPreferences()
   const { removeHiddenBySource, removeReadListBySource } = useArticleState()
   const { theme, setTheme } = useThemePreference()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
   const currentLocale = i18n.language.startsWith("de") ? "de" : "en"
+
+  const allFeedIds = connectors.flatMap((connector) =>
+    connector.feeds.map((feed) => feed.id),
+  )
 
   function handleLocaleChange(locale: string) {
     i18n.changeLanguage(locale)
@@ -100,70 +110,100 @@ export default function FeedConfigPage() {
     }
   }
 
+  function handleEnableAll() {
+    enableAll(allFeedIds)
+  }
+
+  function handleDisableAll() {
+    disableAll(allFeedIds)
+    for (const connector of connectors) {
+      removeHiddenBySource(connector.id)
+      removeReadListBySource(connector.id)
+    }
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <h2 className="text-xl font-bold text-foreground">{t("settings.heading")}</h2>
 
-      <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">{t("settings.language")}</h3>
-        <div
-          className="inline-flex rounded-lg border border-border"
-          role="radiogroup"
-          aria-label={t("settings.languagePreference")}
-        >
-          {LOCALE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={currentLocale === option.value}
-              onClick={() => handleLocaleChange(option.value)}
-              className={`min-h-[44px] px-4 text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg md:min-h-0 md:py-2 ${
-                currentLocale === option.value
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </section>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="space-y-3 rounded-lg border border-border p-6">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">{t("settings.language")}</h3>
+            <p className="text-sm text-muted-foreground">{t("settings.languageDescription")}</p>
+          </div>
+          <div
+            className="inline-flex rounded-lg border border-border"
+            role="radiogroup"
+            aria-label={t("settings.languagePreference")}
+          >
+            {LOCALE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={currentLocale === option.value}
+                onClick={() => handleLocaleChange(option.value)}
+                className={`min-h-[44px] px-4 text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg md:min-h-0 md:py-2 ${
+                  currentLocale === option.value
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </section>
 
-      <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">{t("settings.appearance")}</h3>
-        <div
-          className="inline-flex rounded-lg border border-border"
-          role="radiogroup"
-          aria-label={t("settings.appearance")}
-        >
-          {THEME_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={theme === option.value}
-              onClick={() => setTheme(option.value)}
-              className={`min-h-[44px] px-4 text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg md:min-h-0 md:py-2 ${
-                theme === option.value
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </section>
+        <section className="space-y-3 rounded-lg border border-border p-6">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">{t("settings.appearance")}</h3>
+            <p className="text-sm text-muted-foreground">{t("settings.appearanceDescription")}</p>
+          </div>
+          <div
+            className="inline-flex rounded-lg border border-border"
+            role="radiogroup"
+            aria-label={t("settings.appearance")}
+          >
+            {THEME_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={theme === option.value}
+                onClick={() => setTheme(option.value)}
+                className={`min-h-[44px] px-4 text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg md:min-h-0 md:py-2 ${
+                  theme === option.value
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
 
-      <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">{t("settings.sources")}</h3>
+      <section className="space-y-3 rounded-lg border border-border p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">{t("settings.sources")}</h3>
+            <p className="text-sm text-muted-foreground">{t("settings.sourcesDescription")}</p>
+          </div>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="sm" onClick={handleEnableAll}>
+              {t("settings.enableAll")}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleDisableAll}>
+              {t("settings.disableAll")}
+            </Button>
+          </div>
+        </div>
         <div className="divide-y divide-border rounded-lg border border-border">
           {connectors.map((connector) => {
             const allEnabled = connector.feeds.every((feed) =>
-              isFeedEnabled(feed.id),
-            )
-            const someEnabled = connector.feeds.some((feed) =>
               isFeedEnabled(feed.id),
             )
 
@@ -172,32 +212,26 @@ export default function FeedConfigPage() {
 
             return (
               <div key={connector.id} className="p-4">
-                <div className="flex items-center gap-3">
-                  <label className="flex min-h-[44px] cursor-pointer items-center gap-2 md:min-h-0">
-                    <input
-                      type="checkbox"
-                      checked={allEnabled}
-                      ref={(element) => {
-                        if (element) {
-                          element.indeterminate = someEnabled && !allEnabled
-                        }
-                      }}
-                      onChange={() =>
-                        handleToggleAllForSource(
-                          connector.id,
-                          connector.feeds.map((f) => f.id),
-                          !allEnabled,
-                        )
-                      }
-                      className="size-4 accent-primary"
-                    />
+                <div className="flex min-h-[44px] items-center justify-between md:min-h-0">
+                  <div className="flex items-center gap-3">
                     <span className="text-base font-semibold text-foreground">
                       {connector.name}
                     </span>
-                  </label>
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                    {connector.language.toUpperCase()}
-                  </span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                      {connector.language.toUpperCase()}
+                    </span>
+                  </div>
+                  <Switch
+                    checked={allEnabled}
+                    onCheckedChange={(checked) =>
+                      handleToggleAllForSource(
+                        connector.id,
+                        connector.feeds.map((f) => f.id),
+                        checked,
+                      )
+                    }
+                    aria-label={connector.name}
+                  />
                 </div>
 
                 {hasGroups && (
@@ -228,20 +262,42 @@ export default function FeedConfigPage() {
                 {ungrouped.length > 0 && connector.feeds.length > 1 && (
                   <div className="ml-6 mt-2 space-y-1">
                     {ungrouped.map((feed) => (
-                      <label
+                      <div
                         key={feed.id}
-                        className="flex min-h-[44px] cursor-pointer items-center gap-2 md:min-h-0"
+                        className="flex min-h-[44px] items-center justify-between md:min-h-0"
                       >
-                        <input
-                          type="checkbox"
-                          checked={isFeedEnabled(feed.id)}
-                          onChange={() => toggleFeed(feed.id)}
-                          className="size-4 accent-primary"
-                        />
                         <span className="text-sm text-foreground">
                           {feed.name}
                         </span>
-                      </label>
+                        <Switch
+                          checked={isFeedEnabled(feed.id)}
+                          onCheckedChange={() => toggleFeed(feed.id)}
+                          aria-label={feed.name}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {connector.filters && connector.filters.length > 0 && (
+                  <div className="ml-6 mt-3 space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t("settings.filters")}
+                    </span>
+                    {connector.filters.map((filter) => (
+                      <div
+                        key={filter.id}
+                        className="flex min-h-[44px] items-center justify-between md:min-h-0"
+                      >
+                        <span className="text-sm text-foreground">
+                          {filter.label}
+                        </span>
+                        <Switch
+                          checked={isFilterEnabled(filter.id, filter.enabledByDefault)}
+                          onCheckedChange={() => toggleFilter(filter.id, filter.enabledByDefault)}
+                          aria-label={filter.label}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}

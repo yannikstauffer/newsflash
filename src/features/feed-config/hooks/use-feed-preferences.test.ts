@@ -72,5 +72,34 @@ describe("useFeedPreferences", () => {
       expect(result.current.isFeedEnabled("srf-news")).toBe(false)
       expect(result.current.isFeedEnabled("srf-sport")).toBe(false)
     })
+
+    it("enableAll enables all provided feed IDs", () => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ "srf-news": false, "heise-news": false, "digitec-news": false }),
+      )
+
+      const { result } = renderHook(() => useFeedPreferences())
+
+      act(() => {
+        result.current.enableAll(["srf-news", "heise-news", "digitec-news"])
+      })
+
+      expect(result.current.isFeedEnabled("srf-news")).toBe(true)
+      expect(result.current.isFeedEnabled("heise-news")).toBe(true)
+      expect(result.current.isFeedEnabled("digitec-news")).toBe(true)
+    })
+
+    it("disableAll disables all provided feed IDs", () => {
+      const { result } = renderHook(() => useFeedPreferences())
+
+      act(() => {
+        result.current.disableAll(["srf-news", "heise-news", "digitec-news"])
+      })
+
+      expect(result.current.isFeedEnabled("srf-news")).toBe(false)
+      expect(result.current.isFeedEnabled("heise-news")).toBe(false)
+      expect(result.current.isFeedEnabled("digitec-news")).toBe(false)
+    })
   })
 })

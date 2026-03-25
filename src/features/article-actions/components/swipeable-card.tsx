@@ -1,7 +1,7 @@
 import { useDrag } from "@use-gesture/react"
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react"
 
-import type { ReactNode } from "react"
+import type { CSSProperties, ReactNode } from "react"
 
 interface SwipeConfig {
   readonly bgClassName: string
@@ -141,7 +141,7 @@ export const SwipeableCard = forwardRef<SwipeableCardHandle, SwipeableCardProps>
         ? "none"
         : `transform ${ANIMATION_DURATION}ms ease-out`
 
-    const outerStyle: React.CSSProperties = isRemoving
+    const outerStyle: CSSProperties = isRemoving
       ? {
         maxHeight: "0px",
         opacity: 0,

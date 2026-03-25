@@ -137,7 +137,7 @@ export function FilterBar({
               type="button"
               onClick={handleClearOrCollapse}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label={t("feed.clearSearch")}
+              aria-label={searchQuery ? t("feed.clearSearch") : t("feed.closeSearch")}
             >
               <X className="size-4" />
             </button>

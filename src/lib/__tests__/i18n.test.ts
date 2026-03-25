@@ -29,12 +29,10 @@ describe("i18n initialization", () => {
 
   it("reads locale from localStorage when available", async () => {
     localStorage.setItem("newsflash:locale", "de")
-    // Re-import to pick up localStorage
+    // Re-import so the language detector picks up localStorage during init
     vi.resetModules()
     const i18nModule = await import("../i18n")
     const freshI18n = i18nModule.default
-    // changeLanguage triggers detection
-    await freshI18n.changeLanguage("de")
     expect(freshI18n.language).toBe("de")
   })
 

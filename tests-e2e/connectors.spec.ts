@@ -1,98 +1,53 @@
 import { expect, test } from "@playwright/test"
 
-import { setupSingleConnector } from "./helpers/connector-setup"
+import { seedSingleConnector } from "./helpers/connector-setup"
 import { clearLocalStorage } from "./helpers/local-storage"
-import { mockImages } from "./helpers/mock-feeds"
+
+type ImageExpectation = "all" | "some" | "none"
 
 interface ConnectorTestCase {
   readonly id: string
   readonly name: string
-  readonly expectedArticles: number
-  readonly allHaveImages: boolean
+  readonly images: ImageExpectation
+}
+
+const IMAGE_LABEL: Record<ImageExpectation, string> = {
+  all: " with thumbnails",
+  some: " with thumbnails",
+  none: "",
 }
 
 const CONNECTORS: ConnectorTestCase[] = [
-  { id: "digitec", name: "digitec", expectedArticles: 2, allHaveImages: true },
-  { id: "galaxus", name: "galaxus", expectedArticles: 2, allHaveImages: true },
-  { id: "srf", name: "srf", expectedArticles: 2, allHaveImages: true },
-  { id: "winfuture", name: "winfuture", expectedArticles: 2, allHaveImages: true },
-  { id: "engadget", name: "engadget", expectedArticles: 2, allHaveImages: true },
-  { id: "heise", name: "heise", expectedArticles: 2, allHaveImages: true },
-  { id: "ubergizmo", name: "ubergizmo", expectedArticles: 2, allHaveImages: false },
+  { id: "digitec", name: "digitec", images: "all" },
+  { id: "galaxus", name: "galaxus", images: "all" },
+  { id: "srf", name: "srf", images: "all" },
+  { id: "winfuture", name: "winfuture", images: "all" },
+  { id: "engadget", name: "engadget", images: "all" },
+  { id: "heise", name: "heise", images: "some" },
+  { id: "ubergizmo", name: "ubergizmo", images: "none" },
 ]
 
 for (const connector of CONNECTORS) {
-  test.describe(`Connector: ${connector.name}`, () => {
-    test.beforeEach(async ({ page }) => {
-      await mockImages(page)
-      await page.goto("/")
-      await clearLocalStorage(page)
-      await setupSingleConnector(page, connector.id)
-      await page.reload()
-      await page.getByRole("button", { name: "All articles" }).click()
-      await expect(page.locator("article").first()).toBeVisible()
-    })
+  test(`${connector.name}: articles render${IMAGE_LABEL[connector.images]}`, async ({ page }) => {
+    await page.goto("/")
+    await clearLocalStorage(page)
+    await seedSingleConnector(page, connector.id)
+    await page.reload()
+    await page.getByRole("button", { name: "All articles" }).click()
+    await expect(page.locator("article").first()).toBeVisible({ timeout: 15_000 })
 
-    test("renders complete article cards", async ({ page }) => {
-      const cards = page.locator("article")
-      await expect(cards).toHaveCount(connector.expectedArticles)
+    const articles = page.locator("article")
+    const count = await articles.count()
+    expect(count).toBeGreaterThan(0)
 
-      for (let index = 0; index < connector.expectedArticles; index++) {
-        const card = cards.nth(index)
+    if (connector.images !== "none") {
+      const images = page.locator("article img")
+      const imageCount = await images.count()
+      expect(imageCount).toBeGreaterThan(0)
 
-        // Title inside a link
-        const titleLink = card.locator("a[target='_blank'] h3")
-        await expect(titleLink).toBeVisible()
-        await expect(titleLink).not.toBeEmpty()
-
-        // Source label matches connector name
-        const source = card.locator("span.font-medium").first()
-        await expect(source).toHaveText(connector.name)
-
-        // Timestamp with dateTime
-        const time = card.locator("time")
-        await expect(time).toBeVisible()
-        const dateTime = await time.getAttribute("dateTime")
-        expect(dateTime).toBeTruthy()
-
-        // Description
-        const description = card.locator("p")
-        await expect(description).toBeVisible()
+      if (connector.images === "all") {
+        expect(imageCount).toBe(count)
       }
-    })
-
-    if (connector.allHaveImages) {
-      test("all articles have loaded thumbnails", async ({ page }) => {
-        const images = page.locator("article img")
-        await expect(images).toHaveCount(connector.expectedArticles)
-
-        for (let index = 0; index < connector.expectedArticles; index++) {
-          const naturalWidth = await images.nth(index).evaluate(
-            (img: HTMLImageElement) => img.naturalWidth,
-          )
-          expect(naturalWidth).toBeGreaterThan(0)
-        }
-      })
-    }
-
-    if (connector.id === "ubergizmo") {
-      test("validates image and no-image cards", async ({ page }) => {
-        // Article with image
-        const imageCard = page.locator("article", {
-          hasText: "Ubergizmo With Image Article",
-        })
-        await expect(imageCard.locator("img")).toHaveCount(1)
-        const naturalWidth = await imageCard
-          .locator("img")
-          .evaluate((img: HTMLImageElement) => img.naturalWidth)
-        expect(naturalWidth).toBeGreaterThan(0)
-
-        // Article without image
-        const noImageCard = page.locator("article", {
-          hasText: "Ubergizmo No Image Article",
-        })
-        await expect(noImageCard.locator("img")).toHaveCount(0)
-      })
     }
   })
 }

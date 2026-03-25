@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { filterArticles } from "./filter-articles"
 
 import type { FilterOptions } from "./filter-articles"
-import type { NormalizedArticle } from "@/features/connectors/types"
+import type { Connector, NormalizedArticle } from "@/features/connectors/types"
 
 function makeArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedArticle {
   return {
@@ -148,5 +148,113 @@ describe("filterArticles", () => {
 
     expect(result).toHaveLength(2)
     expect(result.map((a) => a.id)).toEqual(["1", "2"])
+  })
+
+  describe("connector filters", () => {
+    const testConnector: Connector = {
+      id: "test-source",
+      name: "Test",
+      language: "de",
+      feeds: [{ id: "test-source", name: "Test" }],
+      filters: [
+        {
+          id: "test-paid",
+          label: "Paid",
+          enabledByDefault: false,
+          match: (article) => article.title.startsWith("PAID:"),
+        },
+        {
+          id: "test-promo",
+          label: "Promo",
+          enabledByDefault: true,
+          match: (article) => article.title.startsWith("PROMO:"),
+        },
+      ],
+      parse() {
+        return []
+      },
+    }
+
+    const noFilterConnector: Connector = {
+      id: "plain",
+      name: "Plain",
+      language: "en",
+      feeds: [{ id: "plain", name: "Plain" }],
+      parse() {
+        return []
+      },
+    }
+
+    it("excludes articles when their filter is disabled", () => {
+      const articles = [
+        makeArticle({ id: "1", source: "test-source", title: "PAID: Premium content" }),
+        makeArticle({ id: "2", source: "test-source", title: "Regular article" }),
+      ]
+
+      const result = filterArticles(articles, {
+        ...defaultOptions,
+        connectors: [testConnector],
+        isFilterEnabled: (filterId) => filterId !== "test-paid",
+      })
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("2")
+    })
+
+    it("includes articles when their filter is enabled", () => {
+      const articles = [
+        makeArticle({ id: "1", source: "test-source", title: "PAID: Premium content" }),
+        makeArticle({ id: "2", source: "test-source", title: "Regular article" }),
+      ]
+
+      const result = filterArticles(articles, {
+        ...defaultOptions,
+        connectors: [testConnector],
+        isFilterEnabled: () => true,
+      })
+
+      expect(result).toHaveLength(2)
+    })
+
+    it("passes through articles from connectors without filters", () => {
+      const articles = [
+        makeArticle({ id: "1", source: "plain", title: "Any article" }),
+      ]
+
+      const result = filterArticles(articles, {
+        ...defaultOptions,
+        connectors: [noFilterConnector],
+        isFilterEnabled: () => false,
+      })
+
+      expect(result).toHaveLength(1)
+    })
+
+    it("works without connector filter options (backward compatible)", () => {
+      const articles = [
+        makeArticle({ id: "1", title: "PAID: something" }),
+      ]
+
+      const result = filterArticles(articles, defaultOptions)
+
+      expect(result).toHaveLength(1)
+    })
+
+    it("combines connector filter with search", () => {
+      const articles = [
+        makeArticle({ id: "1", source: "test-source", title: "PAID: Apple product" }),
+        makeArticle({ id: "2", source: "test-source", title: "Apple news" }),
+      ]
+
+      const result = filterArticles(articles, {
+        ...defaultOptions,
+        searchQuery: "apple",
+        connectors: [testConnector],
+        isFilterEnabled: (filterId) => filterId !== "test-paid",
+      })
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("2")
+    })
   })
 })

@@ -13,9 +13,12 @@
           var dark =
             pref === "dark" ||
             (pref !== "light" &&
-              window.matchMedia("(prefers-color-scheme: dark)").matches)
+              typeof globalThis.matchMedia === "function" &&
+              globalThis.matchMedia("(prefers-color-scheme: dark)").matches)
           if (dark) document.documentElement.classList.add("dark")
-        } catch (e) {}
+        } catch (e) {
+          console.warn("Setting theme errored:", e)
+        }
       })()
     </script>
   </head>

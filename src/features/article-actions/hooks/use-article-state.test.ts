@@ -313,6 +313,120 @@ describe("useArticleState", () => {
     })
   })
 
+  describe("unhideArticles", () => {
+    it("removes multiple IDs from hiddenIds", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["heise:abc", "srf:def", "engadget:ghi"]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.unhideArticles(["heise:abc", "engadget:ghi"])
+      })
+
+      expect(result.current.hiddenIds).toEqual(["srf:def"])
+    })
+
+    it("is a no-op for IDs not in the hidden list", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["heise:abc", "srf:def"]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.unhideArticles(["unknown:xyz", "missing:123"])
+      })
+
+      expect(result.current.hiddenIds).toEqual(["heise:abc", "srf:def"])
+    })
+  })
+
+  describe("clearReadList", () => {
+    it("empties the read list completely", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.addToReadList(makeArticle({ id: "heise:a1" }))
+        result.current.addToReadList(makeArticle({ id: "heise:a2" }))
+      })
+
+      expect(result.current.readListArticles).toHaveLength(2)
+
+      act(() => {
+        result.current.clearReadList()
+      })
+
+      expect(result.current.readListArticles).toEqual([])
+      expect(result.current.readListIds).toEqual([])
+    })
+  })
+
+  describe("restoreReadList", () => {
+    it("adds articles without duplicates", () => {
+      const existing = makeArticle({ id: "heise:existing" })
+      const newArticle = makeArticle({ id: "heise:new" })
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.addToReadList(existing)
+      })
+
+      act(() => {
+        result.current.restoreReadList([existing, newArticle])
+      })
+
+      expect(result.current.readListIds).toEqual(["heise:new", "heise:existing"])
+    })
+
+    it("caps at MAX_READLIST_ITEMS", () => {
+      const articles = Array.from({ length: MAX_READLIST_ITEMS + 50 }, (_, index) =>
+        makeArticle({ id: `heise:art-${index}` }),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.restoreReadList(articles)
+      })
+
+      expect(result.current.readListArticles).toHaveLength(MAX_READLIST_ITEMS)
+    })
+  })
+
+  describe("readListIds and readListArticles derived memos", () => {
+    it("readListIds reflects stored article IDs in order", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.addToReadList(makeArticle({ id: "heise:a1" }))
+        result.current.addToReadList(makeArticle({ id: "heise:a2" }))
+      })
+
+      expect(result.current.readListIds).toEqual(["heise:a2", "heise:a1"])
+    })
+
+    it("readListArticles deserializes with publishedAt as Date", () => {
+      const article = makeArticle({
+        id: "heise:a1",
+        publishedAt: new Date("2026-03-20T10:00:00Z"),
+      })
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.addToReadList(article)
+      })
+
+      expect(result.current.readListArticles[0].publishedAt).toBeInstanceOf(Date)
+      expect(result.current.readListArticles[0].id).toBe("heise:a1")
+    })
+  })
+
   describe("legacy data migration", () => {
     it("clears legacy hidden IDs without colon separator", () => {
       localStorage.setItem(

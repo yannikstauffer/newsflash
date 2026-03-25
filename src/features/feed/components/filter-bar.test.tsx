@@ -249,8 +249,8 @@ describe("FilterBar", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Open search" }))
 
-      // After expanding, the clear button should be visible
-      expect(screen.getByRole("button", { name: "Clear search" })).toBeDefined()
+      // After expanding with no query, the close button should be visible
+      expect(screen.getByRole("button", { name: "Close search" })).toBeDefined()
     })
 
     it("hides status and toggles when mobile search is open", () => {

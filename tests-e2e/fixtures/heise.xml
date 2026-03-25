@@ -18,4 +18,16 @@
     <published>2026-03-20T09:00:00Z</published>
     <category term="Security" />
   </entry>
+  <entry>
+    <title>heise+ | Premium Paid Article</title>
+    <link href="https://www.heise.de/article/heise-plus-test" rel="alternate" />
+    <summary>This is a paid heise+ article for filter testing.</summary>
+    <published>2026-03-20T08:00:00Z</published>
+  </entry>
+  <entry>
+    <title>heise-Angebot: Special Workshop Deal</title>
+    <link href="https://www.heise.de/article/heise-angebot-test" rel="alternate" />
+    <summary>This is a promotional heise-Angebot article for filter testing.</summary>
+    <published>2026-03-20T07:00:00Z</published>
+  </entry>
 </feed>

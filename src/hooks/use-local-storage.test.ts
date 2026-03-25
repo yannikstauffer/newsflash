@@ -76,4 +76,53 @@ describe("useLocalStorage", () => {
 
     expect(result.current[0]).toBe("fallback")
   })
+
+  it("persists to localStorage even after unmount", () => {
+    const { result, unmount } = renderHook(() =>
+      useLocalStorage<string[]>("test-key", []),
+    )
+
+    const setter = result.current[1]
+    unmount()
+
+    act(() => {
+      setter((previous) => [...previous, "added-after-unmount"])
+    })
+
+    expect(JSON.parse(localStorage.getItem("test-key") ?? "[]")).toEqual([
+      "added-after-unmount",
+    ])
+  })
+
+  it("handles consecutive functional updates in the same tick", () => {
+    const { result } = renderHook(() =>
+      useLocalStorage<number[]>("test-key", []),
+    )
+
+    act(() => {
+      result.current[1]((previous) => [...previous, 1])
+      result.current[1]((previous) => [...previous, 2])
+      result.current[1]((previous) => [...previous, 3])
+    })
+
+    expect(result.current[0]).toEqual([1, 2, 3])
+    expect(JSON.parse(localStorage.getItem("test-key") ?? "[]")).toEqual([
+      1, 2, 3,
+    ])
+  })
+
+  it("syncs across independent hook instances sharing the same key", () => {
+    const { result: writerResult } = renderHook(() =>
+      useLocalStorage<string[]>("test-key", []),
+    )
+    const { result: readerResult } = renderHook(() =>
+      useLocalStorage<string[]>("test-key", []),
+    )
+
+    act(() => {
+      writerResult.current[1]((previous) => [...previous, "synced"])
+    })
+
+    expect(readerResult.current[0]).toEqual(["synced"])
+  })
 })

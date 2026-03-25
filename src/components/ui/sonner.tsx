@@ -1,5 +1,6 @@
 import { Toaster as Sonner } from "sonner"
 
+import type { CSSProperties } from "react"
 import type { ToasterProps } from "sonner"
 
 function Toaster({ ...props }: ToasterProps) {
@@ -13,7 +14,7 @@ function Toaster({ ...props }: ToasterProps) {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
-        } as React.CSSProperties
+        } as CSSProperties
       }
       {...props}
     />

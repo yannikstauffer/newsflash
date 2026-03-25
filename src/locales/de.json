@@ -13,6 +13,7 @@
     "searchPlaceholder": "Artikel suchen...",
     "searchLabel": "Artikel suchen",
     "clearSearch": "Suche leeren",
+    "closeSearch": "Suche schliessen",
     "openSearch": "Suche öffnen",
     "refreshed": "Aktualisiert {{time}}",
     "loading": "Feeds werden geladen...",
@@ -37,7 +38,13 @@
     "language": "Sprache",
     "languagePreference": "Spracheinstellung",
     "appearance": "Erscheinungsbild",
-    "sources": "Quellen"
+    "sources": "Quellen",
+    "filters": "Filter",
+    "languageDescription": "Wähle die Sprache für die Oberfläche und News-Feeds.",
+    "appearanceDescription": "Wähle ein Design für die App.",
+    "sourcesDescription": "Aktiviere oder deaktiviere Nachrichtenquellen, um deinen Feed anzupassen.",
+    "enableAll": "Alle aktivieren",
+    "disableAll": "Alle deaktivieren"
   },
   "readList": {
     "empty": "Noch keine gespeicherten Artikel. Wische nach links oder klicke auf das Lesezeichen-Symbol, um Artikel zu speichern.",
@@ -55,7 +62,8 @@
     "removeFromReadList": "Aus Leseliste entfernen"
   },
   "feedConfig": {
-    "enabledCount": "{{enabled}}/{{total}} an"
+    "enabledCount": "{{enabled}}/{{total}} an",
+    "toggleAllFeeds": "Alle {{groupName}}-Feeds umschalten"
   },
   "error": {
     "heading": "Etwas ist schiefgelaufen",
