@@ -28,6 +28,8 @@ interface FilterBarProps {
   readonly onNext: () => void
   readonly onToggleAllArticles: () => void
   readonly lastRefreshedAt: Date | null
+  readonly articleCount: number
+  readonly hiddenCount: number
 }
 
 interface FeedListProps {
@@ -90,6 +92,33 @@ export function useFeedPage(): UseFeedPageResult {
   }, [
     articles, isFeedEnabled, language, showHidden,
     hiddenIds, searchQuery, allArticles, selectedDate,
+  ])
+
+  const { articleCount, hiddenCount } = useMemo(() => {
+    const hiddenSet = new Set(hiddenIds)
+    const visibleFiltered = filterArticles(articles, {
+      isFeedEnabled,
+      language,
+      showHidden: false,
+      hiddenIds,
+      searchQuery,
+    })
+    const allFiltered = filterArticles(articles, {
+      isFeedEnabled,
+      language,
+      showHidden: true,
+      hiddenIds,
+      searchQuery,
+    })
+    const applyDay = (list: NormalizedArticle[]) =>
+      allArticles ? list : filterByDay(list, selectedDate)
+    const visible = applyDay(visibleFiltered)
+    const all = applyDay(allFiltered)
+    const hidden = all.filter((a) => hiddenSet.has(a.id))
+    return { articleCount: visible.length, hiddenCount: hidden.length }
+  }, [
+    articles, isFeedEnabled, language, hiddenIds,
+    searchQuery, allArticles, selectedDate,
   ])
 
   const isToday = useMemo(() => {
@@ -254,10 +283,12 @@ export function useFeedPage(): UseFeedPageResult {
     onNext: handleNextDay,
     onToggleAllArticles: handleToggleAllArticles,
     lastRefreshedAt,
+    articleCount,
+    hiddenCount,
   }), [
     showHidden, handleToggleShowHidden, searchQuery, selectedDate,
     allArticles, isToday, handlePreviousDay, handleNextDay,
-    handleToggleAllArticles, lastRefreshedAt,
+    handleToggleAllArticles, lastRefreshedAt, articleCount, hiddenCount,
   ])
 
   const emptyMessage = !allArticles && !loading
