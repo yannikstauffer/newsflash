@@ -58,10 +58,11 @@ describe("useFeedData", () => {
   })
 
   it("fetches and merges articles from multiple feeds using Promise.all", async () => {
-    const article1 = makeArticle({ id: "a1", title: "Article 1" })
+    const article1 = makeArticle({ id: "a1", title: "Article 1", link: "https://example.com/1" })
     const article2 = makeArticle({
       id: "a2",
       title: "Article 2",
+      link: "https://example.com/2",
       publishedAt: new Date("2026-03-20T09:00:00Z"),
     })
 
@@ -257,15 +258,17 @@ describe("useFeedData", () => {
     expect(result.current.articles).toHaveLength(1)
   })
 
-  it("keeps articles with same title but different timestamps", async () => {
+  it("keeps articles with same title but different timestamps and different URLs", async () => {
     const article1 = makeArticle({
       id: "a1",
       title: "Same Title",
+      link: "https://example.com/1",
       publishedAt: new Date("2026-03-20T10:00:00Z"),
     })
     const article2 = makeArticle({
       id: "a2",
       title: "Same Title",
+      link: "https://example.com/2",
       publishedAt: new Date("2026-03-20T11:00:00Z"),
     })
 
@@ -289,16 +292,19 @@ describe("useFeedData", () => {
     const oldest = makeArticle({
       id: "a1",
       title: "Oldest",
+      link: "https://example.com/oldest",
       publishedAt: new Date("2026-03-18T10:00:00Z"),
     })
     const middle = makeArticle({
       id: "a2",
       title: "Middle",
+      link: "https://example.com/middle",
       publishedAt: new Date("2026-03-19T10:00:00Z"),
     })
     const newest = makeArticle({
       id: "a3",
       title: "Newest",
+      link: "https://example.com/newest",
       publishedAt: new Date("2026-03-20T10:00:00Z"),
     })
 
@@ -379,6 +385,128 @@ describe("useFeedData", () => {
 
     // Loading should be false after fetch completes
     expect(result.current.loading).toBe(false)
+  })
+
+  it("deduplicates articles with same URL but different titles", async () => {
+    const article1 = makeArticle({
+      id: "a1",
+      title: "Title A",
+      link: "https://example.com/article",
+      publishedAt: new Date("2026-03-20T11:00:00Z"),
+    })
+    const article2 = makeArticle({
+      id: "a2",
+      title: "Title B",
+      link: "https://example.com/article",
+      publishedAt: new Date("2026-03-20T10:00:00Z"),
+    })
+
+    mockConnectors.push({
+      id: "c1",
+      name: "Connector 1",
+      language: "en",
+      feeds: [{ id: "f1", name: "Feed 1" }],
+      parse: vi.fn(() => [article1, article2]),
+    })
+
+    mockFetchFeed.mockResolvedValue("<xml/>")
+
+    const { result } = renderHook(() => useFeedData(isFeedEnabled))
+    await act(async () => {})
+
+    expect(result.current.articles).toHaveLength(1)
+  })
+
+  it("keeps the youngest article when duplicates share the same URL", async () => {
+    const older = makeArticle({
+      id: "a1",
+      title: "Older Version",
+      link: "https://example.com/article",
+      publishedAt: new Date("2026-03-20T10:00:00Z"),
+    })
+    const newer = makeArticle({
+      id: "a2",
+      title: "Newer Version",
+      link: "https://example.com/article",
+      publishedAt: new Date("2026-03-20T11:00:00Z"),
+    })
+
+    mockConnectors.push({
+      id: "c1",
+      name: "Connector 1",
+      language: "en",
+      feeds: [{ id: "f1", name: "Feed 1" }],
+      parse: vi.fn(() => [older, newer]),
+    })
+
+    mockFetchFeed.mockResolvedValue("<xml/>")
+
+    const { result } = renderHook(() => useFeedData(isFeedEnabled))
+    await act(async () => {})
+
+    expect(result.current.articles).toHaveLength(1)
+    expect(result.current.articles[0].title).toBe("Newer Version")
+  })
+
+  it("deduplicates articles with different URLs but same title and date", async () => {
+    const publishedAt = new Date("2026-03-20T10:00:00Z")
+    const article1 = makeArticle({
+      id: "a1",
+      title: "Same Title",
+      link: "https://example.com/article-1",
+      publishedAt,
+    })
+    const article2 = makeArticle({
+      id: "a2",
+      title: "Same Title",
+      link: "https://example.com/article-2",
+      publishedAt,
+    })
+
+    mockConnectors.push({
+      id: "c1",
+      name: "Connector 1",
+      language: "en",
+      feeds: [{ id: "f1", name: "Feed 1" }],
+      parse: vi.fn(() => [article1, article2]),
+    })
+
+    mockFetchFeed.mockResolvedValue("<xml/>")
+
+    const { result } = renderHook(() => useFeedData(isFeedEnabled))
+    await act(async () => {})
+
+    expect(result.current.articles).toHaveLength(1)
+  })
+
+  it("keeps articles with different URLs and different title+date", async () => {
+    const article1 = makeArticle({
+      id: "a1",
+      title: "Article One",
+      link: "https://example.com/article-1",
+      publishedAt: new Date("2026-03-20T10:00:00Z"),
+    })
+    const article2 = makeArticle({
+      id: "a2",
+      title: "Article Two",
+      link: "https://example.com/article-2",
+      publishedAt: new Date("2026-03-20T11:00:00Z"),
+    })
+
+    mockConnectors.push({
+      id: "c1",
+      name: "Connector 1",
+      language: "en",
+      feeds: [{ id: "f1", name: "Feed 1" }],
+      parse: vi.fn(() => [article1, article2]),
+    })
+
+    mockFetchFeed.mockResolvedValue("<xml/>")
+
+    const { result } = renderHook(() => useFeedData(isFeedEnabled))
+    await act(async () => {})
+
+    expect(result.current.articles).toHaveLength(2)
   })
 
   it("skips disabled feeds", async () => {
