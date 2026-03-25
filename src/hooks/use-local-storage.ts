@@ -20,6 +20,8 @@ export function useLocalStorage<T>(
   key: string,
   initialValue: T,
 ): [T, (value: SetStateAction<T>) => void] {
+  const initialValueRef = useRef(initialValue)
+
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
       const item = globalThis.localStorage.getItem(key)
@@ -42,7 +44,7 @@ export function useLocalStorage<T>(
 
       try {
         const item = globalThis.localStorage.getItem(key)
-        const parsed = item ? (JSON.parse(item) as T) : initialValue
+        const parsed = item ? (JSON.parse(item) as T) : initialValueRef.current
         valueRef.current = parsed
         setStoredValue(parsed)
       } catch {
@@ -54,7 +56,7 @@ export function useLocalStorage<T>(
     return () => {
       globalThis.window?.removeEventListener(LOCAL_STORAGE_SYNC_EVENT, handleSync)
     }
-  }, [key, initialValue])
+  }, [key])
 
   const setValue = useCallback(
     (value: SetStateAction<T>) => {

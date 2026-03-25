@@ -20,7 +20,7 @@ describe("formatDayLabel", () => {
 
     it("returns weekday name for older days", () => {
       const result = formatDayLabel(new Date(2026, 2, 18), now, "en")
-      expect(result).toContain("wednesday")
+      expect(result).toContain("Wednesday")
     })
 
     it("defaults to English locale", () => {
@@ -45,7 +45,7 @@ describe("formatDayLabel", () => {
 
     it("returns German weekday name for older days", () => {
       const result = formatDayLabel(new Date(2026, 2, 18), now, "de")
-      expect(result).toContain("mittwoch")
+      expect(result).toContain("Mittwoch")
     })
   })
 

@@ -34,5 +34,5 @@ export function formatDayLabel(date: Date, now?: Date, locale: string = "en"): s
   }
 
   const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(date)
-  return `${weekday.toLocaleLowerCase(locale)}, ${formatted}`
+  return `${weekday}, ${formatted}`
 }

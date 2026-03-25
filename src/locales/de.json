@@ -13,6 +13,7 @@
     "searchPlaceholder": "Artikel suchen...",
     "searchLabel": "Artikel suchen",
     "clearSearch": "Suche leeren",
+    "closeSearch": "Suche schliessen",
     "openSearch": "Suche öffnen",
     "refreshed": "Aktualisiert {{time}}",
     "loading": "Feeds werden geladen...",

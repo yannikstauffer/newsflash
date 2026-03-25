@@ -219,22 +219,28 @@ describe("useThemePreference", () => {
       )
     })
 
-    it("does not attach listener when preference is explicit light", () => {
+    it("attaches listener even when preference is explicit light", () => {
       const mql = mockMatchMedia(false)
       localStorage.setItem("newsflash:theme", JSON.stringify("light"))
 
       renderHook(() => useThemePreference())
 
-      expect(mql.addEventListener).not.toHaveBeenCalled()
+      expect(mql.addEventListener).toHaveBeenCalledWith(
+        "change",
+        expect.any(Function),
+      )
     })
 
-    it("does not attach listener when preference is explicit dark", () => {
+    it("attaches listener even when preference is explicit dark", () => {
       const mql = mockMatchMedia(false)
       localStorage.setItem("newsflash:theme", JSON.stringify("dark"))
 
       renderHook(() => useThemePreference())
 
-      expect(mql.addEventListener).not.toHaveBeenCalled()
+      expect(mql.addEventListener).toHaveBeenCalledWith(
+        "change",
+        expect.any(Function),
+      )
     })
 
     it("reacts to OS theme change when in system mode", () => {
@@ -258,7 +264,7 @@ describe("useThemePreference", () => {
       expect(document.documentElement.classList.contains("dark")).toBe(false)
     })
 
-    it("detaches listener when switching from system to explicit", () => {
+    it("keeps listener active when switching from system to explicit", () => {
       const mql = mockMatchMedia(false)
       const { result } = renderHook(() => useThemePreference())
 
@@ -268,10 +274,8 @@ describe("useThemePreference", () => {
         result.current.setTheme("dark")
       })
 
-      expect(mql.removeEventListener).toHaveBeenCalledWith(
-        "change",
-        expect.any(Function),
-      )
+      // Listener stays active to track OS changes for when user switches back to system
+      expect(mql.removeEventListener).not.toHaveBeenCalled()
     })
 
     it("cleans up listener on unmount", () => {

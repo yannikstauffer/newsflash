@@ -13,6 +13,7 @@
           var dark =
             pref === "dark" ||
             (pref !== "light" &&
+              typeof globalThis.matchMedia === "function" &&
               globalThis.matchMedia("(prefers-color-scheme: dark)").matches)
           if (dark) document.documentElement.classList.add("dark")
         } catch (e) {

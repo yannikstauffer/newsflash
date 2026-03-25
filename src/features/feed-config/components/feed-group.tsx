@@ -82,7 +82,7 @@ export function FeedGroup({
       </div>
 
       {isExpanded && (
-        <optgroup
+        <div
           id={groupId}
           role="group"
           aria-labelledby={headerId}
@@ -102,7 +102,7 @@ export function FeedGroup({
               <span className="text-sm text-foreground">{feed.name}</span>
             </label>
           ))}
-        </optgroup>
+        </div>
       )}
     </div>
   )

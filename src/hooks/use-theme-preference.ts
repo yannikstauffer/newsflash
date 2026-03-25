@@ -20,13 +20,6 @@ function getOsTheme(): ResolvedTheme {
   return "light"
 }
 
-function resolveTheme(preference: ThemePreference): ResolvedTheme {
-  if (preference === "system") {
-    return getOsTheme()
-  }
-  return preference
-}
-
 function applyThemeClass(resolved: ResolvedTheme) {
   if (resolved === "dark") {
     document.documentElement.classList.add("dark")
@@ -46,48 +39,33 @@ export function useThemePreference(): {
     "system",
   )
 
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
-    resolveTheme(theme),
-  )
+  const [osTheme, setOsTheme] = useState<ResolvedTheme>(getOsTheme)
 
   useEffect(() => {
-    const resolved = resolveTheme(theme)
-    // todo: have a look at this lint issue
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setResolvedTheme(resolved)
-    applyThemeClass(resolved)
+    if (typeof globalThis.matchMedia !== "function") return undefined
 
-    if (theme === "system" && typeof globalThis.matchMedia === "function") {
-      const mediaQuery = globalThis.matchMedia(DARK_MEDIA_QUERY)
-      const handleChange = (event: MediaQueryListEvent) => {
-        const newResolved: ResolvedTheme = event.matches ? "dark" : "light"
-        setResolvedTheme(newResolved)
-        applyThemeClass(newResolved)
-      }
-      mediaQuery.addEventListener("change", handleChange)
-      return () => {
-        mediaQuery.removeEventListener("change", handleChange)
-      }
+    const mediaQuery = globalThis.matchMedia(DARK_MEDIA_QUERY)
+    const handleChange = (event: MediaQueryListEvent) => {
+      setOsTheme(event.matches ? "dark" : "light")
     }
+    mediaQuery.addEventListener("change", handleChange)
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange)
+    }
+  }, [])
 
-    return undefined
-  }, [theme])
+  const resolvedTheme: ResolvedTheme = theme === "system" ? osTheme : theme
 
-  const setTheme = useCallback(
-    (value: ThemePreference) => {
-      setThemeValue(value)
-    },
-    [setThemeValue],
-  )
+  useEffect(() => {
+    applyThemeClass(resolvedTheme)
+  }, [resolvedTheme])
 
   const toggleTheme = useCallback(() => {
     setThemeValue((current) => {
-      if (current === "system") {
-        return resolvedTheme === "light" ? "dark" : "light"
-      }
-      return current === "light" ? "dark" : "light"
+      const resolved: ResolvedTheme = current === "system" ? osTheme : current
+      return resolved === "light" ? "dark" : "light"
     })
-  }, [setThemeValue, resolvedTheme])
+  }, [setThemeValue, osTheme])
 
-  return { theme, resolvedTheme, setTheme, toggleTheme }
+  return { theme, resolvedTheme, setTheme: setThemeValue, toggleTheme }
 }
