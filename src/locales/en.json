@@ -65,6 +65,23 @@
     "enabledCount": "{{enabled}}/{{total}} on",
     "toggleAllFeeds": "Toggle all {{groupName}} feeds"
   },
+  "sync": {
+    "heading": "Cross-Device Sync",
+    "description": "Sign in to sync your hidden articles, read list, and feed preferences across all your devices.",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "sendMagicLink": "Send magic link",
+    "magicLinkSent": "Check your email for the magic link to sign in.",
+    "signedInAs": "Signed in as {{email}}",
+    "lastSynced": "Last synced: {{time}}",
+    "neverSynced": "Never synced",
+    "syncNow": "Sync Now",
+    "syncing": "Syncing...",
+    "synced": "Synced",
+    "signOut": "Sign Out",
+    "invalidEmail": "Please enter a valid email address.",
+    "sendError": "Failed to send magic link. Please try again."
+  },
   "error": {
     "heading": "Something went wrong",
     "message": "An unexpected error occurred. Please reload the page to try again.",

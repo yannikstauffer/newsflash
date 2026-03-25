@@ -65,6 +65,23 @@
     "enabledCount": "{{enabled}}/{{total}} an",
     "toggleAllFeeds": "Alle {{groupName}}-Feeds umschalten"
   },
+  "sync": {
+    "heading": "Geräteübergreifende Synchronisation",
+    "description": "Melde dich an, um ausgeblendete Artikel, Leseliste und Feed-Einstellungen auf allen Geräten zu synchronisieren.",
+    "emailLabel": "E-Mail-Adresse",
+    "emailPlaceholder": "du@beispiel.de",
+    "sendMagicLink": "Magic Link senden",
+    "magicLinkSent": "Prüfe deine E-Mails für den Magic Link zum Anmelden.",
+    "signedInAs": "Angemeldet als {{email}}",
+    "lastSynced": "Zuletzt synchronisiert: {{time}}",
+    "neverSynced": "Noch nie synchronisiert",
+    "syncNow": "Jetzt synchronisieren",
+    "syncing": "Synchronisiere...",
+    "synced": "Synchronisiert",
+    "signOut": "Abmelden",
+    "invalidEmail": "Bitte gib eine gültige E-Mail-Adresse ein.",
+    "sendError": "Magic Link konnte nicht gesendet werden. Bitte versuche es erneut."
+  },
   "error": {
     "heading": "Etwas ist schiefgelaufen",
     "message": "Ein unerwarteter Fehler ist aufgetreten. Bitte lade die Seite neu, um es erneut zu versuchen.",

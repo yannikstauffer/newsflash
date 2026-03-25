@@ -1,6 +1,6 @@
 import { useCallback } from "react"
 
-import { useLocalStorage } from "@/hooks/use-local-storage"
+import { useSyncedStorage } from "@/hooks/use-synced-storage"
 
 const STORAGE_KEY = "newsflash:feed-prefs"
 
@@ -13,7 +13,7 @@ export function useFeedPreferences(): {
   enableAll: (feedIds: string[]) => void
   disableAll: (feedIds: string[]) => void
 } {
-  const [store, setStore] = useLocalStorage<Record<string, boolean>>(STORAGE_KEY, {})
+  const [store, setStore] = useSyncedStorage<Record<string, boolean>>(STORAGE_KEY, {})
 
   const preferences: Record<string, boolean> = store
 

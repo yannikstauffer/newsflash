@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { useArticleState } from "@/features/article-actions/hooks/use-article-state"
 import { connectors } from "@/features/connectors/registry"
+import { SyncSettings } from "@/features/sync/components/sync-settings"
 import { useThemePreference } from "@/hooks/use-theme-preference"
 
 const THEME_OPTIONS: Array<{ readonly value: ThemePreference; readonly label: string }> = [
@@ -185,6 +186,8 @@ export default function FeedConfigPage() {
           </div>
         </section>
       </div>
+
+      <SyncSettings />
 
       <section className="space-y-3 rounded-lg border border-border p-6">
         <div className="flex items-center justify-between">

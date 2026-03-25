@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
-import { useLocalStorage } from "@/hooks/use-local-storage"
+import { useSyncedStorage } from "@/hooks/use-synced-storage"
 
 export const MAX_HIDDEN_IDS = 500
 export const MAX_READLIST_ITEMS = 200
@@ -64,8 +64,8 @@ export function useArticleState(): {
   removeHiddenBySource: (sourceId: string) => void
   removeReadListBySource: (sourceId: string) => void
 } {
-  const [hiddenIds, setHiddenIds] = useLocalStorage<string[]>(HIDDEN_KEY, [])
-  const [storedReadList, setStoredReadList] = useLocalStorage<StoredArticle[]>(
+  const [hiddenIds, setHiddenIds] = useSyncedStorage<string[]>(HIDDEN_KEY, [])
+  const [storedReadList, setStoredReadList] = useSyncedStorage<StoredArticle[]>(
     READLIST_KEY,
     [],
   )
