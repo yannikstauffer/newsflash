@@ -255,7 +255,7 @@ describe("useFeedPage", () => {
       expect(result.current.filterBarProps.hiddenCount).toBe(1)
     })
 
-    it("when showHidden is false (default), articleCount is total and hiddenCount is 0", () => {
+    it("when showHidden is false (default), hiddenCount reflects hidden articles in current view", () => {
       const article1 = makeArticle({ id: "src:a1" })
       const article2 = makeArticle({ id: "src:a2" })
       setupDefaults({
@@ -265,9 +265,8 @@ describe("useFeedPage", () => {
 
       const { result } = renderHook(() => useFeedPage())
 
-      // With showHidden=false, hidden articles are filtered out by filterArticles
-      // so filteredArticles only contains non-hidden ones
-      expect(result.current.filterBarProps.hiddenCount).toBe(0)
+      // hiddenCount always reflects the number of hidden articles in the current day/view
+      expect(result.current.filterBarProps.hiddenCount).toBe(1)
     })
   })
 
@@ -321,9 +320,9 @@ describe("useFeedPage", () => {
       expect(hideArticle).not.toHaveBeenCalled()
     })
 
-    it("adds to read list and hides when no card ref", () => {
+    it("adds to read list when not already saved", () => {
       const article = makeArticle({ id: "src:a1" })
-      const { addToReadList, hideArticle } = setupDefaults({ articles: [article] })
+      const { addToReadList } = setupDefaults({ articles: [article] })
 
       renderHook(() => useFeedPage())
 
@@ -334,7 +333,6 @@ describe("useFeedPage", () => {
       })
 
       expect(addToReadList).toHaveBeenCalledWith(article)
-      expect(hideArticle).toHaveBeenCalledWith("src:a1")
     })
   })
 
@@ -371,29 +369,13 @@ describe("useFeedPage", () => {
     })
   })
 
-  describe("onHideAll", () => {
-    it("calls hideArticles with visibleArticleIds", () => {
-      const article1 = makeArticle({ id: "src:a1" })
-      const article2 = makeArticle({ id: "src:a2" })
-      const { hideArticles } = setupDefaults({ articles: [article1, article2] })
-
-      const { result } = renderHook(() => useFeedPage())
-
-      act(() => {
-        result.current.filterBarProps.onHideAll()
-      })
-
-      expect(hideArticles).toHaveBeenCalledWith(["src:a1", "src:a2"])
-    })
-  })
-
   describe("emptyMessage", () => {
     it("is present when not allArticles and not loading", () => {
       setupDefaults({ loading: false })
 
       const { result } = renderHook(() => useFeedPage())
 
-      expect(result.current.feedListProps.emptyMessage).toBe("feed.emptyDay")
+      expect(result.current.feedListProps.emptyMessage).toBe("No articles for this day.")
     })
 
     it("is undefined when allArticles is true", () => {

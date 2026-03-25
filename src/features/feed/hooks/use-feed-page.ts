@@ -1,12 +1,9 @@
-import { Bookmark, EyeOff } from "lucide-react"
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useTranslation } from "react-i18next"
 
 import { useFeedData } from "./use-feed-data"
 import { filterArticles } from "../utils/filter-articles"
 import { filterByDay } from "../utils/filter-by-day"
 
-import type { SwipeableCardHandle } from "@/features/article-actions"
 import type { NormalizedArticle } from "@/features/connectors/types"
 import type { ReactNode } from "react"
 
@@ -17,9 +14,7 @@ import {
   useArticleKeyboardShortcuts,
   useArticleState,
 } from "@/features/article-actions"
-import { connectors } from "@/features/connectors/registry"
 import { useFeedPreferences } from "@/features/feed-config/hooks/use-feed-preferences"
-import { useFilterPreferences } from "@/features/feed-config/hooks/use-filter-preferences"
 
 interface FilterBarProps {
   readonly showHidden: boolean
@@ -35,8 +30,6 @@ interface FilterBarProps {
   readonly lastRefreshedAt: Date | null
   readonly articleCount: number
   readonly hiddenCount: number
-  readonly onHideAll: () => void
-  readonly visibleArticleIds: string[]
 }
 
 interface FeedListProps {
@@ -59,9 +52,7 @@ interface UseFeedPageResult {
 }
 
 export function useFeedPage(): UseFeedPageResult {
-  const { t } = useTranslation()
-  const { isFeedEnabled } = useFeedPreferences()
-  const { isFilterEnabled } = useFilterPreferences()
+  const { isFeedEnabled, language } = useFeedPreferences()
   const { articles, loading, errors, lastRefreshedAt } = useFeedData(isFeedEnabled)
   const {
     hiddenIds,
@@ -70,13 +61,12 @@ export function useFeedPage(): UseFeedPageResult {
     hideArticle,
     unhideArticle,
     addToReadList,
-    hideArticles,
+    removeFromReadList,
   } = useArticleState()
 
   const hoveredArticleRef = useRef<string | undefined>(undefined)
   const focusedArticleRef = useRef<string | undefined>(undefined)
   const articlesRef = useRef<NormalizedArticle[]>([])
-  const cardReferencesMap = useRef<Map<string, SwipeableCardHandle>>(new Map())
 
   const [showHidden, setShowHidden] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -90,38 +80,46 @@ export function useFeedPage(): UseFeedPageResult {
   const filteredArticles = useMemo(() => {
     const filtered = filterArticles(articles, {
       isFeedEnabled,
+      language,
       showHidden,
       hiddenIds,
       searchQuery,
-      connectors,
-      isFilterEnabled,
     })
     if (allArticles) {
       return filtered
     }
     return filterByDay(filtered, selectedDate)
   }, [
-    articles, isFeedEnabled, isFilterEnabled, showHidden,
+    articles, isFeedEnabled, language, showHidden,
     hiddenIds, searchQuery, allArticles, selectedDate,
   ])
 
-  const { articleCount, hiddenCount, visibleArticleIds } = useMemo(() => {
+  const { articleCount, hiddenCount } = useMemo(() => {
     const hiddenSet = new Set(hiddenIds)
-    const nonHidden = filteredArticles.filter((a) => !hiddenSet.has(a.id))
-    const hidden = filteredArticles.length - nonHidden.length
-    if (showHidden) {
-      return {
-        articleCount: nonHidden.length,
-        hiddenCount: hidden,
-        visibleArticleIds: nonHidden.map((a) => a.id),
-      }
-    }
-    return {
-      articleCount: filteredArticles.length,
-      hiddenCount: 0,
-      visibleArticleIds: filteredArticles.map((a) => a.id),
-    }
-  }, [filteredArticles, hiddenIds, showHidden])
+    const visibleFiltered = filterArticles(articles, {
+      isFeedEnabled,
+      language,
+      showHidden: false,
+      hiddenIds,
+      searchQuery,
+    })
+    const allFiltered = filterArticles(articles, {
+      isFeedEnabled,
+      language,
+      showHidden: true,
+      hiddenIds,
+      searchQuery,
+    })
+    const applyDay = (list: NormalizedArticle[]) =>
+      allArticles ? list : filterByDay(list, selectedDate)
+    const visible = applyDay(visibleFiltered)
+    const all = applyDay(allFiltered)
+    const hidden = all.filter((a) => hiddenSet.has(a.id))
+    return { articleCount: visible.length, hiddenCount: hidden.length }
+  }, [
+    articles, isFeedEnabled, language, hiddenIds,
+    searchQuery, allArticles, selectedDate,
+  ])
 
   const isToday = useMemo(() => {
     const today = new Date()
@@ -165,12 +163,7 @@ export function useFeedPage(): UseFeedPageResult {
 
   const handleKeyboardHide = useCallback(
     (articleId: string) => {
-      const cardHandle = cardReferencesMap.current.get(articleId)
-      if (cardHandle) {
-        cardHandle.triggerRemoval("right")
-      } else {
-        hideArticle(articleId)
-      }
+      hideArticle(articleId)
     },
     [hideArticle],
   )
@@ -179,16 +172,13 @@ export function useFeedPage(): UseFeedPageResult {
     (articleId: string) => {
       const article = articlesRef.current.find((a) => a.id === articleId)
       if (!article) return
-      if (isInReadList(articleId)) return
-      const cardHandle = cardReferencesMap.current.get(articleId)
-      if (cardHandle) {
-        cardHandle.triggerRemoval("left")
+      if (isInReadList(articleId)) {
+        removeFromReadList(articleId)
       } else {
         addToReadList(article)
-        hideArticle(articleId)
       }
     },
-    [isInReadList, addToReadList, hideArticle],
+    [isInReadList, removeFromReadList, addToReadList],
   )
 
   const getFocusedArticleId = useCallback(
@@ -226,10 +216,6 @@ export function useFeedPage(): UseFeedPageResult {
     [],
   )
 
-  const handleHideAll = useCallback(() => {
-    hideArticles(visibleArticleIds)
-  }, [hideArticles, visibleArticleIds])
-
   const renderActions = useCallback(
     (article: NormalizedArticle) => {
       if (showHidden && isHidden(article.id)) {
@@ -238,22 +224,12 @@ export function useFeedPage(): UseFeedPageResult {
         })
       }
       return createElement(ArticleActionButtons, {
-        onHide: () => {
-          const cardHandle = cardReferencesMap.current.get(article.id)
-          if (cardHandle) {
-            cardHandle.triggerRemoval("right")
-          } else {
-            hideArticle(article.id)
-          }
-        },
+        onHide: () => hideArticle(article.id),
         onSave: () => {
-          if (isInReadList(article.id)) return
-          const cardHandle = cardReferencesMap.current.get(article.id)
-          if (cardHandle) {
-            cardHandle.triggerRemoval("left")
+          if (isInReadList(article.id)) {
+            removeFromReadList(article.id)
           } else {
             addToReadList(article)
-            hideArticle(article.id)
           }
         },
         isSaved: isInReadList(article.id),
@@ -261,7 +237,7 @@ export function useFeedPage(): UseFeedPageResult {
     },
     [
       showHidden, isHidden, unhideArticle, hideArticle,
-      isInReadList, addToReadList,
+      isInReadList, removeFromReadList, addToReadList,
     ],
   )
 
@@ -276,37 +252,19 @@ export function useFeedPage(): UseFeedPageResult {
         SwipeableCard,
         {
           key: article.id,
-          ref: (handle: SwipeableCardHandle | null) => {
-            if (handle) {
-              cardReferencesMap.current.set(article.id, handle)
+          onSwipeRight: () => hideArticle(article.id),
+          onSwipeLeft: () => {
+            if (isInReadList(article.id)) {
+              removeFromReadList(article.id)
             } else {
-              cardReferencesMap.current.delete(article.id)
-            }
-          },
-          swipeRight: {
-            bgClassName: "bg-amber-100 dark:bg-amber-900/30",
-            icon: createElement("span", {
-              className: "text-amber-700 dark:text-amber-400",
-              "aria-hidden": "true",
-            }, createElement(EyeOff, { className: "size-5" })),
-            onAction: () => hideArticle(article.id),
-          },
-          swipeLeft: {
-            bgClassName: "bg-blue-100 dark:bg-blue-900/30",
-            icon: createElement("span", {
-              className: "text-blue-700 dark:text-blue-400",
-              "aria-hidden": "true",
-            }, createElement(Bookmark, { className: "size-5" })),
-            onAction: () => {
               addToReadList(article)
-              hideArticle(article.id)
-            },
+            }
           },
           children: hoverDiv,
         },
       )
     },
-    [hideArticle, addToReadList, createInteractionRef],
+    [hideArticle, isInReadList, removeFromReadList, addToReadList, createInteractionRef],
   )
 
   const handleToggleShowHidden = useCallback(() => {
@@ -327,17 +285,14 @@ export function useFeedPage(): UseFeedPageResult {
     lastRefreshedAt,
     articleCount,
     hiddenCount,
-    onHideAll: handleHideAll,
-    visibleArticleIds,
   }), [
     showHidden, handleToggleShowHidden, searchQuery, selectedDate,
     allArticles, isToday, handlePreviousDay, handleNextDay,
     handleToggleAllArticles, lastRefreshedAt, articleCount, hiddenCount,
-    handleHideAll, visibleArticleIds,
   ])
 
   const emptyMessage = !allArticles && !loading
-    ? t("feed.emptyDay")
+    ? "No articles for this day."
     : undefined
 
   const feedListProps: FeedListProps = useMemo(() => ({

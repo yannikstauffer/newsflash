@@ -3,12 +3,6 @@ import { describe, expect, it, vi } from "vitest"
 
 import { FilterBar } from "./filter-bar"
 
-vi.mock("@/features/article-actions", () => ({
-  useArticleState: () => ({
-    unhideArticles: vi.fn(),
-  }),
-}))
-
 const defaultProps = {
   showHidden: false,
   onToggleShowHidden: vi.fn(),
@@ -21,13 +15,13 @@ const defaultProps = {
   onNext: vi.fn(),
   onToggleAllArticles: vi.fn(),
   lastRefreshedAt: null as Date | null,
-  articleCount: 10,
-  hiddenCount: 0,
-  onHideAll: vi.fn(),
-  visibleArticleIds: ["a1", "a2", "a3"],
+  articleCount: 42,
+  hiddenCount: 3,
 }
 
 describe("FilterBar", () => {
+  // 7.5 Updated existing tests for new prop interface (articleCount, hiddenCount)
+
   it("renders All articles toggle, Hidden toggle, day nav, and search", () => {
     render(<FilterBar {...defaultProps} />)
 
@@ -133,27 +127,19 @@ describe("FilterBar", () => {
     expect(screen.getByLabelText("Search articles").getAttribute("maxlength")).toBe("200")
   })
 
-  it("calls onSearchChange when typing in search input", () => {
-    const onSearchChange = vi.fn()
-    render(<FilterBar {...defaultProps} onSearchChange={onSearchChange} />)
-
-    fireEvent.change(screen.getByLabelText("Search articles"), { target: { value: "test" } })
-
-    expect(onSearchChange).toHaveBeenCalledWith("test")
-  })
-
   it("displays last refreshed timestamp when provided", () => {
     const lastRefreshedAt = new Date()
     render(<FilterBar {...defaultProps} lastRefreshedAt={lastRefreshedAt} />)
 
-    expect(screen.getByLabelText("Refreshed")).toBeDefined()
-    expect(screen.getByLabelText("Refreshed").textContent).toContain("Refreshed")
+    const refreshedElements = screen.getAllByLabelText("Last refreshed")
+    expect(refreshedElements.length).toBeGreaterThan(0)
+    expect(refreshedElements[0].textContent).toContain("Refreshed")
   })
 
   it("does not display last refreshed timestamp when null", () => {
     render(<FilterBar {...defaultProps} lastRefreshedAt={null} />)
 
-    expect(screen.queryByLabelText("Refreshed")).toBeNull()
+    expect(screen.queryByLabelText("Last refreshed")).toBeNull()
   })
 
   // 7.1 Icon-only rendering tests
@@ -162,33 +148,40 @@ describe("FilterBar", () => {
       render(<FilterBar {...defaultProps} />)
 
       const allArticlesButton = screen.getByRole("button", { name: "All articles" })
-      expect(allArticlesButton.querySelector("svg")).toBeDefined()
-    })
-
-    it("renders Eye/EyeOff icon in Hidden button", () => {
-      render(<FilterBar {...defaultProps} />)
-
-      const hiddenButton = screen.getByRole("button", { name: /hidden/i })
-      expect(hiddenButton.querySelector("svg")).toBeDefined()
+      const svgInButton = allArticlesButton.querySelector("svg")
+      expect(svgInButton).toBeDefined()
+      expect(svgInButton).not.toBeNull()
     })
 
     it("wraps button text in span with hidden md:inline class", () => {
       render(<FilterBar {...defaultProps} />)
 
       const allArticlesButton = screen.getByRole("button", { name: "All articles" })
-      const textSpan = allArticlesButton.querySelector("span")
+      const textSpan = allArticlesButton.querySelector("span.hidden")
       expect(textSpan).not.toBeNull()
-      expect(textSpan?.className).toContain("hidden")
-      expect(textSpan?.className).toContain("md:inline")
+      expect(textSpan?.classList.contains("md:inline")).toBe(true)
+      expect(textSpan?.textContent).toBe("All articles")
     })
 
-    it("has aria-label on All articles button", () => {
+    it("wraps Hidden button text in span with hidden md:inline class", () => {
       render(<FilterBar {...defaultProps} />)
 
-      expect(screen.getByRole("button", { name: "All articles" }).getAttribute("aria-label")).toBe("All articles")
+      const hiddenButton = screen.getByRole("button", { name: /hidden/i })
+      const textSpan = hiddenButton.querySelector("span.hidden")
+      expect(textSpan).not.toBeNull()
+      expect(textSpan?.classList.contains("md:inline")).toBe(true)
+      expect(textSpan?.textContent).toBe("Hidden")
     })
 
-    it("has aria-label on Hidden button", () => {
+    it("has aria-label on All articles button for screen reader accessibility", () => {
+      render(<FilterBar {...defaultProps} />)
+
+      expect(screen.getByRole("button", { name: "All articles" }).getAttribute("aria-label")).toBe(
+        "All articles",
+      )
+    })
+
+    it("has aria-label on Hidden button for screen reader accessibility", () => {
       render(<FilterBar {...defaultProps} />)
 
       expect(screen.getByRole("button", { name: /hidden/i }).getAttribute("aria-label")).toBe("Hidden")
@@ -196,145 +189,165 @@ describe("FilterBar", () => {
   })
 
   // 7.2 Article count display tests
-  describe("article count", () => {
-    it("displays article count normally", () => {
-      render(<FilterBar {...defaultProps} articleCount={14} />)
+  describe("article count display", () => {
+    it("shows article count in normal mode", () => {
+      render(<FilterBar {...defaultProps} articleCount={42} hiddenCount={3} showHidden={false} />)
 
-      expect(screen.getByLabelText("14 articles").textContent).toBe("14 articles")
+      const countElements = screen.getAllByLabelText("Article count")
+      expect(countElements.some((element) => element.textContent === "42 articles")).toBe(true)
     })
 
-    it("displays zero articles", () => {
-      render(<FilterBar {...defaultProps} articleCount={0} />)
+    it("shows article count with hidden annotation when showHidden is active", () => {
+      render(<FilterBar {...defaultProps} articleCount={42} hiddenCount={3} showHidden={true} />)
 
-      expect(screen.getByLabelText("0 articles").textContent).toBe("0 articles")
+      const countElements = screen.getAllByLabelText("Article count")
+      expect(countElements.some((element) => element.textContent === "42 + 3 hidden")).toBe(true)
     })
 
-    it("displays hidden annotation when showHidden is active", () => {
-      render(
-        <FilterBar
-          {...defaultProps}
-          showHidden={true}
-          articleCount={14}
-          hiddenCount={3}
-        />,
-      )
+    it("shows zero article count", () => {
+      render(<FilterBar {...defaultProps} articleCount={0} hiddenCount={0} showHidden={false} />)
 
-      expect(screen.getByLabelText("14 articles").textContent).toBe("14 + 3 hidden")
-    })
-
-    it("displays normal count when showHidden is active but hiddenCount is zero", () => {
-      render(
-        <FilterBar
-          {...defaultProps}
-          showHidden={true}
-          articleCount={14}
-          hiddenCount={0}
-        />,
-      )
-
-      expect(screen.getByLabelText("14 articles").textContent).toBe("14 articles")
+      const countElements = screen.getAllByLabelText("Article count")
+      expect(countElements.some((element) => element.textContent === "0 articles")).toBe(true)
     })
   })
 
   // 7.3 Search expand/collapse and clear button tests
   describe("search expand/collapse", () => {
-    it("renders search icon button for mobile", () => {
+    it("renders search icon button to open search", () => {
       render(<FilterBar {...defaultProps} />)
 
       expect(screen.getByRole("button", { name: "Open search" })).toBeDefined()
     })
 
-    it("expands mobile search when icon button is clicked", () => {
+    it("shows mobile search input when search is opened", () => {
       render(<FilterBar {...defaultProps} />)
 
       fireEvent.click(screen.getByRole("button", { name: "Open search" }))
 
-      // After expanding with no query, the close button should be visible
-      expect(screen.getByRole("button", { name: "Close search" })).toBeDefined()
+      // After opening, the mobile search input should be visible
+      const searchInputs = screen.getAllByLabelText("Search articles")
+      expect(searchInputs.length).toBeGreaterThan(0)
     })
 
-    it("hides status and toggles when mobile search is open", () => {
-      render(<FilterBar {...defaultProps} lastRefreshedAt={new Date()} />)
+    it("shows close search button when mobile search is expanded with empty query", () => {
+      render(<FilterBar {...defaultProps} />)
 
       fireEvent.click(screen.getByRole("button", { name: "Open search" }))
 
-      // Status text should not be visible (hidden by conditional rendering)
-      expect(screen.queryByLabelText("Last refreshed")).toBeNull()
-      expect(screen.queryByRole("button", { name: "All articles" })).toBeNull()
+      expect(screen.getByLabelText("Close search")).toBeDefined()
     })
 
-    it("clears search text when clear button is clicked with text", () => {
+    it("shows clear search button when mobile search is expanded with text", () => {
+      render(<FilterBar {...defaultProps} searchQuery="test" />)
+
+      fireEvent.click(screen.getByRole("button", { name: "Open search" }))
+
+      const clearButtons = screen.getAllByLabelText("Clear search")
+      expect(clearButtons.length).toBeGreaterThan(0)
+    })
+
+    it("calls onSearchChange with empty string when clear is clicked with text", () => {
       const onSearchChange = vi.fn()
-      render(
-        <FilterBar
-          {...defaultProps}
-          searchQuery="test"
-          onSearchChange={onSearchChange}
-        />,
-      )
+      render(<FilterBar {...defaultProps} searchQuery="test" onSearchChange={onSearchChange} />)
 
-      // Expand search first
       fireEvent.click(screen.getByRole("button", { name: "Open search" }))
-      // Both mobile and desktop clear buttons exist in DOM; click the first (mobile)
-      const clearButtons = screen.getAllByRole("button", { name: "Clear search" })
+      // Click the first clear button (mobile one)
+      const clearButtons = screen.getAllByLabelText("Clear search")
       fireEvent.click(clearButtons[0])
 
       expect(onSearchChange).toHaveBeenCalledWith("")
     })
 
-    it("collapses search when Escape is pressed on mobile", () => {
-      render(<FilterBar {...defaultProps} />)
+    it("collapses mobile search when close is clicked with empty text", () => {
+      render(<FilterBar {...defaultProps} searchQuery="" />)
 
       fireEvent.click(screen.getByRole("button", { name: "Open search" }))
+      fireEvent.click(screen.getByLabelText("Close search"))
 
-      // Search should be open
-      const searchInputs = screen.getAllByLabelText("Search articles")
-      fireEvent.keyDown(searchInputs[0], { key: "Escape" })
-
-      // Should be collapsed again - open search button should be back
+      // After collapsing, the Open search button should be back
       expect(screen.getByRole("button", { name: "Open search" })).toBeDefined()
     })
 
-    it("shows accent color on search icon when query is active", () => {
-      render(<FilterBar {...defaultProps} searchQuery="active query" />)
+    it("collapses mobile search on Escape key", () => {
+      render(<FilterBar {...defaultProps} searchQuery="" />)
 
-      const searchButton = screen.getByRole("button", { name: "Open search" })
-      expect(searchButton.className).toContain("border-primary")
-      expect(searchButton.className).toContain("text-primary")
+      fireEvent.click(screen.getByRole("button", { name: "Open search" }))
+
+      const searchInput = screen.getAllByLabelText("Search articles")[0]
+      fireEvent.keyDown(searchInput, { key: "Escape" })
+
+      // After escape, the Open search button should be back
+      expect(screen.getByRole("button", { name: "Open search" })).toBeDefined()
     })
 
-    it("does not show accent on search icon when query is empty", () => {
+    it("shows accent style on search icon when search query is active", () => {
+      render(<FilterBar {...defaultProps} searchQuery="test" />)
+
+      const searchButton = screen.getByRole("button", { name: "Open search" })
+      expect(searchButton.className).toContain("bg-accent")
+    })
+
+    it("does not show accent style on search icon when search query is empty", () => {
       render(<FilterBar {...defaultProps} searchQuery="" />)
 
       const searchButton = screen.getByRole("button", { name: "Open search" })
-      expect(searchButton.className).not.toContain("border-primary")
+      expect(searchButton.className).not.toContain("bg-accent")
+    })
+
+    it("shows desktop clear button when search query has text", () => {
+      render(<FilterBar {...defaultProps} searchQuery="test" />)
+
+      // Desktop clear button exists (may be hidden via CSS)
+      const clearButtons = screen.getAllByLabelText("Clear search")
+      expect(clearButtons.length).toBeGreaterThan(0)
     })
   })
 
   // 7.4 Two-row layout and day navigation positioning
   describe("two-row layout", () => {
-    it("renders day navigation in a separate row from toggles", () => {
-      const { container } = render(<FilterBar {...defaultProps} allArticles={false} />)
+    it("uses flex-col layout for the outer wrapper", () => {
+      const { container } = render(<FilterBar {...defaultProps} />)
 
-      // The outer wrapper should be flex-col
-      const outerDiv = container.firstChild as HTMLElement
+      const outerDiv = container.firstElementChild as HTMLElement
       expect(outerDiv.className).toContain("flex-col")
     })
 
-    it("centers day navigation in row 2", () => {
-      const { container } = render(<FilterBar {...defaultProps} allArticles={false} />)
+    it("renders day navigation in a separate row from toggle buttons", () => {
+      const { container } = render(<FilterBar {...defaultProps} />)
 
-      const outerDiv = container.firstChild as HTMLElement
-      const row2 = outerDiv.children[1] as HTMLElement
-      expect(row2.className).toContain("justify-center")
+      const outerDiv = container.firstElementChild as HTMLElement
+      // The outer div should have at least 2 direct children (row 1 and row 2)
+      expect(outerDiv.children.length).toBeGreaterThanOrEqual(2)
     })
 
-    it("does not render row 2 when allArticles is active", () => {
+    it("centers day navigation row", () => {
+      const { container } = render(<FilterBar {...defaultProps} />)
+
+      const outerDiv = container.firstElementChild as HTMLElement
+      // Last direct child should be the day navigation row with justify-center
+      const lastChild = outerDiv.lastElementChild as HTMLElement
+      expect(lastChild.className).toContain("justify-center")
+    })
+
+    it("does not render day navigation row when allArticles is true", () => {
       const { container } = render(<FilterBar {...defaultProps} allArticles={true} />)
 
-      const outerDiv = container.firstChild as HTMLElement
-      // Only row 1 should exist
+      const outerDiv = container.firstElementChild as HTMLElement
+      // Should only have the row 1 div
       expect(outerDiv.children.length).toBe(1)
     })
+  })
+
+  // Additional test for search input onChange on desktop
+  it("calls onSearchChange when typing in desktop search input", () => {
+    const onSearchChange = vi.fn()
+    render(<FilterBar {...defaultProps} onSearchChange={onSearchChange} />)
+
+    // The desktop search input (there may be multiple, pick one that's in the DOM)
+    const searchInputs = screen.getAllByLabelText("Search articles")
+    fireEvent.change(searchInputs[0], { target: { value: "test" } })
+
+    expect(onSearchChange).toHaveBeenCalledWith("test")
   })
 })
