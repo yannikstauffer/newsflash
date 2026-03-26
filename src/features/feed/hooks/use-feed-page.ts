@@ -274,8 +274,8 @@ export function useFeedPage(): UseFeedPageResult {
               }
             },
           },
-          children: hoverDiv,
         },
+        hoverDiv,
       )
     },
     [hideArticle, isInReadList, removeFromReadList, addToReadList, createInteractionRef],

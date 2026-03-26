@@ -291,6 +291,7 @@ const eslintConfig = defineConfig([
 
       // React best practices
       "react/no-danger": "error",
+      "react/no-children-prop": "error",
     },
   },
 
