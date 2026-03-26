@@ -15,7 +15,9 @@ import {
   useArticleKeyboardShortcuts,
   useArticleState,
 } from "@/features/article-actions"
+import { connectors } from "@/features/connectors/registry"
 import { useFeedPreferences } from "@/features/feed-config/hooks/use-feed-preferences"
+import { useFilterPreferences } from "@/features/feed-config/hooks/use-filter-preferences"
 
 interface FilterBarProps {
   readonly showHidden: boolean
@@ -54,6 +56,7 @@ interface UseFeedPageResult {
 
 export function useFeedPage(): UseFeedPageResult {
   const { isFeedEnabled } = useFeedPreferences()
+  const { isFilterEnabled } = useFilterPreferences()
   const { articles, loading, errors, lastRefreshedAt } = useFeedData(isFeedEnabled)
   const {
     hiddenIds,
@@ -84,13 +87,15 @@ export function useFeedPage(): UseFeedPageResult {
       showHidden,
       hiddenIds,
       searchQuery,
+      connectors,
+      isFilterEnabled,
     })
     if (allArticles) {
       return filtered
     }
     return filterByDay(filtered, selectedDate)
   }, [
-    articles, isFeedEnabled, showHidden,
+    articles, isFeedEnabled, isFilterEnabled, showHidden,
     hiddenIds, searchQuery, allArticles, selectedDate,
   ])
 
@@ -101,12 +106,16 @@ export function useFeedPage(): UseFeedPageResult {
       showHidden: false,
       hiddenIds,
       searchQuery,
+      connectors,
+      isFilterEnabled,
     })
     const allFiltered = filterArticles(articles, {
       isFeedEnabled,
       showHidden: true,
       hiddenIds,
       searchQuery,
+      connectors,
+      isFilterEnabled,
     })
     const applyDay = (list: NormalizedArticle[]) =>
       allArticles ? list : filterByDay(list, selectedDate)
@@ -115,7 +124,7 @@ export function useFeedPage(): UseFeedPageResult {
     const hidden = all.filter((a) => hiddenSet.has(a.id))
     return { articleCount: visible.length, hiddenCount: hidden.length }
   }, [
-    articles, isFeedEnabled, hiddenIds,
+    articles, isFeedEnabled, isFilterEnabled, hiddenIds,
     searchQuery, allArticles, selectedDate,
   ])
 

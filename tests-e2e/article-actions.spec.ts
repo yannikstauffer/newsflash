@@ -52,10 +52,10 @@ test.describe("desktop button actions", () => {
     await firstCard.hover()
     await page.getByLabel("Save to read list").first().click()
 
-    // Wait for save animation to complete (article disappears from feed)
+    // Saved article remains visible in feed (save ≠ hide)
     await expect(
       page.locator("article", { hasText: firstTitle! }),
-    ).not.toBeVisible()
+    ).toBeVisible()
 
     // Verify in read list
     const nav = page.locator("nav[aria-label='Main navigation']")
@@ -141,9 +141,10 @@ test.describe("mobile swipe actions", () => {
       touchPoints: [],
     })
 
+    // Saved article remains visible in feed (save ≠ hide)
     await expect(
       page.locator("article", { hasText: firstTitle! }),
-    ).not.toBeVisible({ timeout: 5000 })
+    ).toBeVisible({ timeout: 5000 })
 
     const nav = page.locator("nav[aria-label='Main navigation']")
     await nav.getByRole("link", { name: /read list/i }).click()
