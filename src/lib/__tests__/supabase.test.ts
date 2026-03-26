@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { getSupabaseClient, resetSupabaseClient } from "../supabase"
 
 const mockClient = { auth: {}, from: vi.fn() }
-const mockCreateClient = vi.fn(() => mockClient)
+const mockCreateClient = vi.fn((..._args: unknown[]) => mockClient)
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: (...args: unknown[]) => mockCreateClient(...args),

@@ -53,7 +53,7 @@ interface UseFeedPageResult {
 }
 
 export function useFeedPage(): UseFeedPageResult {
-  const { isFeedEnabled, language } = useFeedPreferences()
+  const { isFeedEnabled } = useFeedPreferences()
   const { articles, loading, errors, lastRefreshedAt } = useFeedData(isFeedEnabled)
   const {
     hiddenIds,
@@ -81,7 +81,6 @@ export function useFeedPage(): UseFeedPageResult {
   const filteredArticles = useMemo(() => {
     const filtered = filterArticles(articles, {
       isFeedEnabled,
-      language,
       showHidden,
       hiddenIds,
       searchQuery,
@@ -91,7 +90,7 @@ export function useFeedPage(): UseFeedPageResult {
     }
     return filterByDay(filtered, selectedDate)
   }, [
-    articles, isFeedEnabled, language, showHidden,
+    articles, isFeedEnabled, showHidden,
     hiddenIds, searchQuery, allArticles, selectedDate,
   ])
 
@@ -99,14 +98,12 @@ export function useFeedPage(): UseFeedPageResult {
     const hiddenSet = new Set(hiddenIds)
     const visibleFiltered = filterArticles(articles, {
       isFeedEnabled,
-      language,
       showHidden: false,
       hiddenIds,
       searchQuery,
     })
     const allFiltered = filterArticles(articles, {
       isFeedEnabled,
-      language,
       showHidden: true,
       hiddenIds,
       searchQuery,
@@ -118,7 +115,7 @@ export function useFeedPage(): UseFeedPageResult {
     const hidden = all.filter((a) => hiddenSet.has(a.id))
     return { articleCount: visible.length, hiddenCount: hidden.length }
   }, [
-    articles, isFeedEnabled, language, hiddenIds,
+    articles, isFeedEnabled, hiddenIds,
     searchQuery, allArticles, selectedDate,
   ])
 
