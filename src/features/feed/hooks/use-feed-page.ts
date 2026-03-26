@@ -1,3 +1,4 @@
+import { BookmarkPlus, EyeOff } from "lucide-react"
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useFeedData } from "./use-feed-data"
@@ -252,13 +253,29 @@ export function useFeedPage(): UseFeedPageResult {
         SwipeableCard,
         {
           key: article.id,
-          onSwipeRight: () => hideArticle(article.id),
-          onSwipeLeft: () => {
-            if (isInReadList(article.id)) {
-              removeFromReadList(article.id)
-            } else {
-              addToReadList(article)
-            }
+          swipeRight: {
+            bgClassName: "bg-amber-100 dark:bg-amber-900/30",
+            icon: createElement(
+              "span",
+              { className: "text-amber-700 dark:text-amber-400", "aria-hidden": "true" },
+              createElement(EyeOff, { className: "size-5" }),
+            ),
+            onAction: () => hideArticle(article.id),
+          },
+          swipeLeft: {
+            bgClassName: "bg-blue-100 dark:bg-blue-900/30",
+            icon: createElement(
+              "span",
+              { className: "text-blue-700 dark:text-blue-400", "aria-hidden": "true" },
+              createElement(BookmarkPlus, { className: "size-5" }),
+            ),
+            onAction: () => {
+              if (isInReadList(article.id)) {
+                removeFromReadList(article.id)
+              } else {
+                addToReadList(article)
+              }
+            },
           },
           children: hoverDiv,
         },
