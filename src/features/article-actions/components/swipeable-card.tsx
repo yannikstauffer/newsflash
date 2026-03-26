@@ -10,7 +10,7 @@ interface SwipeConfig {
 }
 
 interface SwipeableCardProps {
-  readonly children: ReactNode
+  readonly children?: ReactNode
   readonly swipeRight?: SwipeConfig
   readonly swipeLeft?: SwipeConfig
 }
