@@ -23,7 +23,7 @@ export function formatRelativeTime(date: Date, now: Date = new Date(), locale: s
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" })
 
   if (diffSeconds < 60) {
-    return rtf.format(0, "second")
+    return "just now"
   }
   if (diffMinutes < 60) {
     return rtf.format(-diffMinutes, "minute")

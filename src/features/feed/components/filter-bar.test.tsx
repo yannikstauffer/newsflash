@@ -14,7 +14,6 @@ const defaultProps = {
   onPrev: vi.fn(),
   onNext: vi.fn(),
   onToggleAllArticles: vi.fn(),
-  lastRefreshedAt: null as Date | null,
   articleCount: 42,
   hiddenCount: 3,
 }
@@ -127,17 +126,8 @@ describe("FilterBar", () => {
     expect(screen.getByLabelText("Search articles").getAttribute("maxlength")).toBe("200")
   })
 
-  it("displays last refreshed timestamp when provided", () => {
-    const lastRefreshedAt = new Date()
-    render(<FilterBar {...defaultProps} lastRefreshedAt={lastRefreshedAt} />)
-
-    const refreshedElements = screen.getAllByLabelText("Last refreshed")
-    expect(refreshedElements.length).toBeGreaterThan(0)
-    expect(refreshedElements[0].textContent).toContain("Refreshed")
-  })
-
-  it("does not display last refreshed timestamp when null", () => {
-    render(<FilterBar {...defaultProps} lastRefreshedAt={null} />)
+  it("does not display refresh text (moved to FeedPage)", () => {
+    render(<FilterBar {...defaultProps} />)
 
     expect(screen.queryByLabelText("Last refreshed")).toBeNull()
   })

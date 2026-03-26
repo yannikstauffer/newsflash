@@ -59,3 +59,20 @@ test("day navigation: toggle, prev/next, and today disabled", async ({ page }) =
   const restoredText = await dayLabel.textContent()
   expect(restoredText).toBe(initialText)
 })
+
+test("sticky filter bar: remains visible when scrolling", async ({ page }) => {
+  // Ensure there are enough articles to scroll
+  const articleCount = await page.locator("article").count()
+  expect(articleCount).toBeGreaterThan(1)
+
+  // Get the All articles button (inside the sticky filter bar)
+  const allArticlesButton = page.getByRole("button", { name: "All articles" })
+  await expect(allArticlesButton).toBeVisible()
+
+  // Scroll down to the bottom of the page
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+
+  // The filter bar controls should still be visible (sticky)
+  await expect(allArticlesButton).toBeVisible()
+  await expect(allArticlesButton).toBeInViewport()
+})

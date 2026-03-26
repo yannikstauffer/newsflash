@@ -1,13 +1,20 @@
 import { FeedList } from "./feed-list"
 import { FilterBar } from "./filter-bar"
 import { useFeedPage } from "../hooks/use-feed-page"
+import { formatRelativeTime } from "../utils/format-time"
 
 export function FeedPage() {
-  const { filterBarProps, feedListProps } = useFeedPage()
+  const { filterBarProps, feedListProps, lastRefreshedAt } = useFeedPage()
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <FilterBar {...filterBarProps} />
+
+      {lastRefreshedAt && (
+        <p className="text-center text-xs text-muted-foreground" aria-label="Last refreshed">
+          {`Refreshed ${formatRelativeTime(lastRefreshedAt)}`}
+        </p>
+      )}
 
       <FeedList
         articles={feedListProps.filteredArticles}

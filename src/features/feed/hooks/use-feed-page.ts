@@ -27,7 +27,6 @@ interface FilterBarProps {
   readonly onPrev: () => void
   readonly onNext: () => void
   readonly onToggleAllArticles: () => void
-  readonly lastRefreshedAt: Date | null
   readonly articleCount: number
   readonly hiddenCount: number
 }
@@ -49,6 +48,7 @@ interface FeedListProps {
 interface UseFeedPageResult {
   readonly filterBarProps: FilterBarProps
   readonly feedListProps: FeedListProps
+  readonly lastRefreshedAt: Date | null
 }
 
 export function useFeedPage(): UseFeedPageResult {
@@ -282,13 +282,12 @@ export function useFeedPage(): UseFeedPageResult {
     onPrev: handlePreviousDay,
     onNext: handleNextDay,
     onToggleAllArticles: handleToggleAllArticles,
-    lastRefreshedAt,
     articleCount,
     hiddenCount,
   }), [
     showHidden, handleToggleShowHidden, searchQuery, selectedDate,
     allArticles, isToday, handlePreviousDay, handleNextDay,
-    handleToggleAllArticles, lastRefreshedAt, articleCount, hiddenCount,
+    handleToggleAllArticles, articleCount, hiddenCount,
   ])
 
   const emptyMessage = !allArticles && !loading
@@ -309,5 +308,5 @@ export function useFeedPage(): UseFeedPageResult {
     showHidden, renderActions, renderArticleWrapper, emptyMessage,
   ])
 
-  return { filterBarProps, feedListProps }
+  return { filterBarProps, feedListProps, lastRefreshedAt }
 }
