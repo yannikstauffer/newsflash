@@ -115,9 +115,9 @@ export function FilterBar({
                 onClick={onToggleAllArticles}
                 aria-pressed={allArticles}
                 aria-label="All articles"
-                className="h-8 min-h-[44px] rounded-full px-3 text-xs max-md:px-3 md:min-h-[28px]"
+                className="h-8 min-h-[44px] min-w-[44px] rounded-full px-3 text-xs md:min-h-[28px] md:min-w-0"
               >
-                <List className="size-3.5" data-icon="inline-start" />
+                <List className="size-3.5" />
                 <span className="hidden md:inline">{"All articles"}</span>
               </Button>
 
@@ -127,12 +127,12 @@ export function FilterBar({
                 onClick={onToggleShowHidden}
                 aria-pressed={showHidden}
                 aria-label="Hidden"
-                className="h-8 min-h-[44px] rounded-full px-3 text-xs max-md:px-3 md:min-h-[28px]"
+                className="h-8 min-h-[44px] min-w-[44px] rounded-full px-3 text-xs md:min-h-[28px] md:min-w-0"
               >
                 {showHidden ? (
-                  <Eye className="size-3.5" data-icon="inline-start" />
+                  <Eye className="size-3.5" />
                 ) : (
-                  <EyeOff className="size-3.5" data-icon="inline-start" />
+                  <EyeOff className="size-3.5" />
                 )}
                 <span className="hidden md:inline">{"Hidden"}</span>
               </Button>
