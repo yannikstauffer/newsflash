@@ -167,9 +167,114 @@ describe("winfuture filters", () => {
   })
 })
 
+describe("srf filters", () => {
+  const filters = srfConnector.filters!
+
+  it("defines exactly 3 category filters", () => {
+    expect(filters).toHaveLength(3)
+  })
+
+  it("all have srf-filter- prefixed IDs", () => {
+    for (const filter of filters) {
+      expect(filter.id).toMatch(/^srf-filter-/)
+    }
+  })
+
+  it("all are enabled by default", () => {
+    for (const filter of filters) {
+      expect(filter.enabledByDefault).toBe(true)
+    }
+  })
+
+  describe("srf-filter-sport", () => {
+    const filter = filters.find((f) => f.id === "srf-filter-sport")!
+
+    it("matches sport article URLs", () => {
+      const article = makeArticle({
+        link: "https://www.srf.ch/sport/eishockey/swiss-league/final",
+      })
+      expect(filter.match(article)).toBe(true)
+    })
+
+    it("does not match news article URLs", () => {
+      const article = makeArticle({
+        link: "https://www.srf.ch/news/schweiz/some-article",
+      })
+      expect(filter.match(article)).toBe(false)
+    })
+
+    it("does not match kultur article URLs", () => {
+      const article = makeArticle({
+        link: "https://www.srf.ch/kultur/musik/some-article",
+      })
+      expect(filter.match(article)).toBe(false)
+    })
+  })
+
+  describe("srf-filter-kultur", () => {
+    const filter = filters.find((f) => f.id === "srf-filter-kultur")!
+
+    it("matches kultur article URLs", () => {
+      const article = makeArticle({
+        link: "https://www.srf.ch/kultur/musik/jesus-christ-superstar",
+      })
+      expect(filter.match(article)).toBe(true)
+    })
+
+    it("does not match news article URLs", () => {
+      const article = makeArticle({
+        link: "https://www.srf.ch/news/schweiz/some-article",
+      })
+      expect(filter.match(article)).toBe(false)
+    })
+
+    it("does not match sport article URLs", () => {
+      const article = makeArticle({
+        link: "https://www.srf.ch/sport/fussball/some-article",
+      })
+      expect(filter.match(article)).toBe(false)
+    })
+  })
+
+  describe("srf-filter-wissen", () => {
+    const filter = filters.find((f) => f.id === "srf-filter-wissen")!
+
+    it("matches wissen article URLs", () => {
+      const article = makeArticle({
+        link: "https://www.srf.ch/wissen/klimawandel/some-article",
+      })
+      expect(filter.match(article)).toBe(true)
+    })
+
+    it("matches wissen sub-categories like gesundheit and natur-tiere", () => {
+      const gesundheit = makeArticle({
+        link: "https://www.srf.ch/wissen/gesundheit/some-article",
+      })
+      const natur = makeArticle({
+        link: "https://www.srf.ch/wissen/natur-tiere/some-article",
+      })
+      expect(filter.match(gesundheit)).toBe(true)
+      expect(filter.match(natur)).toBe(true)
+    })
+
+    it("does not match news article URLs", () => {
+      const article = makeArticle({
+        link: "https://www.srf.ch/news/schweiz/some-article",
+      })
+      expect(filter.match(article)).toBe(false)
+    })
+
+    it("does not match sport article URLs", () => {
+      const article = makeArticle({
+        link: "https://www.srf.ch/sport/fussball/some-article",
+      })
+      expect(filter.match(article)).toBe(false)
+    })
+  })
+})
+
 describe("connectors without filters", () => {
   it.each([
-    ["srf", srfConnector],
     ["engadget", engadgetConnector],
     ["ubergizmo", ubergizmoConnector],
   ])("%s has no filters", (_id, connector) => {

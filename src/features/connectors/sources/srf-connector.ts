@@ -6,6 +6,26 @@ export const srfConnector: Connector = {
   id: "srf",
   name: "SRF",
   language: "de",
+  filters: [
+    {
+      id: "srf-filter-sport",
+      label: "Sport",
+      enabledByDefault: true,
+      match: (article) => article.link.includes("/sport/"),
+    },
+    {
+      id: "srf-filter-kultur",
+      label: "Kultur",
+      enabledByDefault: true,
+      match: (article) => article.link.includes("/kultur/"),
+    },
+    {
+      id: "srf-filter-wissen",
+      label: "Wissen",
+      enabledByDefault: true,
+      match: (article) => article.link.includes("/wissen/"),
+    },
+  ],
   feeds: [
     { id: "srf-latest", name: "Das Neueste", group: "News" },
     { id: "srf-switzerland", name: "Schweiz", group: "News" },
