@@ -5,6 +5,7 @@ import { useFeedData } from "./use-feed-data"
 import { filterArticles } from "../utils/filter-articles"
 import { filterByDay } from "../utils/filter-by-day"
 
+import type { SwipeableCardHandle } from "@/features/article-actions"
 import type { NormalizedArticle } from "@/features/connectors/types"
 import type { ReactNode } from "react"
 
@@ -71,6 +72,7 @@ export function useFeedPage(): UseFeedPageResult {
   const hoveredArticleRef = useRef<string | undefined>(undefined)
   const focusedArticleRef = useRef<string | undefined>(undefined)
   const articlesRef = useRef<NormalizedArticle[]>([])
+  const swipeableCardReferences = useRef<Map<string, SwipeableCardHandle>>(new Map())
 
   const [showHidden, setShowHidden] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -183,9 +185,11 @@ export function useFeedPage(): UseFeedPageResult {
         removeFromReadList(articleId)
       } else {
         addToReadList(article)
+        hideArticle(articleId)
+        swipeableCardReferences.current.get(articleId)?.triggerRemoval()
       }
     },
-    [isInReadList, removeFromReadList, addToReadList],
+    [isInReadList, removeFromReadList, addToReadList, hideArticle],
   )
 
   const getFocusedArticleId = useCallback(
@@ -237,6 +241,8 @@ export function useFeedPage(): UseFeedPageResult {
             removeFromReadList(article.id)
           } else {
             addToReadList(article)
+            hideArticle(article.id)
+            swipeableCardReferences.current.get(article.id)?.triggerRemoval()
           }
         },
         isSaved: isInReadList(article.id),
@@ -259,6 +265,13 @@ export function useFeedPage(): UseFeedPageResult {
         SwipeableCard,
         {
           key: article.id,
+          ref: (handle: SwipeableCardHandle | null) => {
+            if (handle) {
+              swipeableCardReferences.current.set(article.id, handle)
+            } else {
+              swipeableCardReferences.current.delete(article.id)
+            }
+          },
           swipeRight: {
             bgClassName: "bg-amber-100 dark:bg-amber-900/30",
             icon: createElement(
@@ -280,6 +293,7 @@ export function useFeedPage(): UseFeedPageResult {
                 removeFromReadList(article.id)
               } else {
                 addToReadList(article)
+                hideArticle(article.id)
               }
             },
           },
