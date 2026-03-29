@@ -52,10 +52,10 @@ test.describe("desktop button actions", () => {
     await firstCard.hover()
     await page.getByLabel("Save to read list").first().click()
 
-    // Saved article remains visible in feed (save ≠ hide)
+    // Saved article is hidden from the main feed
     await expect(
       page.locator("article", { hasText: firstTitle! }),
-    ).toBeVisible()
+    ).not.toBeVisible({ timeout: 5000 })
 
     // Verify in read list
     const nav = page.locator("nav[aria-label='Main navigation']")
@@ -63,6 +63,30 @@ test.describe("desktop button actions", () => {
     await expect(
       page.locator("article", { hasText: firstTitle! }),
     ).toBeVisible()
+  })
+
+  test("bookmarked article stays hidden after page reload", async ({ page }) => {
+    const firstCard = page.locator("article").first()
+    const firstTitle = await firstCard.locator("h3").textContent()
+
+    // Save
+    await firstCard.hover()
+    await page.getByLabel("Save to read list").first().click()
+
+    // Article disappears
+    await expect(
+      page.locator("article", { hasText: firstTitle! }),
+    ).not.toBeVisible({ timeout: 5000 })
+
+    // Reload the page
+    await page.reload()
+    await page.getByRole("button", { name: "All articles" }).click()
+    await expect(page.locator("article").first()).toBeVisible()
+
+    // Bookmarked article should not reappear in the main feed
+    await expect(
+      page.locator("article", { hasText: firstTitle! }),
+    ).not.toBeVisible()
   })
 
   test("empty read list shows guidance message", async ({ page }) => {
@@ -141,10 +165,10 @@ test.describe("mobile swipe actions", () => {
       touchPoints: [],
     })
 
-    // Saved article remains visible in feed (save ≠ hide)
+    // Saved article is hidden from the main feed
     await expect(
       page.locator("article", { hasText: firstTitle! }),
-    ).toBeVisible({ timeout: 5000 })
+    ).not.toBeVisible({ timeout: 5000 })
 
     const nav = page.locator("nav[aria-label='Main navigation']")
     await nav.getByRole("link", { name: /read list/i }).click()
