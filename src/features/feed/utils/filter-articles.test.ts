@@ -5,6 +5,8 @@ import { filterArticles } from "./filter-articles"
 import type { FilterOptions } from "./filter-articles"
 import type { Connector, NormalizedArticle } from "@/features/connectors/types"
 
+import { srfConnector } from "@/features/connectors/sources/srf-connector"
+
 function makeArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedArticle {
   return {
     id: "abc123",
@@ -255,6 +257,79 @@ describe("filterArticles", () => {
 
       expect(result).toHaveLength(1)
       expect(result[0].id).toBe("2")
+    })
+  })
+
+  describe("SRF category filters", () => {
+    it("disabling sport filter excludes sport articles from srf-latest", () => {
+      const articles = [
+        makeArticle({
+          id: "sport-1",
+          source: "srf",
+          title: "Eishockey Final",
+          link: "https://www.srf.ch/sport/eishockey/final",
+        }),
+        makeArticle({
+          id: "news-1",
+          source: "srf",
+          title: "Schweiz News",
+          link: "https://www.srf.ch/news/schweiz/article",
+        }),
+        makeArticle({
+          id: "kultur-1",
+          source: "srf",
+          title: "Musik Event",
+          link: "https://www.srf.ch/kultur/musik/event",
+        }),
+      ]
+
+      const result = filterArticles(articles, {
+        ...defaultOptions,
+        connectors: [srfConnector],
+        isFilterEnabled: (filterId) => filterId !== "srf-filter-sport",
+      })
+
+      expect(result).toHaveLength(2)
+      expect(result.map((a) => a.id)).toEqual(["news-1", "kultur-1"])
+    })
+
+    it("disabling multiple SRF category filters excludes all matching articles", () => {
+      const articles = [
+        makeArticle({
+          id: "sport-1",
+          source: "srf",
+          title: "Eishockey",
+          link: "https://www.srf.ch/sport/eishockey/game",
+        }),
+        makeArticle({
+          id: "kultur-1",
+          source: "srf",
+          title: "Konzert",
+          link: "https://www.srf.ch/kultur/musik/konzert",
+        }),
+        makeArticle({
+          id: "wissen-1",
+          source: "srf",
+          title: "Klimawandel",
+          link: "https://www.srf.ch/wissen/klimawandel/article",
+        }),
+        makeArticle({
+          id: "news-1",
+          source: "srf",
+          title: "Nachrichten",
+          link: "https://www.srf.ch/news/schweiz/article",
+        }),
+      ]
+
+      const result = filterArticles(articles, {
+        ...defaultOptions,
+        connectors: [srfConnector],
+        isFilterEnabled: (filterId) =>
+          filterId !== "srf-filter-sport" && filterId !== "srf-filter-wissen",
+      })
+
+      expect(result).toHaveLength(2)
+      expect(result.map((a) => a.id)).toEqual(["kultur-1", "news-1"])
     })
   })
 })
