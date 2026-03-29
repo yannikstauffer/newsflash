@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.1.0](https://github.com/yannikstauffer/newsflash/compare/newsflash-v1.0.0...newsflash-v1.1.0) (2026-03-29)
+
+
+### Features
+
+* **connectors:** add SRF category filters for sport, kultur, and wissen ([9633057](https://github.com/yannikstauffer/newsflash/commit/963305761639c7d23cec23682125bfb49f1dd9b0))
+* **filter-bar:** adjust mobile button styling ([d9dd525](https://github.com/yannikstauffer/newsflash/commit/d9dd525a0fcfde6546ee3af3007cac041e645928))
+
+
+### Bug Fixes
+
+* **feed:** hide bookmarked articles from main feed ([7ee18de](https://github.com/yannikstauffer/newsflash/commit/7ee18de5531237951df064baf84ef4b499a389c1))
+* **swipeable-card:** create spec to fix bookmarking behavior ([418430f](https://github.com/yannikstauffer/newsflash/commit/418430f0cd3206829f4ecc1778a1d76ff70d4828))
+
+
+### Documentation
+
+* **srf-feed-category-filters:** add openspec proposal ([a3fedda](https://github.com/yannikstauffer/newsflash/commit/a3feddaeca7a250cb3823442c934e4653c99ce47))
+* **sync-reliability-and-filters:** add openspec proposal ([3dbbff0](https://github.com/yannikstauffer/newsflash/commit/3dbbff0c874edbf23783c233c3023d399379db6e))
+
+
+### Miscellaneous
+
+* **develop:** release newsflash 1.0.0 ([b697804](https://github.com/yannikstauffer/newsflash/commit/b6978045c53470aa67cfbab3dc0ec8f7753b2ab5))
+
 ## 1.0.0 (2026-03-26)
 
 
