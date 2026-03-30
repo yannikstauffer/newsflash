@@ -11,6 +11,10 @@ The feed configuration page SHALL display a "Filters" sub-section under each con
 - **WHEN** the user opens settings and a connector has no filters defined
 - **THEN** no filter section SHALL be rendered for that connector
 
+#### Scenario: SRF shows filter section with category filters
+- **WHEN** the user opens settings
+- **THEN** the SRF connector SHALL display a "Filter" section with toggles for Sport, Kultur, and Wissen
+
 #### Scenario: Filter checkbox reflects current state
 - **WHEN** a filter is enabled
 - **THEN** its checkbox SHALL be checked

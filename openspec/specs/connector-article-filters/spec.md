@@ -15,6 +15,10 @@ Each `ArticleFilter` SHALL have an `id` (unique string), `label` (display string
 - **WHEN** a user explicitly toggles a filter
 - **THEN** the user's preference SHALL override `enabledByDefault`
 
+#### Scenario: SRF connector defines URL-based category filters
+- **WHEN** the SRF connector is loaded
+- **THEN** it SHALL include a `filters` array with three category filters matching articles by URL path
+
 ### Requirement: Heise connector defines two filters
 The heise connector SHALL define two filters: `heise-plus` (label: "heise+ (Bezahlinhalte)", `enabledByDefault: false`) matching articles whose title starts with "heise+ |", and `heise-angebot` (label: "heise-Angebot (Werbung)", `enabledByDefault: true`) matching articles whose title starts with "heise-Angebot:".
 
@@ -76,11 +80,7 @@ The winfuture connector SHALL define one filter: `winfuture-downloads` (label: "
 - **THEN** the `winfuture-downloads` filter's `match` function SHALL return `false`
 
 ### Requirement: Connectors without filters have no filters property
-SRF, Engadget, and Ubergizmo connectors SHALL NOT define any filters. Their `filters` property SHALL be `undefined` or omitted.
-
-#### Scenario: SRF has no filters
-- **WHEN** the SRF connector is loaded
-- **THEN** it SHALL have no `filters` property or an undefined `filters` property
+Engadget and Ubergizmo connectors SHALL NOT define any filters. Their `filters` property SHALL be `undefined` or omitted.
 
 ### Requirement: Filter preferences persist in localStorage
 Filter enabled/disabled state SHALL be stored in localStorage under key `"newsflash:filter-prefs"` and restored on page load. For filters with `enabledByDefault: true`, absence from the store SHALL mean enabled (`store[filterId] !== false`). For filters with `enabledByDefault: false`, absence SHALL mean disabled (`store[filterId] === true` to be enabled).
