@@ -110,14 +110,14 @@ The CI workflow SHALL install Playwright browsers before running E2E tests.
 The release workflow SHALL build the production bundle and attach it as a tarball (`dist.tar.gz`) to the GitHub Release.
 
 #### Scenario: dist tarball is attached
-- **WHEN** a GitHub Release is created
+- **WHEN** a GitHub Release is created by the release workflow
 - **THEN** the release MUST have a `dist.tar.gz` asset containing the production build output
 
 ### Requirement: Test results XML is attached to releases
 The release workflow SHALL run unit tests with JUnit XML output and attach the results file to the GitHub Release.
 
 #### Scenario: Test results are attached
-- **WHEN** a GitHub Release is created
+- **WHEN** a GitHub Release is created by the release workflow
 - **THEN** the release MUST have a test results XML file as an asset
 
 #### Scenario: Tests fail during release
@@ -128,14 +128,14 @@ The release workflow SHALL run unit tests with JUnit XML output and attach the r
 The release workflow SHALL generate an HTML coverage report and attach it as a zip archive to the GitHub Release.
 
 #### Scenario: Coverage report is attached
-- **WHEN** a GitHub Release is created
+- **WHEN** a GitHub Release is created by the release workflow
 - **THEN** the release MUST have a `coverage-report.zip` asset containing the HTML coverage report
 
 ### Requirement: Playwright report is attached to releases
 The release workflow SHALL run Playwright E2E tests and attach the HTML report (including screenshots) as a zip archive to the GitHub Release.
 
 #### Scenario: Playwright report is attached
-- **WHEN** a GitHub Release is created
+- **WHEN** a GitHub Release is created by the release workflow
 - **THEN** the release MUST have a `playwright-report.zip` asset containing the Playwright HTML report with screenshots
 
 #### Scenario: E2E tests fail during release
@@ -153,60 +153,143 @@ Playwright trace files SHALL NOT be attached to GitHub Releases due to their siz
 
 ## Requirements
 
-### Requirement: Release-please creates a Release PR on main
-The release workflow SHALL use `google-github-actions/release-please-action` to automatically create and maintain a Release PR on the `main` branch whenever new conventional commits are pushed.
+### Requirement: Release workflow triggers on successful CI completion on develop
+The release workflow SHALL trigger via `workflow_run` when the CI workflow completes successfully on the `develop` branch.
 
-#### Scenario: Feature commit triggers Release PR creation
-- **WHEN** a commit with prefix `feat:` is pushed to `main`
-- **THEN** release-please MUST create a Release PR that bumps the minor version in `package.json` and updates `CHANGELOG.md`
+#### Scenario: CI passes on develop triggers release
+- **WHEN** the CI workflow completes successfully on a push to `develop`
+- **THEN** the release workflow MUST be triggered
 
-#### Scenario: Fix commit triggers Release PR creation
-- **WHEN** a commit with prefix `fix:` is pushed to `main`
-- **THEN** release-please MUST create a Release PR that bumps the patch version in `package.json` and updates `CHANGELOG.md`
+#### Scenario: CI fails on develop does not trigger release
+- **WHEN** the CI workflow fails on a push to `develop`
+- **THEN** the release workflow MUST NOT be triggered
 
-#### Scenario: Breaking change triggers major bump
-- **WHEN** a commit with a `!` suffix on the type (e.g., `feat!:`) or a `BREAKING CHANGE:` footer is pushed to `main`
-- **THEN** release-please MUST create a Release PR that bumps the major version in `package.json`
+#### Scenario: CI passes on master does not trigger release
+- **WHEN** the CI workflow completes successfully on a push to `master`
+- **THEN** the release workflow MUST NOT be triggered
 
-#### Scenario: Multiple commits accumulate in Release PR
-- **WHEN** multiple conventional commits are pushed to `main` before the Release PR is merged
-- **THEN** release-please MUST update the existing Release PR to include all accumulated changes in the changelog
+### Requirement: Release workflow skips bot-triggered pushes
+The release workflow SHALL skip execution when the push was made by `github-actions[bot]` to prevent infinite loops from version-bump commits.
 
-### Requirement: Merging the Release PR creates a GitHub Release
-When the release-please Release PR is merged, the workflow SHALL create a git tag and a GitHub Release with auto-generated release notes.
+#### Scenario: Bot push is skipped
+- **WHEN** the release workflow is triggered and `github.actor` is `github-actions[bot]`
+- **THEN** the workflow MUST exit without performing any release steps
 
-#### Scenario: Release PR merged successfully
-- **WHEN** the release-please Release PR is merged to `main`
-- **THEN** the workflow MUST create a git tag matching the version (e.g., `v0.1.0`) and a GitHub Release with the changelog as the release body
+#### Scenario: Human push proceeds
+- **WHEN** the release workflow is triggered and `github.actor` is not `github-actions[bot]`
+- **THEN** the workflow MUST proceed with release analysis
 
-### Requirement: Changelog is auto-generated
-release-please SHALL generate and maintain a `CHANGELOG.md` file in the repository root, grouped by conventional commit type.
+### Requirement: Release workflow analyzes commits since last tag
+The release workflow SHALL scan all conventional commits between the latest `v*` tag and HEAD on `develop` to determine the release type.
 
-#### Scenario: Changelog includes grouped entries
-- **WHEN** a Release PR is created with `feat:` and `fix:` commits
-- **THEN** `CHANGELOG.md` MUST contain separate sections for "Features" and "Bug Fixes" with the commit messages listed under each
+#### Scenario: feat commit determines minor bump
+- **WHEN** commits since the last tag include at least one `feat:` commit
+- **THEN** the workflow MUST determine the bump type as `minor`
 
-### Requirement: Version is bumped in package.json
-release-please SHALL update the `version` field in `package.json` to match the released version.
+#### Scenario: fix commit determines patch bump
+- **WHEN** commits since the last tag include `fix:` commits but no `feat:` or breaking commits
+- **THEN** the workflow MUST determine the bump type as `patch`
 
-#### Scenario: Version field is updated
-- **WHEN** the Release PR is created
-- **THEN** the PR MUST include a change to `package.json` setting the `version` field to the new version number
+#### Scenario: perf commit determines patch bump
+- **WHEN** commits since the last tag include `perf:` commits but no `feat:` or breaking commits
+- **THEN** the workflow MUST determine the bump type as `patch`
 
-### Requirement: Release-please configuration files exist
-The repository SHALL contain `release-please-config.json` and `.release-please-manifest.json` in the root directory to configure release-please behavior.
+#### Scenario: refactor commit determines patch bump
+- **WHEN** commits since the last tag include `refactor:` commits but no `feat:` or breaking commits
+- **THEN** the workflow MUST determine the bump type as `patch`
 
-#### Scenario: Configuration specifies Node release type
-- **WHEN** release-please reads `release-please-config.json`
-- **THEN** the release type MUST be set to `node` and the default branch MUST be `main`
+#### Scenario: Breaking change determines major bump
+- **WHEN** commits since the last tag include a commit with `!` suffix (e.g., `feat!:`) or a `BREAKING CHANGE:` footer
+- **THEN** the workflow MUST determine the bump type as `major`
 
-#### Scenario: Manifest tracks current version
-- **WHEN** release-please reads `.release-please-manifest.json`
-- **THEN** it MUST find the current version of the package (starting at `0.0.0`)
+#### Scenario: Mixed commit types use highest bump
+- **WHEN** commits since the last tag include multiple releasable types (e.g., `feat:` and `fix:`)
+- **THEN** the workflow MUST use the highest bump type (major > minor > patch)
+
+#### Scenario: Only non-releasable commits skip release
+- **WHEN** all commits since the last tag are `docs:`, `test:`, or `chore:` types only
+- **THEN** the workflow MUST skip the release and exit successfully without error
+
+#### Scenario: No commits since last tag
+- **WHEN** there are no commits between the last `v*` tag and HEAD
+- **THEN** the workflow MUST skip the release and exit successfully
+
+### Requirement: Release workflow bumps version in package.json
+The release workflow SHALL update the `version` field in `package.json` to the new version number and commit the change to `develop`.
+
+#### Scenario: Version is bumped in package.json
+- **WHEN** the workflow determines a bump type of `patch`, `minor`, or `major`
+- **THEN** `package.json` MUST be updated with the new version number
+
+#### Scenario: Version bump is committed to develop
+- **WHEN** the version is bumped in `package.json`
+- **THEN** a commit with message `chore: release v<version>` MUST be pushed to the `develop` branch
+
+### Requirement: Release workflow generates CHANGELOG
+The release workflow SHALL generate or update `CHANGELOG.md` with entries grouped by conventional commit type, matching the section grouping: Features, Bug Fixes, Performance Improvements, Code Refactoring.
+
+#### Scenario: CHANGELOG includes grouped entries
+- **WHEN** a release includes `feat:` and `fix:` commits
+- **THEN** `CHANGELOG.md` MUST contain separate sections for "Features" and "Bug Fixes" with commit messages listed under each
+
+#### Scenario: CHANGELOG is committed with version bump
+- **WHEN** the CHANGELOG is generated
+- **THEN** the CHANGELOG update MUST be included in the same commit as the version bump (`chore: release v<version>`)
+
+### Requirement: Release workflow fast-forward merges develop to master
+The release workflow SHALL merge `develop` into `master` using fast-forward only (`--ff-only`).
+
+#### Scenario: Fast-forward merge succeeds
+- **WHEN** `master` is an ancestor of `develop`
+- **THEN** `master` MUST be updated to point to the same commit as `develop` via fast-forward
+
+#### Scenario: Fast-forward merge fails
+- **WHEN** `master` has diverged from `develop` and fast-forward is not possible
+- **THEN** the workflow MUST fail with a clear error message and MUST NOT create a release
+
+### Requirement: Release workflow creates a git tag
+The release workflow SHALL create and push a git tag in the format `v<version>` (e.g., `v1.2.0`).
+
+#### Scenario: Tag is created after merge
+- **WHEN** the fast-forward merge to `master` succeeds
+- **THEN** a git tag `v<version>` MUST be created and pushed to the remote
+
+### Requirement: Release workflow creates a GitHub Release
+The release workflow SHALL create a GitHub Release associated with the new tag, with the CHANGELOG entries for this version as the release body.
+
+#### Scenario: GitHub Release is created
+- **WHEN** the tag is pushed
+- **THEN** a GitHub Release MUST be created with title `v<version>` and body containing the CHANGELOG entries for this version
+
+### Requirement: Release workflow attaches build artifacts
+The release workflow SHALL build the project and attach artifacts to the GitHub Release: `dist.tar.gz`, `coverage-report.zip`, and `playwright-report.zip`.
+
+#### Scenario: dist tarball is attached
+- **WHEN** a GitHub Release is created
+- **THEN** the release MUST have a `dist.tar.gz` asset containing the production build output
+
+#### Scenario: Coverage report is attached
+- **WHEN** a GitHub Release is created
+- **THEN** the release MUST have a `coverage-report.zip` asset containing the HTML coverage report
+
+#### Scenario: Playwright report is attached
+- **WHEN** a GitHub Release is created
+- **THEN** the release MUST have a `playwright-report.zip` asset containing the Playwright HTML report
+
+#### Scenario: Build failure prevents release
+- **WHEN** the build or tests fail during the release workflow
+- **THEN** the workflow MUST fail and no GitHub Release SHALL be created
+
+### Requirement: Release workflow uses concurrency control
+The release workflow SHALL use a concurrency group to ensure only one release runs at a time.
+
+#### Scenario: Concurrent releases are queued
+- **WHEN** a release workflow is triggered while another is already running
+- **THEN** the new workflow MUST wait for the running one to complete before starting
 
 ### Requirement: Release workflow uses minimal permissions
-The release workflow SHALL request only the GitHub token permissions it needs: `contents: write` and `pull-requests: write`.
+The release workflow SHALL request only the GitHub token permissions it needs: `contents: write`.
 
 #### Scenario: Workflow permissions are scoped
 - **WHEN** the release workflow runs
-- **THEN** it MUST declare `contents: write` and `pull-requests: write` permissions and no others
+- **THEN** it MUST declare `contents: write` permission and no others
