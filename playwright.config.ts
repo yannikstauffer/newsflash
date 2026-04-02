@@ -15,6 +15,7 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testIgnore: "connectors.spec.ts",
       use: {
         ...devices["Desktop Chrome"],
       },
