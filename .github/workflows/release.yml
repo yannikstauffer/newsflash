@@ -36,6 +36,9 @@ jobs:
           fetch-depth: 0
           token: ${{ github.token }}
 
+      - name: Create local develop branch
+        run: git checkout -B develop
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -189,15 +192,9 @@ jobs:
 
       - name: Extract CHANGELOG for this version
         if: steps.bump.outputs.skip != 'true'
-        id: changelog
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          BODY=$(awk "/^## \[${VERSION}\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md)
-          {
-            echo "body<<CHANGELOG_EOF"
-            echo "$BODY"
-            echo "CHANGELOG_EOF"
-          } >> "$GITHUB_OUTPUT"
+          awk "/^## \\[?${VERSION}\\]?/{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md > release-notes.md
 
       - name: Create GitHub Release
         if: steps.bump.outputs.skip != 'true'
@@ -206,7 +203,7 @@ jobs:
         run: |
           gh release create "v${{ steps.version.outputs.version }}" \
             --title "v${{ steps.version.outputs.version }}" \
-            --notes "${{ steps.changelog.outputs.body }}" \
+            --notes-file release-notes.md \
             dist.tar.gz \
             test-results.xml \
             coverage-report.zip \
