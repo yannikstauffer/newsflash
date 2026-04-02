@@ -1,9 +1,11 @@
 name: Release
 
 # Prerequisites (GitHub repository settings, not managed by this file):
-#   - Branch protection on `master`: require PR (no direct pushes),
-#     require status checks to pass. This ensures fast-forward merge
-#     is always possible and no one bypasses the release flow.
+#   - Branch protection on `master`: for human users, require PR (no direct
+#     pushes) and require status checks to pass. The automated release workflow
+#     is allowed to push/merge to `master` (e.g. via an allowed GitHub Actions
+#     app or bypass), so the branch-protection rule must be configured
+#     accordingly to avoid blocking this release flow.
 
 on:
   workflow_run:
@@ -24,13 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
-      github.actor != 'github-actions[bot]'
+      github.event.workflow_run.actor.login != 'github-actions[bot]'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: develop
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           token: ${{ github.token }}
 
@@ -147,6 +149,7 @@ jobs:
       - name: Fast-forward merge to master
         if: steps.bump.outputs.skip != 'true'
         run: |
+          git fetch origin master
           git checkout master
           git merge --ff-only develop
           git push origin master
