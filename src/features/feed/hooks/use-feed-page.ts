@@ -47,6 +47,7 @@ interface FeedListProps {
     children: ReactNode,
   ) => ReactNode
   readonly emptyMessage: string | undefined
+  readonly onRefresh: () => void
 }
 
 interface UseFeedPageResult {
@@ -58,7 +59,7 @@ interface UseFeedPageResult {
 export function useFeedPage(): UseFeedPageResult {
   const { isFeedEnabled } = useFeedPreferences()
   const { isFilterEnabled } = useFilterPreferences()
-  const { articles, loading, errors, lastRefreshedAt } = useFeedData(isFeedEnabled)
+  const { articles, loading, errors, lastRefreshedAt, refresh } = useFeedData(isFeedEnabled)
   const {
     hiddenIds,
     isHidden,
@@ -340,9 +341,10 @@ export function useFeedPage(): UseFeedPageResult {
     renderActions,
     renderWrapper: renderArticleWrapper,
     emptyMessage,
+    onRefresh: refresh,
   }), [
     filteredArticles, loading, errors, hiddenIds,
-    showHidden, renderActions, renderArticleWrapper, emptyMessage,
+    showHidden, renderActions, renderArticleWrapper, emptyMessage, refresh,
   ])
 
   return { filterBarProps, feedListProps, lastRefreshedAt }
