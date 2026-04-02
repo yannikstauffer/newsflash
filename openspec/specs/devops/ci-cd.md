@@ -265,15 +265,15 @@ The release workflow SHALL create a GitHub Release associated with the new tag, 
 The release workflow SHALL build the project and attach artifacts to the GitHub Release: `dist.tar.gz`, `coverage-report.zip`, and `playwright-report.zip`.
 
 #### Scenario: dist tarball is attached
-- **WHEN** a GitHub Release is created
+- **WHEN** a GitHub Release is created by the release workflow
 - **THEN** the release MUST have a `dist.tar.gz` asset containing the production build output
 
 #### Scenario: Coverage report is attached
-- **WHEN** a GitHub Release is created
+- **WHEN** a GitHub Release is created by the release workflow
 - **THEN** the release MUST have a `coverage-report.zip` asset containing the HTML coverage report
 
 #### Scenario: Playwright report is attached
-- **WHEN** a GitHub Release is created
+- **WHEN** a GitHub Release is created by the release workflow
 - **THEN** the release MUST have a `playwright-report.zip` asset containing the Playwright HTML report
 
 #### Scenario: Build failure prevents release
