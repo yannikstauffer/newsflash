@@ -23,27 +23,38 @@ test.describe("pull-to-refresh", () => {
     const box = await firstArticle.boundingBox()
     expect(box).not.toBeNull()
 
-    // Perform a slow pull-down gesture from the top of the first article
-    const startX = box!.x + box!.width / 2
-    const startY = box!.y + 10
+    const startX = Math.round(box!.x + box!.width / 2)
+    const startY = Math.round(box!.y + 10)
 
     // Scroll to top first
     await page.evaluate(() => window.scrollTo(0, 0))
 
-    await page.touchscreen.tap(startX, startY)
+    // Simulate pull-down gesture using touch events via CDP
+    const client = await page.context().newCDPSession(page)
 
-    // Simulate pull-down gesture
-    await page.mouse.move(startX, startY)
-    await page.mouse.down()
+    // Touch start at the initial position
+    await client.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: startX, y: startY }],
+    })
+
+    // Move down in small increments to simulate a slow pull
     for (let y = startY; y < startY + 80; y += 10) {
-      await page.mouse.move(startX, y)
+      await client.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: startX, y }],
+      })
     }
 
-    // The spinner should appear during the pull
+    // The spinner should be visible during the pull
     const spinner = page.getByTestId("pull-to-refresh-spinner")
+    await expect(spinner).toBeVisible()
 
     // Release to trigger refresh
-    await page.mouse.up()
+    await client.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    })
 
     // After refresh completes, spinner should disappear
     await expect(spinner).toBeHidden({ timeout: 10_000 })

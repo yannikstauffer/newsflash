@@ -59,25 +59,23 @@ export function FeedList({
 
   return (
     <div ref={containerRef} className="relative touch-pan-y">
-      {showSpinner && (
-        <div
-          className="flex items-center justify-center"
-          style={{ height: `${pullOffset}px` }}
-          role="status"
-          aria-label={t("feed.loadingLabel")}
-          data-testid="pull-to-refresh-spinner"
-        >
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      )}
-
       <div
-        className="space-y-3 md:space-y-4"
+        className="flex items-center justify-center overflow-hidden"
         style={{
-          transform: showSpinner ? undefined : `translateY(${pullOffset}px)`,
-          transition: isPulling ? "none" : "transform 200ms ease-out",
+          height: `${pullOffset}px`,
+          transition: isPulling ? "none" : "height 200ms ease-out",
         }}
+        role="status"
+        aria-label={showSpinner ? t("feed.loadingLabel") : undefined}
+        aria-hidden={!showSpinner}
+        data-testid="pull-to-refresh-spinner"
       >
+        {showSpinner && (
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        )}
+      </div>
+
+      <div className="space-y-3 md:space-y-4">
         {errors.length > 0 && (
           <div
             className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"

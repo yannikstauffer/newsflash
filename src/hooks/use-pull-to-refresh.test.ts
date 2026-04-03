@@ -79,6 +79,28 @@ describe("usePullToRefresh", () => {
       expect(capturedDragHandler).toBeDefined()
       expect(capturedDragOptions).toMatchObject({ axis: "y", filterTaps: true })
     })
+
+    it("passes enabled: false when not a touch device", () => {
+      mockMatchMedia(false)
+      const onRefresh = vi.fn()
+
+      renderHook(() =>
+        usePullToRefresh({ onRefresh, isRefreshing: false }),
+      )
+
+      expect(capturedDragOptions).toMatchObject({ enabled: false })
+    })
+
+    it("passes enabled: true when on a touch device", () => {
+      mockMatchMedia(true)
+      const onRefresh = vi.fn()
+
+      renderHook(() =>
+        usePullToRefresh({ onRefresh, isRefreshing: false }),
+      )
+
+      expect(capturedDragOptions).toMatchObject({ enabled: true })
+    })
   })
 
   describe("pull behavior", () => {
@@ -141,6 +163,51 @@ describe("usePullToRefresh", () => {
       })
 
       expect(onRefresh).toHaveBeenCalledOnce()
+    })
+
+    it("dead zone only blocks before gesture starts, not mid-gesture", () => {
+      mockMatchMedia(true)
+      const onRefresh = vi.fn()
+
+      const { result } = renderHook(() =>
+        usePullToRefresh({ onRefresh, isRefreshing: false }),
+      )
+
+      // Movement below dead zone — should be ignored
+      act(() => {
+        capturedDragHandler!({
+          movement: [0, 5],
+          last: false,
+          cancel: vi.fn(),
+        })
+      })
+
+      expect(result.current.pullOffset).toBe(0)
+      expect(result.current.isPulling).toBe(false)
+
+      // Movement past dead zone — gesture starts
+      act(() => {
+        capturedDragHandler!({
+          movement: [0, 40],
+          last: false,
+          cancel: vi.fn(),
+        })
+      })
+
+      expect(result.current.pullOffset).toBe(40)
+      expect(result.current.isPulling).toBe(true)
+
+      // Movement back below dead zone mid-gesture — should still update
+      act(() => {
+        capturedDragHandler!({
+          movement: [0, 3],
+          last: false,
+          cancel: vi.fn(),
+        })
+      })
+
+      expect(result.current.pullOffset).toBe(3)
+      expect(result.current.isPulling).toBe(true)
     })
 
     it("caps pull offset at 80px", () => {

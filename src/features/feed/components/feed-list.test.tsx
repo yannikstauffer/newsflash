@@ -56,7 +56,7 @@ const defaultProps = {
 }
 
 describe("FeedList", () => {
-  it("does not show spinner when not pulling", () => {
+  it("does not show spinner icon when not pulling", () => {
     mockPullToRefreshReturn = {
       containerRef: { current: null },
       pullOffset: 0,
@@ -65,7 +65,9 @@ describe("FeedList", () => {
 
     render(<FeedList {...defaultProps} />)
 
-    expect(screen.queryByTestId("pull-to-refresh-spinner")).toBeNull()
+    const spacer = screen.getByTestId("pull-to-refresh-spinner")
+    expect(spacer.querySelector(".animate-spin")).toBeNull()
+    expect(spacer.getAttribute("aria-hidden")).toBe("true")
   })
 
   it("shows spinner during pull-to-refresh interaction", () => {
@@ -77,7 +79,9 @@ describe("FeedList", () => {
 
     render(<FeedList {...defaultProps} />)
 
-    expect(screen.getByTestId("pull-to-refresh-spinner")).toBeDefined()
+    const spacer = screen.getByTestId("pull-to-refresh-spinner")
+    expect(spacer.querySelector(".animate-spin")).not.toBeNull()
+    expect(spacer.getAttribute("aria-hidden")).toBe("false")
   })
 
   it("shows spinner while refreshing with pull offset", () => {
@@ -89,6 +93,8 @@ describe("FeedList", () => {
 
     render(<FeedList {...defaultProps} loading={true} />)
 
-    expect(screen.getByTestId("pull-to-refresh-spinner")).toBeDefined()
+    const spacer = screen.getByTestId("pull-to-refresh-spinner")
+    expect(spacer.querySelector(".animate-spin")).not.toBeNull()
+    expect(spacer.getAttribute("aria-hidden")).toBe("false")
   })
 })

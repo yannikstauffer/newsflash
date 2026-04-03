@@ -21,7 +21,7 @@ export default defineConfig({
     },
     {
       name: "mobile-chrome",
-      testMatch: "article-actions.spec.ts",
+      testMatch: ["article-actions.spec.ts", "pull-to-refresh.spec.ts"],
       use: {
         ...devices["Pixel 7"],
       },

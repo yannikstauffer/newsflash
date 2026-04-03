@@ -27,6 +27,24 @@
 
 - [x] 4.1 Add Playwright e2e test: pull-to-refresh gesture on touch-emulated device triggers refresh and shows spinner
 
+## 6. PR Review Fixes
+
+- [x] 6.1 Fix snap-back animation: replace dual transform/spacer mechanism with single spacer div that always renders with `height: pullOffset` and `transition: height 200ms ease-out` when not pulling — remove `transform`/`transition` from content div
+- [x] 6.2 Fix dead-zone blocking mid-gesture: use a ref (`gestureStartedRef`) to only apply dead-zone check before pull starts, allowing smooth offset decrease during active gesture
+- [x] 6.3 Add `enabled: isTouch` to `useDrag` config so no drag listeners are attached on desktop devices
+- [x] 6.4 Add `matchMedia` guard in `isTouchDevice()` matching `use-theme-preference.ts` pattern — check `typeof window.matchMedia !== "function"` before calling
+- [x] 6.5 Rewrite E2E test to use CDP `Input.dispatchTouchEvent` instead of `page.mouse.*`, add positive spinner visibility assertion mid-gesture
+- [x] 6.6 Broaden `mobile-chrome` project `testMatch` in `playwright.config.ts` to include `pull-to-refresh.spec.ts`
+- [x] 6.7 Update unit tests for changed hook behavior (dead-zone ref, enabled flag)
+
+## 7. Quality Gates (PR Fixes)
+
+- [x] 7.1 Run `npm run lint` and fix any issues
+- [x] 7.2 Run `npx tsc --noEmit` and fix any type errors
+- [x] 7.3 Run `npm run test` and fix any issues
+- [x] 7.4 Run `npm run test:e2e` and fix any issues
+- [x] 7.5 Run `mcp__jetbrains__get_file_problems` on all created/changed files and fix genuine issues
+
 ## 5. Quality Gates
 
 - [x] 5.1 Run `npm run lint` and fix any issues

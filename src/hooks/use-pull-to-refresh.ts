@@ -19,6 +19,8 @@ const PULL_MAX = 80
 const DEAD_ZONE = 8
 
 function isTouchDevice(): boolean {
+  if (typeof window === "undefined") return false
+  if (typeof window.matchMedia !== "function") return false
   return window.matchMedia("(pointer: coarse)").matches
 }
 
@@ -29,6 +31,7 @@ export function usePullToRefresh({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [rawPullOffset, setRawPullOffset] = useState(0)
   const [isPulling, setIsPulling] = useState(false)
+  const gestureStartedRef = useRef(false)
   const [isTouch] = useState(() =>
     typeof window === "undefined" ? false : isTouchDevice(),
   )
@@ -58,10 +61,11 @@ export function usePullToRefresh({
         cancel()
         setRawPullOffset(0)
         setIsPulling(false)
+        gestureStartedRef.current = false
         return
       }
 
-      if (my < DEAD_ZONE) {
+      if (!gestureStartedRef.current && my < DEAD_ZONE) {
         return
       }
 
@@ -72,9 +76,11 @@ export function usePullToRefresh({
           setRawPullOffset(0)
         }
         setIsPulling(false)
+        gestureStartedRef.current = false
         return
       }
 
+      gestureStartedRef.current = true
       setIsPulling(true)
       setRawPullOffset(Math.min(my, PULL_MAX))
     },
@@ -86,6 +92,7 @@ export function usePullToRefresh({
     axis: "y",
     filterTaps: true,
     pointer: { touch: true },
+    enabled: isTouch,
   })
 
   // Derive effective pull offset: show offset while pulling or refreshing,
