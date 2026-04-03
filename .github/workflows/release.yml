@@ -126,8 +126,7 @@ jobs:
       - name: Generate CHANGELOG
         if: steps.bump.outputs.skip != 'true'
         run: |
-          npx conventional-changelog-cli@5 -p conventionalcommits -i CHANGELOG.md -s -r 1 \
-            --config <(cat <<'CFGEOF'
+          cat > .changelog-config.json <<'CFGEOF'
           {
             "options": {
               "types": [
@@ -142,7 +141,9 @@ jobs:
             }
           }
           CFGEOF
-          )
+          npx conventional-changelog@6 -p conventionalcommits -i CHANGELOG.md -s -r 1 \
+            --config .changelog-config.json
+          rm -f .changelog-config.json
 
       - name: Build
         if: steps.bump.outputs.skip != 'true'
