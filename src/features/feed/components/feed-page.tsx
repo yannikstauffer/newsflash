@@ -25,6 +25,7 @@ export function FeedPage() {
         renderActions={feedListProps.renderActions}
         renderWrapper={feedListProps.renderWrapper}
         emptyMessage={feedListProps.emptyMessage}
+        onRefresh={feedListProps.onRefresh}
       />
     </div>
   )
