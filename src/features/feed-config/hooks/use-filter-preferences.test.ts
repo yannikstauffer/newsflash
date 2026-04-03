@@ -103,5 +103,17 @@ describe("useFilterPreferences", () => {
       expect(result.current.isFilterEnabled("heise-plus", false)).toBe(true)
       expect(result.current.isFilterEnabled("heise-angebot", true)).toBe(false)
     })
+
+    it("writes companion updated_at timestamp on toggle (useSyncedStorage)", () => {
+      const { result } = renderHook(() => useFilterPreferences())
+
+      act(() => {
+        result.current.toggleFilter("heise-plus", false)
+      })
+
+      const timestamp = localStorage.getItem(`${STORAGE_KEY}:updated_at`)
+      expect(timestamp).toBeTruthy()
+      expect(new Date(timestamp!).toISOString()).toBe(timestamp)
+    })
   })
 })

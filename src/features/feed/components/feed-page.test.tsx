@@ -39,6 +39,7 @@ const baseMockReturn = {
     renderActions: vi.fn(),
     renderWrapper: vi.fn(),
     emptyMessage: undefined,
+    onRefresh: vi.fn(),
   },
   lastRefreshedAt: null as Date | null,
 }

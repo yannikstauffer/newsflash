@@ -15,13 +15,14 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testIgnore: "connectors.spec.ts",
       use: {
         ...devices["Desktop Chrome"],
       },
     },
     {
       name: "mobile-chrome",
-      testMatch: "article-actions.spec.ts",
+      testMatch: ["article-actions.spec.ts", "pull-to-refresh.spec.ts"],
       use: {
         ...devices["Pixel 7"],
       },

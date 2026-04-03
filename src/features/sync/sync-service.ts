@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+import { dispatchSyncEvent } from "@/hooks/use-local-storage"
+
 export interface SyncedKeyConfig {
   readonly storageKey: string
   readonly remoteKey: string
@@ -9,6 +11,7 @@ export const SYNCED_KEYS: readonly SyncedKeyConfig[] = [
   { storageKey: "newsflash:hidden", remoteKey: "hidden" },
   { storageKey: "newsflash:readlist", remoteKey: "readlist" },
   { storageKey: "newsflash:feed-prefs", remoteKey: "feedprefs" },
+  { storageKey: "newsflash:filter-prefs", remoteKey: "filterprefs" },
 ]
 
 const LAST_SYNCED_KEY = "newsflash:last-synced"
@@ -96,6 +99,7 @@ export async function performSync(supabase: SupabaseClient, userId: string): Pro
     } else {
       // Remote is newer or equal, or no local timestamp — pull from remote
       writeLocalData(storageKey, remoteRow.data, remoteRow.updated_at)
+      dispatchSyncEvent(storageKey)
     }
   }
 
@@ -109,6 +113,7 @@ export async function performSync(supabase: SupabaseClient, userId: string): Pro
 
 function getDefaultForKey(storageKey: string): unknown {
   if (storageKey === "newsflash:feed-prefs") return {}
+  if (storageKey === "newsflash:filter-prefs") return {}
   return []
 }
 
