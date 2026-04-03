@@ -62,7 +62,7 @@ export function AppLayout() {
                 <Link
                   key={to}
                   to={to}
-                  activeOptions={{ exact: true }}
+                  activeOptions={{ exact: true, includeSearch: false }}
                   className="flex min-h-[48px] flex-1 items-center justify-center gap-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring text-muted-foreground hover:text-foreground [&.active]:border-t-2 [&.active]:border-primary [&.active]:text-foreground sm:[&.active]:border-b-2 sm:[&.active]:border-t-0"
                   activeProps={{ "aria-current": "page" }}
                   aria-label={ariaLabel}

@@ -5,6 +5,7 @@ import {
   lazyRouteComponent,
   Navigate,
 } from "@tanstack/react-router"
+import { z } from "zod"
 
 import { AppLayout } from "./app-layout"
 
@@ -14,10 +15,24 @@ const rootRoute = createRootRoute({
   component: AppLayout,
 })
 
-const indexRoute = createRoute({
+function buildFeedSearchSchema() {
+  return z.object({
+    date: z.string().date().optional().catch(undefined),
+    view: z.enum(["all"]).optional().catch(undefined),
+    q: z.string().max(200).optional().catch(undefined),
+    hidden: z.boolean().optional().catch(undefined),
+  })
+}
+
+export const feedSearchSchema = buildFeedSearchSchema()
+
+export type FeedSearch = z.infer<typeof feedSearchSchema>
+
+export const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: FeedPage,
+  validateSearch: feedSearchSchema,
 })
 
 const readListRoute = createRoute({

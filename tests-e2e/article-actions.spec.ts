@@ -78,9 +78,8 @@ test.describe("desktop button actions", () => {
       page.locator("article", { hasText: firstTitle! }),
     ).not.toBeVisible({ timeout: 5000 })
 
-    // Reload the page
+    // Reload the page — view=all is preserved in URL
     await page.reload()
-    await page.getByRole("button", { name: "All articles" }).click()
     await expect(page.locator("article").first()).toBeVisible()
 
     // Bookmarked article should not reappear in the main feed

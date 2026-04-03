@@ -1,5 +1,6 @@
+import { getRouteApi, useNavigate } from "@tanstack/react-router"
 import { BookmarkPlus, EyeOff } from "lucide-react"
-import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { createElement, useCallback, useEffect, useMemo, useRef } from "react"
 
 import { useFeedData } from "./use-feed-data"
 import { filterArticles } from "../utils/filter-articles"
@@ -16,6 +17,7 @@ import {
   useArticleKeyboardShortcuts,
   useArticleState,
 } from "@/features/article-actions"
+const feedRoute = getRouteApi("/")
 import { connectors } from "@/features/connectors/registry"
 import { useFeedPreferences } from "@/features/feed-config/hooks/use-feed-preferences"
 import { useFilterPreferences } from "@/features/feed-config/hooks/use-filter-preferences"
@@ -55,6 +57,22 @@ interface UseFeedPageResult {
   readonly lastRefreshedAt: Date | null
 }
 
+function formatDateParameter(d: Date): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function isDateToday(d: Date): boolean {
+  const now = new Date()
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  )
+}
+
 export function useFeedPage(): UseFeedPageResult {
   const { isFeedEnabled } = useFeedPreferences()
   const { isFilterEnabled } = useFilterPreferences()
@@ -69,19 +87,26 @@ export function useFeedPage(): UseFeedPageResult {
     removeFromReadList,
   } = useArticleState()
 
+  const { date, view, q, hidden } = feedRoute.useSearch()
+  const navigate = useNavigate({ from: "/" })
+
   const hoveredArticleRef = useRef<string | undefined>(undefined)
   const focusedArticleRef = useRef<string | undefined>(undefined)
   const articlesRef = useRef<NormalizedArticle[]>([])
   const swipeableCardReferences = useRef<Map<string, SwipeableCardHandle>>(new Map())
 
-  const [showHidden, setShowHidden] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedDate, setSelectedDate] = useState(() => {
+  const selectedDate = useMemo(() => {
+    if (date) {
+      const parsed = new Date(date + "T00:00:00")
+      if (!Number.isNaN(parsed.getTime())) return parsed
+    }
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     return today
-  })
-  const [allArticles, setAllArticles] = useState(false)
+  }, [date])
+  const allArticles = view === "all"
+  const searchQuery = q ?? ""
+  const showHidden = hidden ?? false
 
   const filteredArticles = useMemo(() => {
     const filtered = filterArticles(articles, {
@@ -130,41 +155,41 @@ export function useFeedPage(): UseFeedPageResult {
     searchQuery, allArticles, selectedDate,
   ])
 
-  const isToday = useMemo(() => {
-    const today = new Date()
-    return (
-      selectedDate.getFullYear() === today.getFullYear() &&
-      selectedDate.getMonth() === today.getMonth() &&
-      selectedDate.getDate() === today.getDate()
-    )
-  }, [selectedDate])
+  const isToday = useMemo(() => isDateToday(selectedDate), [selectedDate])
 
   const handlePreviousDay = useCallback(() => {
-    setSelectedDate((previous) => {
-      const next = new Date(previous)
-      next.setDate(next.getDate() - 1)
-      return next
+    const previous = new Date(selectedDate)
+    previous.setDate(previous.getDate() - 1)
+    navigate({
+      search: (old) => ({
+        ...old,
+        date: formatDateParameter(previous),
+      }),
     })
-  }, [])
+  }, [selectedDate, navigate])
 
   const handleNextDay = useCallback(() => {
-    setSelectedDate((previous) => {
-      const next = new Date(previous)
-      next.setDate(next.getDate() + 1)
-      return next
+    const next = new Date(selectedDate)
+    next.setDate(next.getDate() + 1)
+    navigate({
+      search: (old) => ({
+        ...old,
+        date: isDateToday(next) ? undefined : formatDateParameter(next),
+      }),
     })
-  }, [])
+  }, [selectedDate, navigate])
 
   const handleToggleAllArticles = useCallback(() => {
-    setAllArticles((previous) => {
-      if (previous) {
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        setSelectedDate(today)
-      }
-      return !previous
-    })
-  }, [])
+    if (allArticles) {
+      navigate({
+        search: (old) => ({ ...old, view: undefined, date: undefined }),
+      })
+    } else {
+      navigate({
+        search: (old) => ({ ...old, view: "all" as const }),
+      })
+    }
+  }, [allArticles, navigate])
 
   useEffect(() => {
     articlesRef.current = filteredArticles
@@ -305,14 +330,20 @@ export function useFeedPage(): UseFeedPageResult {
   )
 
   const handleToggleShowHidden = useCallback(() => {
-    setShowHidden((previous) => !previous)
-  }, [])
+    navigate({
+      search: (old) => ({ ...old, hidden: !showHidden || undefined }),
+    })
+  }, [navigate, showHidden])
 
   const filterBarProps: FilterBarProps = useMemo(() => ({
     showHidden,
     onToggleShowHidden: handleToggleShowHidden,
     searchQuery,
-    onSearchChange: setSearchQuery,
+    onSearchChange: (value: string) => {
+      navigate({
+        search: (old) => ({ ...old, q: value || undefined }),
+      })
+    },
     selectedDate,
     allArticles,
     isToday,
@@ -324,7 +355,7 @@ export function useFeedPage(): UseFeedPageResult {
   }), [
     showHidden, handleToggleShowHidden, searchQuery, selectedDate,
     allArticles, isToday, handlePreviousDay, handleNextDay,
-    handleToggleAllArticles, articleCount, hiddenCount,
+    handleToggleAllArticles, articleCount, hiddenCount, navigate,
   ])
 
   const emptyMessage = !allArticles && !loading
