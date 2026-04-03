@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { getLastSyncedTimestamp, isSyncStale, performSync, SYNCED_KEYS } from "./sync-service"
 
+import type { LocalStorageSyncDetail } from "@/hooks/use-local-storage"
 import type { SupabaseClient } from "@supabase/supabase-js"
+
+import { LOCAL_STORAGE_SYNC_EVENT } from "@/hooks/use-local-storage"
 
 function createMockSupabase(remoteRows: Array<{ key: string; data: unknown; updated_at: string }> = []) {
   const selectMock = vi.fn().mockReturnValue({
@@ -64,6 +67,7 @@ describe("performSync", () => {
       { key: "hidden", data: ["new-article"], updated_at: "2025-06-01T00:00:00.000Z" },
       { key: "readlist", data: [], updated_at: "2025-06-01T00:00:00.000Z" },
       { key: "feedprefs", data: {}, updated_at: "2025-06-01T00:00:00.000Z" },
+      { key: "filterprefs", data: {}, updated_at: "2025-06-01T00:00:00.000Z" },
     ])
 
     await performSync(client, "user-1")
@@ -80,6 +84,7 @@ describe("performSync", () => {
       { key: "hidden", data: ["old-article"], updated_at: "2025-01-01T00:00:00.000Z" },
       { key: "readlist", data: [], updated_at: "2025-06-01T00:00:00.000Z" },
       { key: "feedprefs", data: {}, updated_at: "2025-06-01T00:00:00.000Z" },
+      { key: "filterprefs", data: {}, updated_at: "2025-06-01T00:00:00.000Z" },
     ])
 
     await performSync(client, "user-1")
@@ -100,6 +105,7 @@ describe("performSync", () => {
       { key: "hidden", data: ["same-article"], updated_at: timestamp },
       { key: "readlist", data: [], updated_at: timestamp },
       { key: "feedprefs", data: {}, updated_at: timestamp },
+      { key: "filterprefs", data: {}, updated_at: timestamp },
     ])
 
     await performSync(client, "user-1")
@@ -115,6 +121,7 @@ describe("performSync", () => {
       { key: "hidden", data: [], updated_at: "2025-06-01T00:00:00.000Z" },
       { key: "readlist", data: [], updated_at: "2025-06-01T00:00:00.000Z" },
       { key: "feedprefs", data: {}, updated_at: "2025-06-01T00:00:00.000Z" },
+      { key: "filterprefs", data: {}, updated_at: "2025-06-01T00:00:00.000Z" },
     ])
 
     await performSync(client, "user-1")
@@ -147,6 +154,137 @@ describe("getLastSyncedTimestamp", () => {
   it("returns the stored timestamp", () => {
     localStorage.setItem("newsflash:last-synced", "2025-01-01T00:00:00.000Z")
     expect(getLastSyncedTimestamp()).toBe("2025-01-01T00:00:00.000Z")
+  })
+})
+
+describe("performSync event dispatch", () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it("dispatches sync events when remote data is pulled", async () => {
+    localStorage.setItem("newsflash:hidden", JSON.stringify(["old"]))
+    localStorage.setItem("newsflash:hidden:updated_at", "2025-01-01T00:00:00.000Z")
+
+    const events: string[] = []
+    const listener = (event_: Event) => {
+      events.push((event_ as CustomEvent<LocalStorageSyncDetail>).detail.key)
+    }
+    window.addEventListener(LOCAL_STORAGE_SYNC_EVENT, listener)
+
+    const { client } = createMockSupabase([
+      { key: "hidden", data: ["new"], updated_at: "2025-06-01T00:00:00.000Z" },
+      { key: "readlist", data: [], updated_at: "2025-06-01T00:00:00.000Z" },
+      { key: "feedprefs", data: {}, updated_at: "2025-06-01T00:00:00.000Z" },
+      { key: "filterprefs", data: {}, updated_at: "2025-06-01T00:00:00.000Z" },
+    ])
+
+    await performSync(client, "user-1")
+
+    window.removeEventListener(LOCAL_STORAGE_SYNC_EVENT, listener)
+
+    // All keys should have events dispatched (remote is newer or equal for all)
+    expect(events).toContain("newsflash:hidden")
+    expect(events).toContain("newsflash:readlist")
+    expect(events).toContain("newsflash:feed-prefs")
+    expect(events).toContain("newsflash:filter-prefs")
+  })
+
+  it("does not dispatch sync event when local wins", async () => {
+    localStorage.setItem("newsflash:hidden", JSON.stringify(["local"]))
+    localStorage.setItem("newsflash:hidden:updated_at", "2025-06-01T00:00:00.000Z")
+
+    const events: string[] = []
+    const listener = (event_: Event) => {
+      events.push((event_ as CustomEvent<LocalStorageSyncDetail>).detail.key)
+    }
+    window.addEventListener(LOCAL_STORAGE_SYNC_EVENT, listener)
+
+    const { client } = createMockSupabase([
+      { key: "hidden", data: ["old"], updated_at: "2025-01-01T00:00:00.000Z" },
+      { key: "readlist", data: [], updated_at: "2025-06-01T00:00:00.000Z" },
+      { key: "feedprefs", data: {}, updated_at: "2025-06-01T00:00:00.000Z" },
+      { key: "filterprefs", data: {}, updated_at: "2025-06-01T00:00:00.000Z" },
+    ])
+
+    await performSync(client, "user-1")
+
+    window.removeEventListener(LOCAL_STORAGE_SYNC_EVENT, listener)
+
+    // hidden should NOT be dispatched (local wins), others should be (remote wins/equal)
+    expect(events).not.toContain("newsflash:hidden")
+  })
+
+  it("does not dispatch sync event on first login (upsert path)", async () => {
+    localStorage.setItem("newsflash:hidden", JSON.stringify(["article-1"]))
+    localStorage.setItem("newsflash:hidden:updated_at", "2025-01-01T00:00:00.000Z")
+
+    const events: string[] = []
+    const listener = (event_: Event) => {
+      events.push((event_ as CustomEvent<LocalStorageSyncDetail>).detail.key)
+    }
+    window.addEventListener(LOCAL_STORAGE_SYNC_EVENT, listener)
+
+    const { client } = createMockSupabase([])
+
+    await performSync(client, "user-1")
+
+    window.removeEventListener(LOCAL_STORAGE_SYNC_EVENT, listener)
+
+    expect(events).toEqual([])
+  })
+})
+
+describe("performSync includes filter-prefs", () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it("includes newsflash:filter-prefs in SYNCED_KEYS", () => {
+    expect(SYNCED_KEYS.some((k) => k.storageKey === "newsflash:filter-prefs")).toBe(true)
+    expect(SYNCED_KEYS.some((k) => k.remoteKey === "filterprefs")).toBe(true)
+  })
+
+  it("syncs filter preferences to remote on first login", async () => {
+    localStorage.setItem("newsflash:filter-prefs", JSON.stringify({ "heise-plus": false }))
+    localStorage.setItem("newsflash:filter-prefs:updated_at", "2025-01-01T00:00:00.000Z")
+
+    const { client, upsertMock } = createMockSupabase([])
+
+    await performSync(client, "user-1")
+
+    expect(upsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: "filterprefs",
+        data: { "heise-plus": false },
+      }),
+    )
+  })
+
+  it("pulls remote filter preferences when remote is newer", async () => {
+    localStorage.setItem("newsflash:filter-prefs", JSON.stringify({}))
+    localStorage.setItem("newsflash:filter-prefs:updated_at", "2025-01-01T00:00:00.000Z")
+
+    const { client } = createMockSupabase([
+      { key: "hidden", data: [], updated_at: "2025-06-01T00:00:00.000Z" },
+      { key: "readlist", data: [], updated_at: "2025-06-01T00:00:00.000Z" },
+      { key: "feedprefs", data: {}, updated_at: "2025-06-01T00:00:00.000Z" },
+      { key: "filterprefs", data: { "heise-plus": true }, updated_at: "2025-06-01T00:00:00.000Z" },
+    ])
+
+    await performSync(client, "user-1")
+
+    expect(JSON.parse(localStorage.getItem("newsflash:filter-prefs") ?? "{}")).toEqual({
+      "heise-plus": true,
+    })
   })
 })
 

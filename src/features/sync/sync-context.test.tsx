@@ -3,14 +3,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { SyncProvider, useSyncContext } from "./sync-context"
 
+import type { LocalStorageSyncDetail } from "@/hooks/use-local-storage"
 import type { ReactNode } from "react"
 
+const LOCAL_STORAGE_SYNC_EVENT = "newsflash:local-storage-sync"
+
 const mockPerformSync = vi.fn()
-const mockIsSyncStale = vi.fn(() => true)
 
 vi.mock("./sync-service", () => ({
   performSync: (...args: unknown[]) => mockPerformSync(...args),
-  isSyncStale: () => mockIsSyncStale(),
+  SYNCED_KEYS: [
+    { storageKey: "newsflash:hidden", remoteKey: "hidden" },
+    { storageKey: "newsflash:readlist", remoteKey: "readlist" },
+    { storageKey: "newsflash:feed-prefs", remoteKey: "feedprefs" },
+    { storageKey: "newsflash:filter-prefs", remoteKey: "filterprefs" },
+  ],
 }))
 
 const mockGetSession = vi.fn()
@@ -73,11 +80,10 @@ describe("SyncProvider", () => {
     expect(result.current.userEmail).toBe("test@example.com")
   })
 
-  it("auto-syncs on mount when authenticated and stale", async () => {
+  it("auto-syncs on mount when authenticated", async () => {
     mockGetSession.mockResolvedValue({
       data: { session: { user: { id: "user-1", email: "test@example.com" } } },
     })
-    mockIsSyncStale.mockReturnValue(true)
 
     renderHook(() => useSyncContext(), { wrapper })
 
@@ -86,22 +92,19 @@ describe("SyncProvider", () => {
     })
   })
 
-  it("skips auto-sync when authenticated but not stale", async () => {
+  it("always syncs on mount regardless of last-synced timestamp", async () => {
+    // Set a very recent last-synced timestamp (would have been "not stale" before)
+    localStorage.setItem("newsflash:last-synced", new Date().toISOString())
+
     mockGetSession.mockResolvedValue({
       data: { session: { user: { id: "user-1", email: "test@example.com" } } },
     })
-    mockIsSyncStale.mockReturnValue(false)
 
     renderHook(() => useSyncContext(), { wrapper })
 
-    // Wait for session check to complete
     await waitFor(() => {
-      expect(mockGetSession).toHaveBeenCalled()
+      expect(mockPerformSync).toHaveBeenCalled()
     })
-
-    // Give time for potential sync call
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    expect(mockPerformSync).not.toHaveBeenCalled()
   })
 
   it("skips sync when unauthenticated", async () => {
@@ -119,7 +122,6 @@ describe("SyncProvider", () => {
     mockGetSession.mockResolvedValue({
       data: { session: { user: { id: "user-1", email: "test@example.com" } } },
     })
-    mockIsSyncStale.mockReturnValue(false)
 
     const { result } = renderHook(() => useSyncContext(), { wrapper })
 
@@ -171,5 +173,169 @@ describe("SyncProvider", () => {
     await waitFor(() => {
       expect(screen.getByTestId("auth")).toHaveTextContent("false")
     })
+  })
+})
+
+function dispatchSyncKeyEvent(key: string): void {
+  window.dispatchEvent(
+    new CustomEvent<LocalStorageSyncDetail>(LOCAL_STORAGE_SYNC_EVENT, {
+      detail: { key },
+    }),
+  )
+}
+
+describe("SyncProvider debounced sync-on-write", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    mockGetSession.mockResolvedValue({
+      data: { session: { user: { id: "user-1", email: "test@example.com" } } },
+    })
+    mockOnAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: vi.fn() } },
+    })
+    mockPerformSync.mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    localStorage.clear()
+  })
+
+  it("triggers delayed sync after a synced key write", async () => {
+    renderHook(() => useSyncContext(), { wrapper })
+
+    // Wait for mount sync to complete
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    mockPerformSync.mockClear()
+
+    // Dispatch a synced key change event
+    act(() => {
+      dispatchSyncKeyEvent("newsflash:hidden")
+    })
+
+    // Should not have synced yet (within debounce window)
+    expect(mockPerformSync).not.toHaveBeenCalled()
+
+    // Advance past the 5-second debounce
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(mockPerformSync).toHaveBeenCalledTimes(1)
+  })
+
+  it("collapses rapid writes into a single sync", async () => {
+    renderHook(() => useSyncContext(), { wrapper })
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    mockPerformSync.mockClear()
+
+    // Dispatch multiple rapid synced key changes
+    act(() => {
+      dispatchSyncKeyEvent("newsflash:hidden")
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    act(() => {
+      dispatchSyncKeyEvent("newsflash:hidden")
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    act(() => {
+      dispatchSyncKeyEvent("newsflash:readlist")
+    })
+
+    // Still within debounce window — no sync yet
+    expect(mockPerformSync).not.toHaveBeenCalled()
+
+    // Advance past the debounce from the last event
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    // Only one sync should have fired
+    expect(mockPerformSync).toHaveBeenCalledTimes(1)
+  })
+
+  it("skips debounced sync when not authenticated", async () => {
+    mockGetSession.mockResolvedValue({
+      data: { session: null },
+    })
+
+    renderHook(() => useSyncContext(), { wrapper })
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    mockPerformSync.mockClear()
+
+    // Dispatch a synced key change while unauthenticated
+    act(() => {
+      dispatchSyncKeyEvent("newsflash:hidden")
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(mockPerformSync).not.toHaveBeenCalled()
+  })
+
+  it("ignores events for non-synced keys", async () => {
+    renderHook(() => useSyncContext(), { wrapper })
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    mockPerformSync.mockClear()
+
+    // Dispatch event for a non-synced key
+    act(() => {
+      dispatchSyncKeyEvent("newsflash:theme")
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(mockPerformSync).not.toHaveBeenCalled()
+  })
+
+  it("cancels pending debounce when manual sync is triggered", async () => {
+    const { result } = renderHook(() => useSyncContext(), { wrapper })
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    mockPerformSync.mockClear()
+
+    // Dispatch a synced key change to start the debounce timer
+    act(() => {
+      dispatchSyncKeyEvent("newsflash:hidden")
+    })
+
+    // Trigger manual sync before debounce fires
+    await act(async () => {
+      result.current.triggerSync()
+    })
+
+    // Manual sync fires immediately
+    expect(mockPerformSync).toHaveBeenCalledTimes(1)
+    mockPerformSync.mockClear()
+
+    // Advance past the debounce — the cancelled debounce should NOT fire
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(mockPerformSync).not.toHaveBeenCalled()
   })
 })
