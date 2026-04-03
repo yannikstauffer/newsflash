@@ -164,7 +164,7 @@ export function useFeedPage(): UseFeedPageResult {
     navigate({
       search: (old) => ({
         ...old,
-        date: formatDateParameter(previous),
+        date: isDateToday(previous) ? undefined : formatDateParameter(previous),
       }),
     })
   }, [selectedDate, navigate])
