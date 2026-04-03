@@ -141,8 +141,8 @@ jobs:
             }
           }
           CFGEOF
-          npx conventional-changelog@6 -p conventionalcommits -i CHANGELOG.md -s -r 1 \
-            --config .changelog-config.json
+          npx conventional-changelog@7 -p conventionalcommits -i CHANGELOG.md -r 1 \
+            -n .changelog-config.json
           rm -f .changelog-config.json
 
       - name: Build
