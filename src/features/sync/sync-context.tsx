@@ -1,10 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 
-import { isSyncStale, performSync } from "./sync-service"
+import { performSync, SYNCED_KEYS } from "./sync-service"
 import { transitionSyncStatus } from "./sync-status"
 
 import type { SyncStatus } from "./sync-status"
+import type { LocalStorageSyncDetail } from "@/hooks/use-local-storage"
 import type { ReactNode } from "react"
+
+const LOCAL_STORAGE_SYNC_EVENT = "newsflash:local-storage-sync"
 
 interface SyncContextValue {
   readonly syncStatus: SyncStatus
@@ -23,6 +26,9 @@ const SyncContext = createContext<SyncContextValue>({
 })
 
 const RESET_TIMEOUT_MS = 3000
+const DEBOUNCE_DELAY_MS = 5000
+
+const SYNCED_STORAGE_KEYS = new Set(SYNCED_KEYS.map((k) => k.storageKey))
 
 interface SyncProviderProps {
   readonly children: ReactNode
@@ -33,6 +39,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
 
   // Check for existing Supabase session on mount
@@ -116,10 +123,34 @@ export function SyncProvider({ children }: SyncProviderProps) {
     }, RESET_TIMEOUT_MS)
   }, [userId])
 
-  // Auto-sync on mount when authenticated and stale
+  // Auto-sync on mount when authenticated
   useEffect(() => {
-    if (userId && isSyncStale()) {
+    if (userId) {
       doSync()
+    }
+  }, [userId, doSync])
+
+  // Debounced sync-on-write: listen for synced key changes
+  useEffect(() => {
+    function handleSyncEvent(event: Event) {
+      const detail = (event as CustomEvent<LocalStorageSyncDetail>).detail
+      if (!SYNCED_STORAGE_KEYS.has(detail.key)) return
+      if (!userId) return
+
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        doSync()
+      }, DEBOUNCE_DELAY_MS)
+    }
+
+    globalThis.window?.addEventListener(LOCAL_STORAGE_SYNC_EVENT, handleSyncEvent)
+    return () => {
+      globalThis.window?.removeEventListener(LOCAL_STORAGE_SYNC_EVENT, handleSyncEvent)
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
     }
   }, [userId, doSync])
 
@@ -134,6 +165,11 @@ export function SyncProvider({ children }: SyncProviderProps) {
 
   const triggerSync = useCallback(() => {
     if (syncStatus === "SYNCING") return
+    // Cancel pending debounced sync — manual sync covers it
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = null
+    }
     doSync()
   }, [syncStatus, doSync])
 
