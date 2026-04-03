@@ -1,75 +1,209 @@
 name: Release
 
+# Prerequisites (GitHub repository settings, not managed by this file):
+#   - Branch protection on `master`: for human users, require PR (no direct
+#     pushes) and require status checks to pass. The automated release workflow
+#     is allowed to push/merge to `master` (e.g. via an allowed GitHub Actions
+#     app or bypass), so the branch-protection rule must be configured
+#     accordingly to avoid blocking this release flow.
+
 on:
-  push:
-    branches: [master]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [develop]
 
 permissions:
   contents: write
-  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
-    name: Release Please
+    name: Release
     runs-on: ubuntu-latest
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.actor.login != 'github-actions[bot]'
 
     steps:
-      - name: Run release-please
-        id: release
-        uses: google-github-actions/release-please-action@v4
-        with:
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
-
       - name: Checkout code
-        if: ${{ steps.release.outputs.release_created }}
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Create local develop branch
+        run: git checkout -B develop
 
       - name: Setup Node.js
-        if: ${{ steps.release.outputs.release_created }}
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
 
+      - name: Analyze commits and determine bump type
+        id: bump
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 --match "v*" --match "newsflash-v*" 2>/dev/null || echo "")
+
+          if [ -z "$LAST_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${LAST_TAG}..HEAD"
+          fi
+
+          SUBJECTS=$(git log "$RANGE" --pretty=format:"%s" 2>/dev/null || echo "")
+
+          if [ -z "$SUBJECTS" ]; then
+            echo "No commits since last tag. Skipping release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BUMP="none"
+
+          # Check subject lines for breaking change marker (e.g. "feat!: ...")
+          while IFS= read -r msg; do
+            if echo "$msg" | grep -qE "^[a-z]+(\(.+\))?!:"; then
+              BUMP="major"
+              break
+            fi
+          done <<< "$SUBJECTS"
+
+          # Check full commit messages for BREAKING CHANGE footer
+          if [ "$BUMP" != "major" ]; then
+            FULL_MSGS=$(git log "$RANGE" --pretty=format:"%B" 2>/dev/null || echo "")
+            if echo "$FULL_MSGS" | grep -qE "^BREAKING CHANGE:"; then
+              BUMP="major"
+            fi
+          fi
+
+          if [ "$BUMP" != "major" ]; then
+            while IFS= read -r msg; do
+              if echo "$msg" | grep -qE "^feat(\(.+\))?:"; then
+                BUMP="minor"
+                break
+              fi
+            done <<< "$SUBJECTS"
+          fi
+
+          if [ "$BUMP" = "none" ]; then
+            while IFS= read -r msg; do
+              if echo "$msg" | grep -qE "^(fix|perf|refactor)(\(.+\))?:"; then
+                BUMP="patch"
+                break
+              fi
+            done <<< "$SUBJECTS"
+          fi
+
+          if [ "$BUMP" = "none" ]; then
+            echo "No releasable commits. Skipping release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "Determined bump type: $BUMP"
+
       - name: Install dependencies
-        if: ${{ steps.release.outputs.release_created }}
+        if: steps.bump.outputs.skip != 'true'
         run: npm ci
 
+      - name: Bump version
+        if: steps.bump.outputs.skip != 'true'
+        id: version
+        run: |
+          npm version ${{ steps.bump.outputs.bump }} --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "New version: $VERSION"
+
+      - name: Generate CHANGELOG
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          npx conventional-changelog-cli@5 -p conventionalcommits -i CHANGELOG.md -s -r 1 \
+            --config <(cat <<'CFGEOF'
+          {
+            "options": {
+              "types": [
+                { "type": "feat", "section": "Features" },
+                { "type": "fix", "section": "Bug Fixes" },
+                { "type": "perf", "section": "Performance Improvements" },
+                { "type": "refactor", "section": "Code Refactoring" },
+                { "type": "docs", "section": "Documentation", "hidden": true },
+                { "type": "test", "section": "Tests", "hidden": true },
+                { "type": "chore", "section": "Miscellaneous", "hidden": true }
+              ]
+            }
+          }
+          CFGEOF
+          )
+
       - name: Build
-        if: ${{ steps.release.outputs.release_created }}
+        if: steps.bump.outputs.skip != 'true'
         run: npm run build
 
       - name: Run tests with coverage and JUnit output
-        if: ${{ steps.release.outputs.release_created }}
+        if: steps.bump.outputs.skip != 'true'
         run: npm run test:coverage -- --reporter=junit --outputFile=test-results.xml
 
       - name: Install Playwright browsers
-        if: ${{ steps.release.outputs.release_created }}
+        if: steps.bump.outputs.skip != 'true'
         run: npx playwright install --with-deps
 
       - name: Run Playwright E2E tests
-        if: ${{ steps.release.outputs.release_created }}
+        if: steps.bump.outputs.skip != 'true'
         run: npm run test:e2e
 
-      - name: Package dist output
-        if: ${{ steps.release.outputs.release_created }}
-        run: tar -czf dist.tar.gz dist/
+      - name: Commit version bump and CHANGELOG
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json CHANGELOG.md
+          git commit -m "chore: release v${{ steps.version.outputs.version }}"
+          git push origin develop
 
-      - name: Package coverage report
-        if: ${{ steps.release.outputs.release_created }}
-        run: zip -r coverage-report.zip coverage/
+      - name: Fast-forward merge to master
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          git fetch origin master develop
+          git checkout -B master origin/master
+          git merge --ff-only origin/develop
+          git push origin master
 
-      - name: Package Playwright report
-        if: ${{ steps.release.outputs.release_created }}
-        run: zip -r playwright-report.zip playwright-report/
+      - name: Create and push tag
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
 
-      - name: Attach release assets
-        if: ${{ steps.release.outputs.release_created }}
+      - name: Package artifacts
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          tar -czf dist.tar.gz dist/
+          zip -r coverage-report.zip coverage/
+          zip -r playwright-report.zip playwright-report/
+
+      - name: Extract CHANGELOG for this version
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          awk "/^## \\[?${VERSION}\\]?/{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md > release-notes.md
+
+      - name: Create GitHub Release
+        if: steps.bump.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload ${{ steps.release.outputs.tag_name }} \
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --title "v${{ steps.version.outputs.version }}" \
+            --notes-file release-notes.md \
             dist.tar.gz \
             test-results.xml \
             coverage-report.zip \
