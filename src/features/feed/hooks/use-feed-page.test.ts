@@ -3,12 +3,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { useFeedPage } from "./use-feed-page"
 
+import type { FeedSearch } from "@/app/router"
 import type { NormalizedArticle } from "@/features/connectors/types"
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
+}))
+
+let mockSearchParams: FeedSearch = {}
+const mockNavigate = vi.fn()
+
+vi.mock("@tanstack/react-router", () => ({
+  getRouteApi: () => ({
+    useSearch: () => mockSearchParams,
+  }),
+  useNavigate: () => mockNavigate,
 }))
 
 const mockUseFeedData = vi.fn()
@@ -47,6 +58,13 @@ today.setHours(0, 0, 0, 0)
 const yesterday = new Date(today)
 yesterday.setDate(yesterday.getDate() - 1)
 
+function formatDate(d: Date): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 function makeArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedArticle {
   return {
     id: "src:art-1",
@@ -66,7 +84,11 @@ function setupDefaults(overrides: {
   errors?: string[]
   hiddenIds?: string[]
   isFeedEnabled?: (id: string) => boolean
+  searchParams?: FeedSearch
 } = {}) {
+  mockSearchParams = overrides.searchParams ?? {}
+  mockNavigate.mockReset()
+
   const hideArticle = vi.fn()
   const unhideArticle = vi.fn()
   const addToReadList = vi.fn()
@@ -113,6 +135,7 @@ function setupDefaults(overrides: {
 describe("useFeedPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchParams = {}
   })
 
   describe("filtering logic", () => {
@@ -126,72 +149,80 @@ describe("useFeedPage", () => {
       expect(result.current.feedListProps.filteredArticles).toEqual([todayArticle])
     })
 
-    it("returns all articles when allArticles is toggled on", () => {
+    it("returns all articles when view=all in search params", () => {
       const todayArticle = makeArticle({ id: "src:today", publishedAt: today })
       const yesterdayArticle = makeArticle({ id: "src:yesterday", publishedAt: yesterday })
-      setupDefaults({ articles: [todayArticle, yesterdayArticle] })
+      setupDefaults({
+        articles: [todayArticle, yesterdayArticle],
+        searchParams: { view: "all" },
+      })
 
       const { result } = renderHook(() => useFeedPage())
-
-      act(() => {
-        result.current.filterBarProps.onToggleAllArticles()
-      })
 
       expect(result.current.feedListProps.filteredArticles).toHaveLength(2)
     })
 
-    it("filters articles by search query", () => {
+    it("filters articles by search query from URL param", () => {
       const matchArticle = makeArticle({ id: "src:match", title: "Breaking News" })
       const otherArticle = makeArticle({ id: "src:other", title: "Weather Update" })
-      setupDefaults({ articles: [matchArticle, otherArticle] })
+      setupDefaults({
+        articles: [matchArticle, otherArticle],
+        searchParams: { q: "breaking" },
+      })
 
       const { result } = renderHook(() => useFeedPage())
 
-      act(() => {
-        result.current.filterBarProps.onSearchChange("breaking")
+      expect(result.current.feedListProps.filteredArticles).toEqual([matchArticle])
+    })
+
+    it("shows articles for specific date from URL param", () => {
+      const todayArticle = makeArticle({ id: "src:today", publishedAt: today })
+      const yesterdayArticle = makeArticle({ id: "src:yesterday", publishedAt: yesterday })
+      setupDefaults({
+        articles: [todayArticle, yesterdayArticle],
+        searchParams: { date: formatDate(yesterday) },
       })
 
-      expect(result.current.feedListProps.filteredArticles).toEqual([matchArticle])
+      const { result } = renderHook(() => useFeedPage())
+
+      expect(result.current.feedListProps.filteredArticles).toEqual([yesterdayArticle])
     })
   })
 
   describe("day navigation", () => {
-    it("decrements date on onPrev", () => {
+    it("onPrev calls navigate with previous day's date param", () => {
       setupDefaults()
 
       const { result } = renderHook(() => useFeedPage())
-      const initialDate = result.current.filterBarProps.selectedDate
 
       act(() => {
         result.current.filterBarProps.onPrev()
       })
 
-      const expectedDate = new Date(initialDate)
-      expectedDate.setDate(expectedDate.getDate() - 1)
-      expect(result.current.filterBarProps.selectedDate.getDate()).toBe(expectedDate.getDate())
+      expect(mockNavigate).toHaveBeenCalledWith({
+        search: expect.any(Function),
+      })
+
+      const searchFunction = mockNavigate.mock.calls[0][0].search
+      const newSearch = searchFunction({})
+      expect(newSearch.date).toBe(formatDate(yesterday))
     })
 
-    it("increments date on onNext", () => {
-      setupDefaults()
+    it("onNext from yesterday calls navigate with date removed (today)", () => {
+      setupDefaults({ searchParams: { date: formatDate(yesterday) } })
 
       const { result } = renderHook(() => useFeedPage())
-
-      act(() => {
-        result.current.filterBarProps.onPrev()
-      })
-
-      const dateAfterPrevious = result.current.filterBarProps.selectedDate
 
       act(() => {
         result.current.filterBarProps.onNext()
       })
 
-      const expectedDate = new Date(dateAfterPrevious)
-      expectedDate.setDate(expectedDate.getDate() + 1)
-      expect(result.current.filterBarProps.selectedDate.getDate()).toBe(expectedDate.getDate())
+      const searchFunction = mockNavigate.mock.calls[0][0].search
+      const newSearch = searchFunction({ date: formatDate(yesterday) })
+      expect(newSearch.date).toBeUndefined()
     })
 
-    it("isToday is true when on current date", () => {
+    it("isToday is true when no date param (default)", () => {
       setupDefaults()
 
       const { result } = renderHook(() => useFeedPage())
@@ -199,41 +230,149 @@ describe("useFeedPage", () => {
       expect(result.current.filterBarProps.isToday).toBe(true)
     })
 
-    it("isToday is false after navigating to past date", () => {
-      setupDefaults()
+    it("isToday is false when date param is yesterday", () => {
+      setupDefaults({ searchParams: { date: formatDate(yesterday) } })
 
       const { result } = renderHook(() => useFeedPage())
-
-      act(() => {
-        result.current.filterBarProps.onPrev()
-      })
 
       expect(result.current.filterBarProps.isToday).toBe(false)
     })
   })
 
-  describe("toggle allArticles resets date", () => {
-    it("resets selectedDate to today when toggling allArticles off", () => {
+  describe("toggle allArticles", () => {
+    it("onToggleAllArticles navigates with view=all when currently in day view", () => {
       setupDefaults()
 
       const { result } = renderHook(() => useFeedPage())
 
-      // Navigate to past
-      act(() => {
-        result.current.filterBarProps.onPrev()
-        result.current.filterBarProps.onPrev()
-      })
-
-      expect(result.current.filterBarProps.isToday).toBe(false)
-
-      // Toggle on then off
-      act(() => {
-        result.current.filterBarProps.onToggleAllArticles()
-      })
       act(() => {
         result.current.filterBarProps.onToggleAllArticles()
       })
 
+      const searchFunction = mockNavigate.mock.calls[0][0].search
+      const newSearch = searchFunction({})
+      expect(newSearch.view).toBe("all")
+    })
+
+    it("onToggleAllArticles navigates with view and date removed when in all view", () => {
+      setupDefaults({ searchParams: { view: "all", date: formatDate(yesterday) } })
+
+      const { result } = renderHook(() => useFeedPage())
+
+      act(() => {
+        result.current.filterBarProps.onToggleAllArticles()
+      })
+
+      const searchFunction = mockNavigate.mock.calls[0][0].search
+      const newSearch = searchFunction({ view: "all", date: formatDate(yesterday) })
+      expect(newSearch.view).toBeUndefined()
+      expect(newSearch.date).toBeUndefined()
+    })
+  })
+
+  describe("toggle showHidden", () => {
+    it("onToggleShowHidden navigates with hidden=true when currently false", () => {
+      setupDefaults()
+
+      const { result } = renderHook(() => useFeedPage())
+
+      act(() => {
+        result.current.filterBarProps.onToggleShowHidden()
+      })
+
+      const searchFunction = mockNavigate.mock.calls[0][0].search
+      const newSearch = searchFunction({})
+      expect(newSearch.hidden).toBe(true)
+    })
+
+    it("onToggleShowHidden navigates with hidden removed when currently true", () => {
+      setupDefaults({ searchParams: { hidden: true } })
+
+      const { result } = renderHook(() => useFeedPage())
+
+      act(() => {
+        result.current.filterBarProps.onToggleShowHidden()
+      })
+
+      const searchFunction = mockNavigate.mock.calls[0][0].search
+      const newSearch = searchFunction({ hidden: true })
+      expect(newSearch.hidden).toBeUndefined()
+    })
+  })
+
+  describe("search query", () => {
+    it("onSearchChange navigates with q param", () => {
+      setupDefaults()
+
+      const { result } = renderHook(() => useFeedPage())
+
+      act(() => {
+        result.current.filterBarProps.onSearchChange("bitcoin")
+      })
+
+      const searchFunction = mockNavigate.mock.calls[0][0].search
+      const newSearch = searchFunction({})
+      expect(newSearch.q).toBe("bitcoin")
+    })
+
+    it("onSearchChange navigates with q removed when empty", () => {
+      setupDefaults({ searchParams: { q: "old" } })
+
+      const { result } = renderHook(() => useFeedPage())
+
+      act(() => {
+        result.current.filterBarProps.onSearchChange("")
+      })
+
+      const searchFunction = mockNavigate.mock.calls[0][0].search
+      const newSearch = searchFunction({ q: "old" })
+      expect(newSearch.q).toBeUndefined()
+    })
+  })
+
+  describe("state derivation from search params", () => {
+    it("derives selectedDate from date param", () => {
+      setupDefaults({ searchParams: { date: "2026-04-01" } })
+
+      const { result } = renderHook(() => useFeedPage())
+
+      expect(result.current.filterBarProps.selectedDate.getFullYear()).toBe(2026)
+      expect(result.current.filterBarProps.selectedDate.getMonth()).toBe(3) // April = 3
+      expect(result.current.filterBarProps.selectedDate.getDate()).toBe(1)
+    })
+
+    it("derives allArticles=true from view=all", () => {
+      setupDefaults({ searchParams: { view: "all" } })
+
+      const { result } = renderHook(() => useFeedPage())
+
+      expect(result.current.filterBarProps.allArticles).toBe(true)
+    })
+
+    it("derives searchQuery from q param", () => {
+      setupDefaults({ searchParams: { q: "test" } })
+
+      const { result } = renderHook(() => useFeedPage())
+
+      expect(result.current.filterBarProps.searchQuery).toBe("test")
+    })
+
+    it("derives showHidden from hidden param", () => {
+      setupDefaults({ searchParams: { hidden: true } })
+
+      const { result } = renderHook(() => useFeedPage())
+
+      expect(result.current.filterBarProps.showHidden).toBe(true)
+    })
+
+    it("uses defaults when no params", () => {
+      setupDefaults()
+
+      const { result } = renderHook(() => useFeedPage())
+
+      expect(result.current.filterBarProps.allArticles).toBe(false)
+      expect(result.current.filterBarProps.searchQuery).toBe("")
+      expect(result.current.filterBarProps.showHidden).toBe(false)
       expect(result.current.filterBarProps.isToday).toBe(true)
     })
   })
@@ -245,14 +384,10 @@ describe("useFeedPage", () => {
       setupDefaults({
         articles: [article1, article2],
         hiddenIds: ["src:a2"],
+        searchParams: { hidden: true },
       })
 
       const { result } = renderHook(() => useFeedPage())
-
-      // Toggle showHidden on
-      act(() => {
-        result.current.filterBarProps.onToggleShowHidden()
-      })
 
       expect(result.current.filterBarProps.articleCount).toBe(1)
       expect(result.current.filterBarProps.hiddenCount).toBe(1)
@@ -268,7 +403,6 @@ describe("useFeedPage", () => {
 
       const { result } = renderHook(() => useFeedPage())
 
-      // hiddenCount always reflects the number of hidden articles in the current day/view
       expect(result.current.filterBarProps.hiddenCount).toBe(1)
     })
   })
@@ -346,19 +480,13 @@ describe("useFeedPage", () => {
       setupDefaults({
         articles: [article],
         hiddenIds: ["src:a1"],
+        searchParams: { hidden: true },
       })
 
       const { result } = renderHook(() => useFeedPage())
 
-      // Toggle showHidden on
-      act(() => {
-        result.current.filterBarProps.onToggleShowHidden()
-      })
-
       const rendered = result.current.feedListProps.renderActions(article)
-      // HiddenArticleActions is mocked, but createElement still creates the element
       expect(rendered).toBeTruthy()
-      // Verify it's a HiddenArticleActions element (type check on the created element)
       expect((rendered as { type: { name?: string } }).type).toBeDefined()
     })
 
@@ -475,14 +603,10 @@ describe("useFeedPage", () => {
       expect(result.current.feedListProps.emptyMessage).toBe("No articles for this day.")
     })
 
-    it("is undefined when allArticles is true", () => {
-      setupDefaults()
+    it("is undefined when view=all", () => {
+      setupDefaults({ searchParams: { view: "all" } })
 
       const { result } = renderHook(() => useFeedPage())
-
-      act(() => {
-        result.current.filterBarProps.onToggleAllArticles()
-      })
 
       expect(result.current.feedListProps.emptyMessage).toBeUndefined()
     })
