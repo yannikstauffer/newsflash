@@ -2,13 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import type { SetStateAction } from "react"
 
-const LOCAL_STORAGE_SYNC_EVENT = "newsflash:local-storage-sync"
+export const LOCAL_STORAGE_SYNC_EVENT = "newsflash:local-storage-sync"
 
-interface LocalStorageSyncDetail {
-  key: string
+export interface LocalStorageSyncDetail {
+  readonly key: string
 }
 
-function dispatchSyncEvent(key: string): void {
+export function dispatchSyncEvent(key: string): void {
   globalThis.window?.dispatchEvent(
     new CustomEvent<LocalStorageSyncDetail>(LOCAL_STORAGE_SYNC_EVENT, {
       detail: { key },

@@ -1,6 +1,6 @@
 import { useCallback } from "react"
 
-import { useLocalStorage } from "@/hooks/use-local-storage"
+import { useSyncedStorage } from "@/hooks/use-synced-storage"
 
 const STORAGE_KEY = "newsflash:filter-prefs"
 
@@ -8,7 +8,7 @@ export function useFilterPreferences(): {
   isFilterEnabled: (filterId: string, enabledByDefault: boolean) => boolean
   toggleFilter: (filterId: string, enabledByDefault: boolean) => void
 } {
-  const [store, setStore] = useLocalStorage<Record<string, boolean>>(STORAGE_KEY, {})
+  const [store, setStore] = useSyncedStorage<Record<string, boolean>>(STORAGE_KEY, {})
 
   const isFilterEnabled = useCallback(
     (filterId: string, enabledByDefault: boolean): boolean => {
