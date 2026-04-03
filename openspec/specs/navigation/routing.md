@@ -1,11 +1,15 @@
 ## ADDED Requirements
 
 ### Requirement: URL-based route navigation
-The application SHALL provide URL-based navigation using TanStack Router. Each view MUST be accessible via a distinct URL path, and navigating between views MUST update the browser URL.
+The application SHALL provide URL-based navigation using TanStack Router. Each view MUST be accessible via a distinct URL path, and navigating between views MUST update the browser URL. The feed route (`/`) SHALL additionally support validated search params for view state.
 
 #### Scenario: Feed page at root URL
 - **WHEN** the user navigates to `/`
-- **THEN** the application SHALL render the `FeedPage` component
+- **THEN** the application SHALL render the `FeedPage` component with default view state (today, day view, no search, hidden off)
+
+#### Scenario: Feed page with search params
+- **WHEN** the user navigates to `/?date=2026-04-03&q=test`
+- **THEN** the application SHALL render the `FeedPage` component with the date set to April 3, 2026 and search query "test"
 
 #### Scenario: Read list page at /read-list
 - **WHEN** the user navigates to `/read-list`
@@ -31,7 +35,11 @@ The application SHALL integrate with the browser history API so that back and fo
 - **THEN** the application SHALL navigate forward to the previously visited route and render the corresponding component
 
 ### Requirement: Deep linking
-The application SHALL support deep linking so that users can directly access any view via its URL.
+The application SHALL support deep linking so that users can directly access any view via its URL, including feed page view state encoded in search params.
+
+#### Scenario: Direct URL access to feed with date
+- **WHEN** the user enters `/?date=2026-04-01` directly in the browser address bar
+- **THEN** the application SHALL render the `FeedPage` with articles for April 1, 2026
 
 #### Scenario: Direct URL access to read list
 - **WHEN** the user enters `/read-list` directly in the browser address bar
