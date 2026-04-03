@@ -17,6 +17,9 @@ vi.mock("./use-feed-data", () => ({
 }))
 
 const mockUseArticleState = vi.fn()
+const { mockSwipeableCard } = vi.hoisted(() => ({
+  mockSwipeableCard: vi.fn(() => null),
+}))
 vi.mock("@/features/article-actions", async (importOriginal) => {
   const original = await importOriginal<Record<string, unknown>>()
   return {
@@ -25,7 +28,7 @@ vi.mock("@/features/article-actions", async (importOriginal) => {
     useArticleKeyboardShortcuts: vi.fn(),
     ArticleActionButtons: () => null,
     HiddenArticleActions: () => null,
-    SwipeableCard: () => null,
+    SwipeableCard: mockSwipeableCard,
   }
 })
 
@@ -320,9 +323,9 @@ describe("useFeedPage", () => {
       expect(hideArticle).not.toHaveBeenCalled()
     })
 
-    it("adds to read list when not already saved", () => {
+    it("adds to read list and hides article when not already saved", () => {
       const article = makeArticle({ id: "src:a1" })
-      const { addToReadList } = setupDefaults({ articles: [article] })
+      const { addToReadList, hideArticle } = setupDefaults({ articles: [article] })
 
       renderHook(() => useFeedPage())
 
@@ -333,6 +336,7 @@ describe("useFeedPage", () => {
       })
 
       expect(addToReadList).toHaveBeenCalledWith(article)
+      expect(hideArticle).toHaveBeenCalledWith("src:a1")
     })
   })
 
@@ -366,6 +370,99 @@ describe("useFeedPage", () => {
 
       const rendered = result.current.feedListProps.renderActions(article)
       expect(rendered).toBeTruthy()
+    })
+
+    it("onSave calls addToReadList and hideArticle when not already saved", () => {
+      const article = makeArticle({ id: "src:a1" })
+      const { addToReadList, hideArticle } = setupDefaults({ articles: [article] })
+
+      const { result } = renderHook(() => useFeedPage())
+
+      const rendered = result.current.feedListProps.renderActions(article) as {
+        props: { onSave: () => void }
+      }
+      rendered.props.onSave()
+
+      expect(addToReadList).toHaveBeenCalledWith(article)
+      expect(hideArticle).toHaveBeenCalledWith("src:a1")
+    })
+
+    it("onSave removes from read list and does not hide when already saved", () => {
+      const article = makeArticle({ id: "src:a1" })
+      const { hideArticle, isInReadList } = setupDefaults({ articles: [article] })
+      isInReadList.mockReturnValue(true)
+
+      const { result } = renderHook(() => useFeedPage())
+
+      const rendered = result.current.feedListProps.renderActions(article) as {
+        props: { onSave: () => void }
+      }
+      rendered.props.onSave()
+
+      const removeFromReadList = mockUseArticleState.mock.results[0].value.removeFromReadList
+      expect(removeFromReadList).toHaveBeenCalledWith("src:a1")
+      expect(hideArticle).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("renderWrapper swipe config", () => {
+    interface SwipeConfigTestProps {
+      swipeRight?: { bgClassName: string; onAction: () => void }
+      swipeLeft?: { bgClassName: string; onAction: () => void }
+    }
+
+    function getWrapperProps(
+      result: { current: ReturnType<typeof useFeedPage> },
+      article: NormalizedArticle,
+    ): SwipeConfigTestProps {
+      const element = result.current.feedListProps.renderWrapper(article, "mock-child") as {
+        props: SwipeConfigTestProps
+      }
+      return element.props
+    }
+
+    it("passes swipeRight config with amber background and onAction calling hideArticle", () => {
+      const article = makeArticle({ id: "src:a1" })
+      const { hideArticle } = setupDefaults({ articles: [article] })
+
+      const { result } = renderHook(() => useFeedPage())
+      const props = getWrapperProps(result, article)
+
+      expect(props.swipeRight?.bgClassName).toBe("bg-amber-100 dark:bg-amber-900/30")
+      expect(typeof props.swipeRight?.onAction).toBe("function")
+
+      props.swipeRight?.onAction()
+      expect(hideArticle).toHaveBeenCalledWith("src:a1")
+    })
+
+    it("passes swipeLeft config with blue background and onAction calling addToReadList and hideArticle", () => {
+      const article = makeArticle({ id: "src:a1" })
+      const { addToReadList, hideArticle } = setupDefaults({ articles: [article] })
+
+      const { result } = renderHook(() => useFeedPage())
+      const props = getWrapperProps(result, article)
+
+      expect(props.swipeLeft?.bgClassName).toBe("bg-blue-100 dark:bg-blue-900/30")
+      expect(typeof props.swipeLeft?.onAction).toBe("function")
+
+      props.swipeLeft?.onAction()
+      expect(addToReadList).toHaveBeenCalledWith(article)
+      expect(hideArticle).toHaveBeenCalledWith("src:a1")
+    })
+
+    it("swipeLeft onAction removes from read list when article is already saved and does not hide", () => {
+      const article = makeArticle({ id: "src:a1" })
+      const { isInReadList, hideArticle } = setupDefaults({ articles: [article] })
+      isInReadList.mockReturnValue(true)
+
+      const { result } = renderHook(() => useFeedPage())
+      const props = getWrapperProps(result, article)
+
+      props.swipeLeft?.onAction()
+
+      const removeFromReadList = mockUseArticleState.mock.results[0].value.removeFromReadList
+      expect(removeFromReadList).toHaveBeenCalledWith("src:a1")
+      expect(hideArticle).not.toHaveBeenCalled()
     })
   })
 

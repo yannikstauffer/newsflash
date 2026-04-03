@@ -10,7 +10,7 @@ interface SwipeConfig {
 }
 
 interface SwipeableCardProps {
-  readonly children: ReactNode
+  readonly children?: ReactNode
   readonly swipeRight?: SwipeConfig
   readonly swipeLeft?: SwipeConfig
 }
@@ -20,7 +20,7 @@ export interface SwipeableCardHandle {
 }
 
 const SWIPE_THRESHOLD = 80
-const ANIMATION_DURATION = 350
+const ANIMATION_DURATION = 200
 const REMOVAL_MAX_HEIGHT = "500px"
 
 type AnimationState = "idle" | "dragging" | "removing"
@@ -31,6 +31,7 @@ export const SwipeableCard = forwardRef<SwipeableCardHandle, SwipeableCardProps>
     const [animationState, setAnimationState] = useState<AnimationState>("idle")
     const [removalDirection, setRemovalDirection] = useState<"left" | "right" | null>(null)
     const [fadeOnly, setFadeOnly] = useState(false)
+    const [isCollapsing, setIsCollapsing] = useState(false)
     const outerRef = useRef<HTMLDivElement>(null)
     const callbackFired = useRef(false)
 
@@ -55,21 +56,26 @@ export const SwipeableCard = forwardRef<SwipeableCardHandle, SwipeableCardProps>
         setFadeOnly(fadeOnlyMode)
         callbackFired.current = false
 
+        const COLLAPSE_DELAY = 100
         const fallbackTimer = setTimeout(() => {
           fireCallback(direction)
-        }, ANIMATION_DURATION + 50)
+        }, COLLAPSE_DELAY + ANIMATION_DURATION + 50)
 
-        const element = outerRef.current
-        if (element) {
-          const handleTransitionEnd = (event: TransitionEvent) => {
-            if (event.propertyName === "opacity") {
-              clearTimeout(fallbackTimer)
-              element.removeEventListener("transitionend", handleTransitionEnd)
-              fireCallback(direction)
+        setTimeout(() => {
+          setIsCollapsing(true)
+
+          const element = outerRef.current
+          if (element) {
+            const handleTransitionEnd = (event: TransitionEvent) => {
+              if (event.propertyName === "opacity") {
+                clearTimeout(fallbackTimer)
+                element.removeEventListener("transitionend", handleTransitionEnd)
+                fireCallback(direction)
+              }
             }
+            element.addEventListener("transitionend", handleTransitionEnd)
           }
-          element.addEventListener("transitionend", handleTransitionEnd)
-        }
+        }, COLLAPSE_DELAY)
       },
       [fireCallback],
     )
@@ -106,8 +112,8 @@ export const SwipeableCard = forwardRef<SwipeableCardHandle, SwipeableCardProps>
         setOffsetX(mx)
       },
       {
-        axis: "x",
         filterTaps: true,
+        threshold: [10, 30],
       },
     )
 
@@ -139,19 +145,21 @@ export const SwipeableCard = forwardRef<SwipeableCardHandle, SwipeableCardProps>
     const cardTransition =
       animationState === "dragging"
         ? "none"
-        : `transform ${ANIMATION_DURATION}ms ease-out`
+        : `transform ${ANIMATION_DURATION}ms ease-out, opacity ${ANIMATION_DURATION}ms ease-out`
 
-    const outerStyle: CSSProperties = isRemoving
+    const collapseEasing = "cubic-bezier(0.2, 0, 0, 1)"
+
+    const outerStyle: CSSProperties = isCollapsing
       ? {
         maxHeight: "0px",
         opacity: 0,
-        transition: `max-height ${ANIMATION_DURATION}ms ease-out, opacity ${ANIMATION_DURATION}ms ease-out`,
+        transition: `max-height ${ANIMATION_DURATION}ms ${collapseEasing}, opacity ${ANIMATION_DURATION}ms ${collapseEasing}`,
         overflow: "hidden",
       }
       : {
         maxHeight: REMOVAL_MAX_HEIGHT,
         opacity: 1,
-        transition: `max-height ${ANIMATION_DURATION}ms ease-out, opacity ${ANIMATION_DURATION}ms ease-out`,
+        transition: `max-height ${ANIMATION_DURATION}ms ${collapseEasing}, opacity ${ANIMATION_DURATION}ms ${collapseEasing}`,
         overflow: "hidden",
       }
 
@@ -177,6 +185,7 @@ export const SwipeableCard = forwardRef<SwipeableCardHandle, SwipeableCardProps>
           className="relative touch-pan-y"
           style={{
             transform: `translateX(${getCardTranslateX()})`,
+            opacity: isRemoving ? 0 : 1,
             transition: cardTransition,
           }}
           data-testid="swipeable-card-inner"

@@ -1,0 +1,144 @@
+# Changelog
+
+## [1.1.0](https://github.com/yannikstauffer/newsflash/compare/newsflash-v1.0.0...newsflash-v1.1.0) (2026-03-29)
+
+
+### Features
+
+* **connectors:** add SRF category filters for sport, kultur, and wissen ([9633057](https://github.com/yannikstauffer/newsflash/commit/963305761639c7d23cec23682125bfb49f1dd9b0))
+* **filter-bar:** adjust mobile button styling ([d9dd525](https://github.com/yannikstauffer/newsflash/commit/d9dd525a0fcfde6546ee3af3007cac041e645928))
+
+
+### Bug Fixes
+
+* **feed:** hide bookmarked articles from main feed ([7ee18de](https://github.com/yannikstauffer/newsflash/commit/7ee18de5531237951df064baf84ef4b499a389c1))
+* **swipeable-card:** create spec to fix bookmarking behavior ([418430f](https://github.com/yannikstauffer/newsflash/commit/418430f0cd3206829f4ecc1778a1d76ff70d4828))
+
+
+### Documentation
+
+* **srf-feed-category-filters:** add openspec proposal ([a3fedda](https://github.com/yannikstauffer/newsflash/commit/a3feddaeca7a250cb3823442c934e4653c99ce47))
+* **sync-reliability-and-filters:** add openspec proposal ([3dbbff0](https://github.com/yannikstauffer/newsflash/commit/3dbbff0c874edbf23783c233c3023d399379db6e))
+
+
+### Miscellaneous
+
+* **develop:** release newsflash 1.0.0 ([b697804](https://github.com/yannikstauffer/newsflash/commit/b6978045c53470aa67cfbab3dc0ec8f7753b2ab5))
+
+## 1.0.0 (2026-03-26)
+
+
+### Features
+
+* **app:** add code splitting with lazy-loaded routes ([1d17ec2](https://github.com/yannikstauffer/newsflash/commit/1d17ec241b059aa42715681dda351d5da94658bf))
+* apply pr change requests ([b784527](https://github.com/yannikstauffer/newsflash/commit/b7845275a4f100f72cc652fb5a5f505afec87e17))
+* **article-actions:** add localStorage pruning for hidden IDs and read list ([61af610](https://github.com/yannikstauffer/newsflash/commit/61af610632f04a06bc168a7c124be24c39ea099d))
+* **ci:** add GitHub Actions CI pipeline ([999be62](https://github.com/yannikstauffer/newsflash/commit/999be628d23dc8de8b3f69496626f98587b9f53f))
+* **ci:** rename master branch ([984a6d1](https://github.com/yannikstauffer/newsflash/commit/984a6d1c4bb4f0139745b58c3618eb7ae46aff5b))
+* **CLAUDE.md:** add quality gate section ([cad3b5d](https://github.com/yannikstauffer/newsflash/commit/cad3b5da37e42d8b2eff06a7bf376eeefb9e1d90))
+* **connectors:** add article filters and restructure sources ([b907f75](https://github.com/yannikstauffer/newsflash/commit/b907f754408b91a7c1c9ebdea5277b52daa60ccd))
+* **deps:** setup ([bbefd62](https://github.com/yannikstauffer/newsflash/commit/bbefd623c8045469a3a99d28eed9e1e63815b6f7))
+* **favicon:** replace filter-based glow with linear gradient fill ([8949027](https://github.com/yannikstauffer/newsflash/commit/89490270f8e713f695510608a08a7236734dff55))
+* **feed-config:** add collapsible feed groups and 18 new SRF feeds ([4a68274](https://github.com/yannikstauffer/newsflash/commit/4a68274db03a28f3c6328040cc7d35bcf6eda00e))
+* **feed:** add dynamic description clamping with gradient fade on article cards ([164e0b0](https://github.com/yannikstauffer/newsflash/commit/164e0b0008bf503e813176da73de1491969fa449))
+* **feed:** add URL-based duplicate detection with youngest-wins ([6749a04](https://github.com/yannikstauffer/newsflash/commit/6749a04b82e5f371e36b11062bfbda8561c31c9a))
+* **feed:** optimize mobile article card layout and action visibility ([3996563](https://github.com/yannikstauffer/newsflash/commit/3996563df7ab8e0cc56ecd21f5f2cbd314be1df3))
+* **feed:** redesign filter bar with two-row layout, collapsible search, and article counts ([17ba448](https://github.com/yannikstauffer/newsflash/commit/17ba44868bb4490d0f8932b9f54b3a8434b34b3f))
+* **feed:** redesign filter bar with two-row layout, collapsible search, and article counts ([033fb8d](https://github.com/yannikstauffer/newsflash/commit/033fb8d0f4fc171ed39eeca3b840b0a15f43b4f1))
+* **feed:** sticky filter bar, move refresh text, fix button styling ([fd52cfe](https://github.com/yannikstauffer/newsflash/commit/fd52cfe9e34b30191e2471b0a7dc0068191def57))
+* **husky:** add tsc for pre-commit ([5bedd16](https://github.com/yannikstauffer/newsflash/commit/5bedd167ee1b8759ce6a425c1729a25b3206969e))
+* **i18n:** add i18next infrastructure with de/en locale support ([4fcb2ef](https://github.com/yannikstauffer/newsflash/commit/4fcb2ef4516417706cf96b6f38d98ccf31fbf340))
+* init openspec ([c898097](https://github.com/yannikstauffer/newsflash/commit/c8980970cf8ccce3c17fc9493847a7a0e23406c1))
+* initial commit ([86da452](https://github.com/yannikstauffer/newsflash/commit/86da452f6b319852a07e37c036144c7d953364ef))
+* **license:** add ([a463c15](https://github.com/yannikstauffer/newsflash/commit/a463c154730b24a09ccd270d02ed8e63a32049d7))
+* **lint:** autofix lint issues ([915a977](https://github.com/yannikstauffer/newsflash/commit/915a97749d72b34fb8c52ff54a9aabd25160db73))
+* **lint:** fix lint issues ([ffe0f93](https://github.com/yannikstauffer/newsflash/commit/ffe0f93f93a83728ff17414f82c69884b3464122))
+* **lint:** fix lint issues ([c73e23f](https://github.com/yannikstauffer/newsflash/commit/c73e23fbe670c1a66645226aa77566d25a57acf6))
+* **lint:** fix minor issues ([aeaa976](https://github.com/yannikstauffer/newsflash/commit/aeaa976065cbc97d5146dd3e9c0773d5a48b110e))
+* **nav:** add read list counter badge to navigation icon ([92b6b91](https://github.com/yannikstauffer/newsflash/commit/92b6b91bd2c1fda5a19e243fa4dd6bb8cff99b03))
+* **nav:** move navigation to bottom bar on mobile viewports ([1f5aee1](https://github.com/yannikstauffer/newsflash/commit/1f5aee11267487751f6cd500fcf049afe16ff047))
+* **openspec:** add accessibility-improvements change proposal ([cc433a8](https://github.com/yannikstauffer/newsflash/commit/cc433a87096217c9ef0a5a41ea20b0f30c7eb30e))
+* **openspec:** add dx-improvements change proposal ([eb79324](https://github.com/yannikstauffer/newsflash/commit/eb79324fb426abe4a762a55f6dd77bdc0617ec5e))
+* **openspec:** add error-handling change proposal ([4f49737](https://github.com/yannikstauffer/newsflash/commit/4f4973798b6151a3dda8871f8fe091e2400aa7ab))
+* **openspec:** add feed-page-refactor change proposal ([113ab2b](https://github.com/yannikstauffer/newsflash/commit/113ab2b94ec39f09275c906dab194ae19f134cca))
+* **openspec:** add fix-article-id-integrity change proposal ([0a3eda0](https://github.com/yannikstauffer/newsflash/commit/0a3eda0e1d5f4a41cdb445d22e0800ecc1a3ad1a))
+* **openspec:** add project-cleanup change proposal ([f904b4d](https://github.com/yannikstauffer/newsflash/commit/f904b4db8b0aeaf36e3deb66c33cf51f2fd9f484))
+* **openspec:** add specs ([19b4d18](https://github.com/yannikstauffer/newsflash/commit/19b4d183e33b145d6581a5644c3f14bf9f760f1d))
+* **openspec:** add test-coverage-and-hooks change proposal ([ae121e8](https://github.com/yannikstauffer/newsflash/commit/ae121e85fe16f8bdbe036ba2f39e452be733bd26))
+* **openspec:** archive ([da3a698](https://github.com/yannikstauffer/newsflash/commit/da3a6982d090bbb7ceb09bedfeab62dbd03ca93b))
+* **openspec:** archive specs ([0b304e1](https://github.com/yannikstauffer/newsflash/commit/0b304e1e3b4dfaa3ee3e68bb55e5f4850370b263))
+* **openspec:** archive specs ([6fb12e2](https://github.com/yannikstauffer/newsflash/commit/6fb12e209e9ab07af7396468f8d113cd28276063))
+* **openspec:** implement accessibility-improvements ([eb3034f](https://github.com/yannikstauffer/newsflash/commit/eb3034ff4f596356975f269bc265e850740060de))
+* **openspec:** implement dx-improvements ([99777f1](https://github.com/yannikstauffer/newsflash/commit/99777f1017d3d146a5735d7bc0fa386dc73f5b06))
+* **openspec:** implement error-handling ([761c260](https://github.com/yannikstauffer/newsflash/commit/761c260ff01512188afb69c29daf94c479561555))
+* **openspec:** implement feed-caching-and-performance ([8255bb2](https://github.com/yannikstauffer/newsflash/commit/8255bb20d12d8d8908fbd122884ed3134f6293a9))
+* **openspec:** implement feed-page-refactor ([0243beb](https://github.com/yannikstauffer/newsflash/commit/0243beb1f5d8e620937fef05036a865bddd6bb97))
+* **openspec:** implement fix-article-id-integrity ([0a10a73](https://github.com/yannikstauffer/newsflash/commit/0a10a73a8040b3685b921dcf3ec65807c6c43d10))
+* **openspec:** implement keyboard-accessible-actions ([23caea2](https://github.com/yannikstauffer/newsflash/commit/23caea2fa9d57726d6a2e508501c707c7bbf660b))
+* **openspec:** implement project-cleanup ([6f8f0b4](https://github.com/yannikstauffer/newsflash/commit/6f8f0b4ae1908bd3fcf6176ff626fc5fe72ae69f))
+* **openspec:** improve quality gates ([44c57d0](https://github.com/yannikstauffer/newsflash/commit/44c57d09b2a38d3577f0921f3c4687b0bd169e6c))
+* **openspec:** new skill ([dd7323d](https://github.com/yannikstauffer/newsflash/commit/dd7323d6a8789eb2d82dae5f77a25431b13b24d6))
+* **openspec:** new specs ([7049218](https://github.com/yannikstauffer/newsflash/commit/70492184bddd641e5c7319a40003fe57c21eb8ab))
+* **openspec:** use auto commit ([3b40a23](https://github.com/yannikstauffer/newsflash/commit/3b40a23b406349a162df8d259e595b1aea2e134c))
+* progress ([91bc0e9](https://github.com/yannikstauffer/newsflash/commit/91bc0e9ce495aa7d519ff0d82b00ff2dc0c830fa))
+* progress ([e6c0587](https://github.com/yannikstauffer/newsflash/commit/e6c05877b1426ef939200246aa01449fb55aa01e))
+* **proxy:** add Vercel edge proxy and shared feed config ([eb25688](https://github.com/yannikstauffer/newsflash/commit/eb256881780dc0e5c1d1dee9b86e7b1690f7a306))
+* **README:** update ([1475200](https://github.com/yannikstauffer/newsflash/commit/14752008bb8a96340bc240ab219eca18b026fa7a))
+* **release:** add release-please automation and CI artifact uploads ([be73188](https://github.com/yannikstauffer/newsflash/commit/be7318854ea8af8aef0d84e2a9b0aab546071021))
+* **routing:** add TanStack Router with URL-based navigation ([334a28b](https://github.com/yannikstauffer/newsflash/commit/334a28b07195d4043039ed02227f79e08d485185))
+* **settings:** add card layout, toggle switches, and bulk enable/disable ([697af92](https://github.com/yannikstauffer/newsflash/commit/697af92be0d42701dcdbe1ac73d99aed31686062))
+* **supabase:** add add supabase migration ([724a864](https://github.com/yannikstauffer/newsflash/commit/724a8640a08bd2f60d7cd5931bdda6ce34e60ba8))
+* **swipe-ux:** add swipe reveal backgrounds, removal animations, and bulk actions ([b943609](https://github.com/yannikstauffer/newsflash/commit/b943609afd323f1f80a2d71f17121faa44db1659))
+* **swipe-ux:** add tests and fix lint for swipe improvements ([61fe6ce](https://github.com/yannikstauffer/newsflash/commit/61fe6ce752579ba009c285f2eab5912f1119de7c))
+* **swipeable-card:** faster swipe animation with staggered collapse and angle tolerance ([5736dd7](https://github.com/yannikstauffer/newsflash/commit/5736dd759d872fa384080a2b2edeee5a2a04381c))
+* **sync:** add cross-device sync via Supabase magic link auth ([60addd9](https://github.com/yannikstauffer/newsflash/commit/60addd9aa9b611978980f831100f7b271d0f9ddb))
+* **theme:** fix dark mode persistence with system preference support ([f2fc2b6](https://github.com/yannikstauffer/newsflash/commit/f2fc2b6a4c081ca7f86fff42594958fc55d34e95))
+
+
+### Bug Fixes
+
+* address PR review feedback across multiple components ([96d9380](https://github.com/yannikstauffer/newsflash/commit/96d93800419724653aa10570d93f369970f65a93))
+* **feed:** wire up connector filters and fix save article E2E tests ([eddedca](https://github.com/yannikstauffer/newsflash/commit/eddedcaaefb7a9978972edb2fe7747f120eddea4))
+* **hooks:** bail out of useLocalStorage setValue when reference is unchanged ([bf03338](https://github.com/yannikstauffer/newsflash/commit/bf03338b3ab719a972f24c0a54b449f971a5421e))
+* **i18n:** fix i18n values ([9b5e310](https://github.com/yannikstauffer/newsflash/commit/9b5e310dca23b037af35465d38e749900fcf2323))
+* **lint:** fix linting issue ([6f9e2be](https://github.com/yannikstauffer/newsflash/commit/6f9e2bef2ccd3e9ddb8aeb716e3a97ba8af4f62a))
+* **lint:** fix linting issues ([66d11d3](https://github.com/yannikstauffer/newsflash/commit/66d11d319ae727deaa8840a5e768f703651b762b))
+* **lint:** fix linting issues ([9ba3eb1](https://github.com/yannikstauffer/newsflash/commit/9ba3eb166fc06e7f2f47469a57bbe61c71f99fe0))
+* **swipeable-card:** persist read list button removal and restore feed swipe actions ([3f2d5da](https://github.com/yannikstauffer/newsflash/commit/3f2d5daf94907b2f7c10af0382a10eb559a5f94b))
+
+
+### Documentation
+
+* archive 9 completed openspec changes and sync specs ([28077d1](https://github.com/yannikstauffer/newsflash/commit/28077d1756a71a3b8574dfc72f38adbce5cb8e02))
+* archive completed openspec changes and sync specs ([e2a28a5](https://github.com/yannikstauffer/newsflash/commit/e2a28a5d97a5587ee4e93011a72c358b0faac075))
+* archive completed openspec changes and sync specs ([643fe35](https://github.com/yannikstauffer/newsflash/commit/643fe3559aa05689f1b1e71f39c0348e5223dcf0))
+* **collapsible-feed-groups:** add openspec proposal ([b0c0a0d](https://github.com/yannikstauffer/newsflash/commit/b0c0a0d0b8d1cf66bbd2dfeb60f05f620eafe6c1))
+* **connector-filters-and-restructure:** add openspec proposal ([2e16804](https://github.com/yannikstauffer/newsflash/commit/2e16804e1a8a2bd1402af2414aab0298ba7e788d))
+* **cross-device-sync:** add openspec proposal ([57fe284](https://github.com/yannikstauffer/newsflash/commit/57fe284ee07962d4e0146d170f1f2cce320a4599))
+* **filter-bar-layout-spacing:** add openspec proposal ([6076a36](https://github.com/yannikstauffer/newsflash/commit/6076a3614f7fe7ba828ac235bc33e0083ac65d10))
+* **filter-bar-redesign:** add openspec proposal ([857e8ee](https://github.com/yannikstauffer/newsflash/commit/857e8eef851d570ba8db65caab2da6c317245df4))
+* **filter-bar-ui-refinements:** add openspec proposal ([a605770](https://github.com/yannikstauffer/newsflash/commit/a605770e40a7dbcd5d04d9a222884df412f04209))
+* **fix-dark-mode-persistence:** add openspec proposal ([3a4147c](https://github.com/yannikstauffer/newsflash/commit/3a4147c7a6d20f4a6bc37ce9f5ccf54168419a0e))
+* **fix-swipeable-card-bugs:** add openspec proposal ([cfe04da](https://github.com/yannikstauffer/newsflash/commit/cfe04daa73890d5bb2738e1d67b4cf766f2e2961))
+* **improve-test-coverage:** add openspec proposal ([e384716](https://github.com/yannikstauffer/newsflash/commit/e38471654a4272fce9a90060992f33270f29e19f))
+* **improve-test-coverage:** live connector tests, e2e reduction, scheduled workflow ([2f2f7b7](https://github.com/yannikstauffer/newsflash/commit/2f2f7b75f65dac3f24e7fb8d2e62d4fece0dc252))
+* **mobile-article-card-optimization:** add openspec proposal ([ac9c436](https://github.com/yannikstauffer/newsflash/commit/ac9c43638c3aac542ac3e9bc10ade4e0876890f8))
+* **openspec:** add mobile-bottom-nav and read-list-badge proposals ([4340ffd](https://github.com/yannikstauffer/newsflash/commit/4340ffd0f79e2a55b19fe47456a93829ce542bfa))
+* **refine-favicon:** add openspec proposal ([564c312](https://github.com/yannikstauffer/newsflash/commit/564c31280a6d9477546d5ac28b4ea629be132ab6))
+* **release-management:** add openspec proposal ([0e60c5e](https://github.com/yannikstauffer/newsflash/commit/0e60c5e72e1b73dce8303531732bd26bc7fcfec6))
+* **settings-page-refresh:** add openspec proposal ([fbb45a1](https://github.com/yannikstauffer/newsflash/commit/fbb45a1f0a204013012c6184b2848c04d42e1586))
+* **swipe-ux-improvements:** add openspec proposal ([eba0da8](https://github.com/yannikstauffer/newsflash/commit/eba0da83f9e590fcec49e1824d4500cf3bf271e8))
+* **url-dedup:** add openspec proposal ([374fa97](https://github.com/yannikstauffer/newsflash/commit/374fa97ee13535272ecf31587bac2c0694460d15))
+
+
+### Tests
+
+* **coverage:** add coverage config and hook edge-case tests ([fd54788](https://github.com/yannikstauffer/newsflash/commit/fd54788d2c8ebbf7922a8c25b6fdf0532b0d8db4))
+* **coverage:** raise coverage above 80% and consolidate E2E suite ([913c925](https://github.com/yannikstauffer/newsflash/commit/913c9255e582985411275037017890addccefb61))
+* **lint:** fix test classes ([8d03cd2](https://github.com/yannikstauffer/newsflash/commit/8d03cd2c912f314cbbc11951eea6d9270ad1f1b6))
+
+
+### Miscellaneous
+
+* **e2e:** ignore test results ([125565e](https://github.com/yannikstauffer/newsflash/commit/125565e6f3ec6adab67043a19bef2e784456653f))
+* make pre-commit hook executable ([8fc30fc](https://github.com/yannikstauffer/newsflash/commit/8fc30fca91492452e45056bd2940a0b230672526))

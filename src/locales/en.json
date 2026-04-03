@@ -40,7 +40,7 @@
     "appearance": "Appearance",
     "sources": "Sources",
     "filters": "Filters",
-    "languageDescription": "Choose the language for the interface and news feeds.",
+    "languageDescription": "Choose the language for the app.",
     "appearanceDescription": "Select a theme for the app.",
     "sourcesDescription": "Enable or disable news sources to customize your feed.",
     "enableAll": "Enable All",

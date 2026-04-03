@@ -209,11 +209,9 @@ Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `chore`, `style`
 
 **Pre-commit:**
 - ESLint (accessibility + security + style rules)
+- TypeScript type checking (`tsc -b`)
+- Unit tests (`npm test`)
 - Blocks commit if fails
-
-**Pre-push:**
-- TypeScript type checking (`tsc --noEmit`)
-- Blocks push if fails
 
 ## Common Tasks
 

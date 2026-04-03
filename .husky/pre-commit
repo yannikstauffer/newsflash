@@ -1,2 +1,3 @@
 npx lint-staged
+tsc -b
 npm test

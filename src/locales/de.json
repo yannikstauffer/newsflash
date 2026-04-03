@@ -40,7 +40,7 @@
     "appearance": "Erscheinungsbild",
     "sources": "Quellen",
     "filters": "Filter",
-    "languageDescription": "Wähle die Sprache für die Oberfläche und News-Feeds.",
+    "languageDescription": "Wähle die Sprache für die Oberfläche.",
     "appearanceDescription": "Wähle ein Design für die App.",
     "sourcesDescription": "Aktiviere oder deaktiviere Nachrichtenquellen, um deinen Feed anzupassen.",
     "enableAll": "Alle aktivieren",

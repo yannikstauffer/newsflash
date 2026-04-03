@@ -16,7 +16,7 @@ import { useThemePreference } from "@/hooks/use-theme-preference"
 interface NavItem {
   readonly to: string
   readonly labelKey: string
-  readonly icon: ReactNode | (({ className }: { readonly className?: string }) => ReactNode)
+  readonly icon: ({ className }: { readonly className?: string }) => ReactNode
 }
 
 const NAV_ITEMS: readonly NavItem[] = [

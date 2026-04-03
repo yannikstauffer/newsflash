@@ -47,21 +47,23 @@ export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
             </span>
           )}
         </div>
-        <a
-          href={article.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-        >
-          <h3 className="mb-1 line-clamp-4 text-base font-medium text-foreground md:line-clamp-2 md:font-semibold">
-            {article.title}
-          </h3>
-        </a>
-        {article.description && (
-          <p className="hidden text-sm text-muted-foreground md:line-clamp-2 md:block">
-            {article.description}
-          </p>
-        )}
+        <div className="md:flex md:h-[92px] md:flex-col">
+          <a
+            href={article.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:flex-none"
+          >
+            <h3 className="mb-1 line-clamp-4 text-base font-medium text-foreground md:line-clamp-2 md:font-semibold">
+              {article.title}
+            </h3>
+          </a>
+          {article.description && (
+            <p className="hidden text-sm text-muted-foreground md:block md:flex-1 md:overflow-hidden md:[mask-image:linear-gradient(to_bottom,black_calc(100%-0.75rem),transparent)]">
+              {article.description}
+            </p>
+          )}
+        </div>
       </div>
       {actions && (
         <div className="absolute right-2 top-2">{actions}</div>

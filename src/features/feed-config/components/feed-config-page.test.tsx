@@ -270,7 +270,7 @@ describe("FeedConfigPage", () => {
     it("renders section description texts", () => {
       render(<FeedConfigPage />)
 
-      expect(screen.getByText("Choose the language for the interface and news feeds.")).toBeInTheDocument()
+      expect(screen.getByText("Choose the language for the app.")).toBeInTheDocument()
       expect(screen.getByText("Select a theme for the app.")).toBeInTheDocument()
       expect(screen.getByText("Enable or disable news sources to customize your feed.")).toBeInTheDocument()
     })

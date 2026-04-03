@@ -30,38 +30,29 @@ vi.mock("sonner", () => ({
   toast: vi.fn(),
 }))
 
-// Mock SwipeableCard to expose its behavior for testing
-vi.mock("./swipeable-card", async () => {
-  const react = await import("react")
-  return {
-    SwipeableCard: react.forwardRef(function MockSwipeableCard(
-      { children, swipeRight }: {
-        children: React.ReactNode
-        swipeRight?: { bgClassName: string; onAction: () => void }
-      },
-      ref: React.Ref<unknown>,
-    ) {
-      react.useImperativeHandle(ref, () => ({
-        triggerRemoval: () => {
-          swipeRight?.onAction()
-        },
-      }))
-      return (
-        <div data-testid="swipeable-card">
-          {swipeRight && (
-            <button
-              data-testid="mock-swipe-right-trigger"
-              onClick={swipeRight.onAction}
-            >
-              {"Swipe Right"}
-            </button>
-          )}
-          {children}
-        </div>
-      )
-    }),
-  }
-})
+// Mock SwipeableCard — no ref needed since button removal calls removeFromReadList directly
+vi.mock("./swipeable-card", () => ({
+  SwipeableCard: function MockSwipeableCard(
+    { children, swipeRight }: {
+      children: React.ReactNode
+      swipeRight?: { bgClassName: string; onAction: () => void }
+    },
+  ) {
+    return (
+      <div data-testid="swipeable-card">
+        {swipeRight && (
+          <button
+            data-testid="mock-swipe-right-trigger"
+            onClick={swipeRight.onAction}
+          >
+            {"Swipe Right"}
+          </button>
+        )}
+        {children}
+      </div>
+    )
+  },
+}))
 
 // Must import after mocks
 const { default: ReadListPage } = await import("./read-list-page")
@@ -148,14 +139,13 @@ describe("ReadListPage", () => {
       expect(screen.getByLabelText("Remove from read list")).toBeDefined()
     })
 
-    it("triggers removal when remove button is clicked", () => {
+    it("calls removeFromReadList directly when remove button is clicked", () => {
       mockReadListArticles = [makeArticle("heise:a1")]
       render(<ReadListPage />)
 
       const removeButton = screen.getByLabelText("Remove from read list")
       fireEvent.click(removeButton)
 
-      // The mock triggerRemoval calls onAction which calls removeFromReadList
       expect(mockRemoveFromReadList).toHaveBeenCalledWith("heise:a1")
     })
   })

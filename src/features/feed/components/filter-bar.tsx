@@ -2,7 +2,6 @@ import { ChevronLeft, ChevronRight, Eye, EyeOff, List, Search, X } from "lucide-
 import { useEffect, useRef, useState } from "react"
 
 import { formatDayLabel } from "../utils/format-day-label"
-import { formatRelativeTime } from "../utils/format-time"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -18,7 +17,6 @@ interface FilterBarProps {
   readonly onPrev: () => void
   readonly onNext: () => void
   readonly onToggleAllArticles: () => void
-  readonly lastRefreshedAt: Date | null
   readonly articleCount: number
   readonly hiddenCount: number
 }
@@ -34,7 +32,6 @@ export function FilterBar({
   onPrev,
   onNext,
   onToggleAllArticles,
-  lastRefreshedAt,
   articleCount,
   hiddenCount,
 }: FilterBarProps) {
@@ -69,7 +66,7 @@ export function FilterBar({
   const showClearButton = searchQuery.length > 0
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="sticky top-0 z-10 flex flex-col gap-2 border-b border-border bg-background pb-2">
       {/* Row 1: status, toggles, search */}
       <div className="flex items-center gap-2">
         {/* Mobile: expanded search replaces other controls */}
@@ -98,13 +95,8 @@ export function FilterBar({
           </div>
         ) : (
           <>
-            {/* Left section: refresh status + article count */}
+            {/* Left section: article count */}
             <div className="flex items-center gap-2 md:hidden">
-              {lastRefreshedAt && (
-                <span className="text-xs text-muted-foreground" aria-label="Last refreshed">
-                  {`Refreshed ${formatRelativeTime(lastRefreshedAt)}`}
-                </span>
-              )}
               <span className="text-xs text-muted-foreground" aria-label="Article count">
                 {showHidden
                   ? `${articleCount} + ${hiddenCount} hidden`
@@ -123,9 +115,9 @@ export function FilterBar({
                 onClick={onToggleAllArticles}
                 aria-pressed={allArticles}
                 aria-label="All articles"
-                className="h-8 min-h-[44px] rounded-full px-3 text-xs md:min-h-[28px]"
+                className="h-8 min-h-[44px] min-w-[44px] rounded-full px-3 text-xs md:min-h-[28px] md:min-w-0"
               >
-                <List className="size-3.5" data-icon="inline-start" />
+                <List className="size-3.5" />
                 <span className="hidden md:inline">{"All articles"}</span>
               </Button>
 
@@ -135,12 +127,12 @@ export function FilterBar({
                 onClick={onToggleShowHidden}
                 aria-pressed={showHidden}
                 aria-label="Hidden"
-                className="h-8 min-h-[44px] rounded-full px-3 text-xs md:min-h-[28px]"
+                className="h-8 min-h-[44px] min-w-[44px] rounded-full px-3 text-xs md:min-h-[28px] md:min-w-0"
               >
                 {showHidden ? (
-                  <Eye className="size-3.5" data-icon="inline-start" />
+                  <Eye className="size-3.5" />
                 ) : (
-                  <EyeOff className="size-3.5" data-icon="inline-start" />
+                  <EyeOff className="size-3.5" />
                 )}
                 <span className="hidden md:inline">{"Hidden"}</span>
               </Button>
@@ -148,13 +140,13 @@ export function FilterBar({
 
             {/* Mobile search icon button */}
             <Button
-              variant="ghost"
-              size="icon-sm"
+              variant="outline"
+              size="sm"
               onClick={() => setSearchOpen(true)}
               aria-label="Open search"
               className={cn(
-                "min-h-[44px] min-w-[44px] md:hidden",
-                searchQuery && "text-accent-foreground bg-accent",
+                "min-h-[44px] min-w-[44px] rounded-full max-md:px-3 md:hidden",
+                searchQuery && "bg-accent text-accent-foreground",
               )}
             >
               <Search className="size-4" />
@@ -162,13 +154,8 @@ export function FilterBar({
           </>
         )}
 
-        {/* Desktop: left section with status + article count */}
+        {/* Desktop: left section with article count */}
         <div className="hidden items-center gap-2 md:flex md:order-first">
-          {lastRefreshedAt && (
-            <span className="text-xs text-muted-foreground" aria-label="Last refreshed">
-              {`Refreshed ${formatRelativeTime(lastRefreshedAt)}`}
-            </span>
-          )}
           <span className="text-xs text-muted-foreground" aria-label="Article count">
             {showHidden
               ? `${articleCount} + ${hiddenCount} hidden`

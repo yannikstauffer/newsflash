@@ -216,7 +216,7 @@ describe("SwipeableCard", () => {
       expect(inner.style.transform).toBe("translateX(-120%)")
     })
 
-    it("sets outer to max-height 0 and opacity 0 during removal", () => {
+    it("does not collapse outer immediately on removal (staggered)", () => {
       render(
         <SwipeableCard swipeRight={defaultSwipeRight} swipeLeft={defaultSwipeLeft}>
           <div>{"Content"}</div>
@@ -233,8 +233,54 @@ describe("SwipeableCard", () => {
         simulateDrag(inner, 100, true)
       })
 
+      // Outer should NOT have collapsed yet (100ms delay)
+      expect(outer.style.maxHeight).toBe("500px")
+      expect(outer.style.opacity).toBe("1")
+    })
+
+    it("collapses outer after 100ms stagger delay", () => {
+      render(
+        <SwipeableCard swipeRight={defaultSwipeRight} swipeLeft={defaultSwipeLeft}>
+          <div>{"Content"}</div>
+        </SwipeableCard>,
+      )
+
+      const inner = screen.getByTestId("swipeable-card-inner")
+      const outer = screen.getByTestId("swipeable-card-outer")
+      fireEvent.pointerDown(inner, { clientX: 0, clientY: 0 })
+      act(() => {
+        simulateDrag(inner, 100, false)
+      })
+      act(() => {
+        simulateDrag(inner, 100, true)
+      })
+
+      // Advance past the 100ms collapse delay
+      act(() => {
+        vi.advanceTimersByTime(100)
+      })
+
       expect(outer.style.maxHeight).toBe("0px")
       expect(outer.style.opacity).toBe("0")
+    })
+
+    it("fades card inner to opacity 0 during removal", () => {
+      render(
+        <SwipeableCard swipeRight={defaultSwipeRight} swipeLeft={defaultSwipeLeft}>
+          <div>{"Content"}</div>
+        </SwipeableCard>,
+      )
+
+      const inner = screen.getByTestId("swipeable-card-inner")
+      fireEvent.pointerDown(inner, { clientX: 0, clientY: 0 })
+      act(() => {
+        simulateDrag(inner, 100, false)
+      })
+      act(() => {
+        simulateDrag(inner, 100, true)
+      })
+
+      expect(inner.style.opacity).toBe("0")
     })
   })
 
@@ -338,8 +384,16 @@ describe("SwipeableCard", () => {
 
       const inner = screen.getByTestId("swipeable-card-inner")
       expect(inner.style.transform).toBe("translateX(0px)")
+      expect(inner.style.opacity).toBe("0")
 
+      // Outer collapses after 100ms stagger delay
       const outer = screen.getByTestId("swipeable-card-outer")
+      expect(outer.style.opacity).toBe("1")
+
+      act(() => {
+        vi.advanceTimersByTime(100)
+      })
+
       expect(outer.style.opacity).toBe("0")
     })
 
