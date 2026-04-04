@@ -125,25 +125,7 @@ jobs:
 
       - name: Generate CHANGELOG
         if: steps.bump.outputs.skip != 'true'
-        run: |
-          cat > .changelog-config.json <<'CFGEOF'
-          {
-            "options": {
-              "types": [
-                { "type": "feat", "section": "Features" },
-                { "type": "fix", "section": "Bug Fixes" },
-                { "type": "perf", "section": "Performance Improvements" },
-                { "type": "refactor", "section": "Code Refactoring" },
-                { "type": "docs", "section": "Documentation", "hidden": true },
-                { "type": "test", "section": "Tests", "hidden": true },
-                { "type": "chore", "section": "Miscellaneous", "hidden": true }
-              ]
-            }
-          }
-          CFGEOF
-          npx conventional-changelog@7 -p conventionalcommits -i CHANGELOG.md -r 1 \
-            -n .changelog-config.json
-          rm -f .changelog-config.json
+        run: npx conventional-changelog -n changelog.config.mjs -i CHANGELOG.md -r 1
 
       - name: Build
         if: steps.bump.outputs.skip != 'true'
