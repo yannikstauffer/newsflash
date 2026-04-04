@@ -309,6 +309,31 @@ describe("SyncProvider debounced sync-on-write", () => {
     expect(mockPerformSync).not.toHaveBeenCalled()
   })
 
+  it("ignores sync events dispatched during an active sync", async () => {
+    // Simulate performSync dispatching sync events while it runs
+    mockPerformSync.mockImplementation(() => {
+      dispatchSyncKeyEvent("newsflash:hidden")
+      dispatchSyncKeyEvent("newsflash:readlist")
+      return Promise.resolve()
+    })
+
+    renderHook(() => useSyncContext(), { wrapper })
+
+    // Wait for mount sync (which dispatches events internally)
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    mockPerformSync.mockClear()
+    mockPerformSync.mockResolvedValue(undefined)
+
+    // Advance well past the debounce window — no re-sync should fire
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000)
+    })
+
+    expect(mockPerformSync).not.toHaveBeenCalled()
+  })
+
   it("cancels pending debounce when manual sync is triggered", async () => {
     const { result } = renderHook(() => useSyncContext(), { wrapper })
 

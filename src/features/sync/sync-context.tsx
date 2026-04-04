@@ -41,6 +41,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
+  const isSyncingRef = useRef(false)
 
   // Check for existing Supabase session on mount
   useEffect(() => {
@@ -97,6 +98,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
   const doSync = useCallback(async () => {
     if (!userId) return
 
+    isSyncingRef.current = true
     setSyncStatus((current) => transitionSyncStatus(current, "START"))
 
     try {
@@ -110,6 +112,8 @@ export function SyncProvider({ children }: SyncProviderProps) {
       console.error("Sync failed:", error)
       if (!isMountedRef.current) return
       setSyncStatus((current) => transitionSyncStatus(current, "FAIL"))
+    } finally {
+      isSyncingRef.current = false
     }
 
     // Reset to IDLE after timeout
@@ -136,6 +140,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
       const detail = (event as CustomEvent<LocalStorageSyncDetail>).detail
       if (!SYNCED_STORAGE_KEYS.has(detail.key)) return
       if (!userId) return
+      if (isSyncingRef.current) return
 
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current)
