@@ -1,11 +1,10 @@
 name: Release
 
 # Prerequisites (GitHub repository settings, not managed by this file):
-#   - Branch protection on `master`: for human users, require PR (no direct
-#     pushes) and require status checks to pass. The automated release workflow
-#     is allowed to push/merge to `master` (e.g. via an allowed GitHub Actions
-#     app or bypass), so the branch-protection rule must be configured
-#     accordingly to avoid blocking this release flow.
+#   - "Allow auto-merge" must be enabled in the repository settings.
+#   - Squash merging must be allowed for PRs.
+#   - Branch protection on `develop`: require PR and status checks to pass.
+#   - Vercel production branch must be set to `develop` (continuous deployment).
 
 on:
   workflow_run:
@@ -15,6 +14,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: release
@@ -143,51 +143,46 @@ jobs:
         if: steps.bump.outputs.skip != 'true'
         run: npm run test:e2e
 
-      - name: Commit version bump and CHANGELOG
+      - name: Commit version bump and CHANGELOG to release branch
         if: steps.bump.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          BRANCH="release/v${{ steps.version.outputs.version }}"
+          git checkout -b "$BRANCH"
           git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore: release v${{ steps.version.outputs.version }}"
-          git push origin develop
+          git push origin "$BRANCH"
 
-      - name: Fast-forward merge to master
+      - name: Create PR to develop with auto-merge
         if: steps.bump.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git fetch origin master develop
-          git checkout -B master origin/master
-          git merge --ff-only origin/develop
-          git push origin master
+          VERSION="${{ steps.version.outputs.version }}"
+          BRANCH="release/v${VERSION}"
+          gh pr create \
+            --base develop \
+            --head "$BRANCH" \
+            --title "chore: release v${VERSION}" \
+            --body "Automated release PR for v${VERSION}. Merges version bump and CHANGELOG update into develop."
+          gh pr merge "$BRANCH" --auto --squash --delete-branch
 
-      - name: Create and push tag
-        if: steps.bump.outputs.skip != 'true'
-        run: |
-          git tag "v${{ steps.version.outputs.version }}"
-          git push origin "v${{ steps.version.outputs.version }}"
-
-      - name: Package artifacts
+      - name: Package release artifacts
         if: steps.bump.outputs.skip != 'true'
         run: |
           tar -czf dist.tar.gz dist/
           zip -r coverage-report.zip coverage/
           zip -r playwright-report.zip playwright-report/
 
-      - name: Extract CHANGELOG for this version
+      - name: Upload release artifacts
         if: steps.bump.outputs.skip != 'true'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          awk "/^## \\[?${VERSION}\\]?/{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md > release-notes.md
-
-      - name: Create GitHub Release
-        if: steps.bump.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "v${{ steps.version.outputs.version }}" \
-            --title "v${{ steps.version.outputs.version }}" \
-            --notes-file release-notes.md \
-            dist.tar.gz \
-            test-results.xml \
-            coverage-report.zip \
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            dist.tar.gz
+            test-results.xml
+            coverage-report.zip
             playwright-report.zip
+          retention-days: 1

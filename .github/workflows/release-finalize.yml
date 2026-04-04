@@ -1,0 +1,75 @@
+name: Release Finalize
+
+# After the release PR merges into develop, create the git tag and GitHub
+# Release with build artifacts from the release workflow.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [develop]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  finalize:
+    name: Tag and publish release
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.pull_request.merged == true &&
+      startsWith(github.head_ref, 'release/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 1
+
+      - name: Extract version from branch name
+        id: version
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          VERSION="${BRANCH#release/v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          TAG="v${{ steps.version.outputs.version }}"
+          SHA="${{ github.event.pull_request.merge_commit_sha }}"
+          git tag "$TAG" "$SHA"
+          git push origin "$TAG"
+
+      - name: Download release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="release/v${{ steps.version.outputs.version }}"
+          RUN_ID=$(gh run list \
+            --workflow="release.yml" \
+            --branch="$BRANCH" \
+            --status=success \
+            --limit=1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+          gh run download "$RUN_ID" --name release-artifacts --dir ./artifacts
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          awk "/^## \\[?${VERSION}\\]?/{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md > release-notes.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --title "v${{ steps.version.outputs.version }}" \
+            --notes-file release-notes.md \
+            artifacts/dist.tar.gz \
+            artifacts/test-results.xml \
+            artifacts/coverage-report.zip \
+            artifacts/playwright-report.zip
