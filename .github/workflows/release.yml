@@ -1,10 +1,9 @@
 name: Release
 
 # Prerequisites (GitHub repository settings, not managed by this file):
-#   - "Allow auto-merge" must be enabled in the repository settings.
-#   - Squash merging must be allowed for PRs.
+#   - Merge commits must be enabled for PRs to master.
 #   - Branch protection on `develop`: require PR and status checks to pass.
-#   - Vercel production branch must be set to `develop` (continuous deployment).
+#   - Vercel production branch must be set to `master`.
 
 on:
   workflow_run:
@@ -110,79 +109,87 @@ jobs:
           echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "Determined bump type: $BUMP"
 
-      - name: Install dependencies
-        if: steps.bump.outputs.skip != 'true'
-        run: npm ci
-
-      - name: Bump version
+      - name: Compute version from last tag
         if: steps.bump.outputs.skip != 'true'
         id: version
         run: |
-          npm version ${{ steps.bump.outputs.bump }} --no-git-tag-version
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "New version: $VERSION"
+          LAST_TAG=$(git describe --tags --abbrev=0 --match "v*" --match "newsflash-v*" 2>/dev/null || echo "v0.0.0")
+          # Strip prefix (v or newsflash-v)
+          TAG_VERSION="${LAST_TAG#newsflash-}"
+          TAG_VERSION="${TAG_VERSION#v}"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$TAG_VERSION"
+          BUMP="${{ steps.bump.outputs.bump }}"
+
+          if [ "$BUMP" = "major" ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif [ "$BUMP" = "minor" ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          elif [ "$BUMP" = "patch" ]; then
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Computed version: $NEW_VERSION (from tag $LAST_TAG, bump $BUMP)"
+
+          if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
+            echo "Version already matches package.json. Skipping bump."
+            echo "needs_bump=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_bump=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
+        run: npm ci
+
+      - name: Bump version in package.json
+        if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
+        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version
 
       - name: Generate CHANGELOG
-        if: steps.bump.outputs.skip != 'true'
+        if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
         run: npx conventional-changelog -n changelog.config.mjs -i CHANGELOG.md -r 1
 
-      - name: Build
-        if: steps.bump.outputs.skip != 'true'
-        run: npm run build
-
-      - name: Run tests with coverage and JUnit output
-        if: steps.bump.outputs.skip != 'true'
-        run: npm run test:coverage -- --reporter=junit --outputFile=test-results.xml
-
-      - name: Install Playwright browsers
-        if: steps.bump.outputs.skip != 'true'
-        run: npx playwright install --with-deps
-
-      - name: Run Playwright E2E tests
-        if: steps.bump.outputs.skip != 'true'
-        run: npm run test:e2e
-
-      - name: Commit version bump and CHANGELOG to release branch
-        if: steps.bump.outputs.skip != 'true'
+      - name: Commit version bump and CHANGELOG to develop
+        if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          BRANCH="release/v${{ steps.version.outputs.version }}"
-          git checkout -b "$BRANCH"
           git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore: release v${{ steps.version.outputs.version }}"
-          git push origin "$BRANCH"
+          git push origin develop
 
-      - name: Create PR to develop with auto-merge
+      - name: Create or update release PR
         if: steps.bump.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          BRANCH="release/v${VERSION}"
-          gh pr create \
-            --base develop \
-            --head "$BRANCH" \
-            --title "chore: release v${VERSION}" \
-            --body "Automated release PR for v${VERSION}. Merges version bump and CHANGELOG update into develop."
-          gh pr merge "$BRANCH" --auto --squash --delete-branch
+          EXISTING_PR=$(gh pr list --base master --head develop --state open --json number,title --jq '.[0]')
 
-      - name: Package release artifacts
-        if: steps.bump.outputs.skip != 'true'
-        run: |
-          tar -czf dist.tar.gz dist/
-          zip -r coverage-report.zip coverage/
-          zip -r playwright-report.zip playwright-report/
+          if [ -z "$EXISTING_PR" ] || [ "$EXISTING_PR" = "null" ]; then
+            echo "Creating new release PR..."
+            gh pr create \
+              --base master \
+              --head develop \
+              --title "chore: release v${VERSION}" \
+              --body "Automated release PR for v${VERSION}. Merge this PR to cut a release."
+          else
+            PR_NUMBER=$(echo "$EXISTING_PR" | jq -r '.number')
+            PR_TITLE=$(echo "$EXISTING_PR" | jq -r '.title')
+            EXPECTED_TITLE="chore: release v${VERSION}"
 
-      - name: Upload release artifacts
-        if: steps.bump.outputs.skip != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-artifacts
-          path: |
-            dist.tar.gz
-            test-results.xml
-            coverage-report.zip
-            playwright-report.zip
-          retention-days: 1
+            if [ "$PR_TITLE" != "$EXPECTED_TITLE" ]; then
+              echo "Updating PR #${PR_NUMBER} title to: ${EXPECTED_TITLE}"
+              gh pr edit "$PR_NUMBER" --title "$EXPECTED_TITLE"
+            else
+              echo "PR #${PR_NUMBER} already has correct title. No update needed."
+            fi
+          fi
