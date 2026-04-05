@@ -165,22 +165,42 @@ jobs:
         if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
         run: npx conventional-changelog -n changelog.config.mjs -i CHANGELOG.md -r 1
 
-      - name: Commit version bump and CHANGELOG to develop
+      - name: Commit version bump and CHANGELOG to a bump branch
         if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           # Fast-forward to the current remote tip before committing.
-          # If new commits landed since the workflow started, this ensures
-          # we don't push a stale base. Fails explicitly on conflicts so
-          # the next CI run can retry cleanly.
           git fetch origin develop
           git merge --ff-only origin/develop
 
+          BUMP_BRANCH="chore/release-v${{ steps.version.outputs.version }}"
+          git checkout -b "$BUMP_BRANCH"
+
           git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore: release v${{ steps.version.outputs.version }}"
-          git push origin develop
+          git push origin "$BUMP_BRANCH"
+
+          echo "bump_branch=$BUMP_BRANCH" >> "$GITHUB_OUTPUT"
+        id: commit
+
+      - name: Create and auto-merge version bump PR
+        if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BUMP_BRANCH="${{ steps.commit.outputs.bump_branch }}"
+
+          PR_URL=$(gh pr create \
+            --base develop \
+            --head "$BUMP_BRANCH" \
+            --title "chore: bump version to v${VERSION}" \
+            --body "Automated version bump to v${VERSION}. This PR will be auto-merged.")
+
+          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+          gh pr merge "$PR_NUMBER" --auto --squash --delete-branch
 
       - name: Create or update release PR
         if: steps.bump.outputs.skip != 'true'
