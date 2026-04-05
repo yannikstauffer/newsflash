@@ -47,12 +47,21 @@ jobs:
       - name: Analyze commits and determine bump type
         id: bump
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 --match "v*" --match "newsflash-v*" 2>/dev/null || echo "")
+          # Use sorted tag list instead of git describe, because tags live on
+          # master merge commits which are not ancestors of develop.
+          LAST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n 1)
 
           if [ -z "$LAST_TAG" ]; then
             RANGE="HEAD"
           else
-            RANGE="${LAST_TAG}..HEAD"
+            # The tag lives on a master merge commit, not in develop's ancestry.
+            # Use merge-base to find the common ancestor and scope the range correctly.
+            MERGE_BASE=$(git merge-base "$LAST_TAG" HEAD 2>/dev/null || echo "")
+            if [ -z "$MERGE_BASE" ]; then
+              RANGE="HEAD"
+            else
+              RANGE="${MERGE_BASE}..HEAD"
+            fi
           fi
 
           SUBJECTS=$(git log "$RANGE" --pretty=format:"%s" 2>/dev/null || echo "")
@@ -113,10 +122,9 @@ jobs:
         if: steps.bump.outputs.skip != 'true'
         id: version
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 --match "v*" --match "newsflash-v*" 2>/dev/null || echo "v0.0.0")
-          # Strip prefix (v or newsflash-v)
-          TAG_VERSION="${LAST_TAG#newsflash-}"
-          TAG_VERSION="${TAG_VERSION#v}"
+          LAST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n 1)
+          LAST_TAG="${LAST_TAG:-v0.0.0}"
+          TAG_VERSION="${LAST_TAG#v}"
 
           IFS='.' read -r MAJOR MINOR PATCH <<< "$TAG_VERSION"
           BUMP="${{ steps.bump.outputs.bump }}"
@@ -162,6 +170,14 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Fast-forward to the current remote tip before committing.
+          # If new commits landed since the workflow started, this ensures
+          # we don't push a stale base. Fails explicitly on conflicts so
+          # the next CI run can retry cleanly.
+          git fetch origin develop
+          git merge --ff-only origin/develop
+
           git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore: release v${{ steps.version.outputs.version }}"
           git push origin develop
