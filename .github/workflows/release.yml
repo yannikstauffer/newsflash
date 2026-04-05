@@ -169,10 +169,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Fast-forward to the current remote tip before committing.
-          git fetch origin develop
-          git merge --ff-only origin/develop
-
           BUMP_BRANCH="chore/release-v${{ steps.version.outputs.version }}"
           git checkout -b "$BUMP_BRANCH"
 
@@ -212,7 +208,10 @@ jobs:
 
           if ! gh pr merge "$PR_URL" --auto --squash --delete-branch; then
             echo "::warning::Auto-merge unavailable. Attempting immediate merge."
-            gh pr merge "$PR_URL" --squash --delete-branch || echo "::warning::Bump PR could not be merged automatically. Manual merge required: $PR_URL"
+            if ! gh pr merge "$PR_URL" --squash --delete-branch; then
+              echo "::error::Bump PR could not be merged. Manual merge required: $PR_URL"
+              exit 1
+            fi
           fi
 
       - name: Create or update release PR
