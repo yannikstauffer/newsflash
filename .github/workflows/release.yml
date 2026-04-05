@@ -23,9 +23,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.actor.login != 'github-actions[bot]'
+    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout code
@@ -180,7 +178,7 @@ jobs:
 
           git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore: release v${{ steps.version.outputs.version }}"
-          git push origin "$BUMP_BRANCH"
+          git push --force origin "$BUMP_BRANCH"
 
           echo "bump_branch=$BUMP_BRANCH" >> "$GITHUB_OUTPUT"
         id: commit
@@ -193,14 +191,20 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           BUMP_BRANCH="${{ steps.commit.outputs.bump_branch }}"
 
-          PR_URL=$(gh pr create \
-            --base develop \
-            --head "$BUMP_BRANCH" \
-            --title "chore: bump version to v${VERSION}" \
-            --body "Automated version bump to v${VERSION}. This PR will be auto-merged.")
+          EXISTING_BUMP_PR=$(gh pr list --base develop --head "$BUMP_BRANCH" --state open --json url --jq '.[0].url')
 
-          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
-          gh pr merge "$PR_NUMBER" --auto --squash --delete-branch
+          if [ -n "$EXISTING_BUMP_PR" ] && [ "$EXISTING_BUMP_PR" != "null" ]; then
+            echo "Bump PR already exists: $EXISTING_BUMP_PR"
+            PR_URL="$EXISTING_BUMP_PR"
+          else
+            PR_URL=$(gh pr create \
+              --base develop \
+              --head "$BUMP_BRANCH" \
+              --title "chore: bump version to v${VERSION}" \
+              --body "Automated version bump to v${VERSION}. This PR will be auto-merged.")
+          fi
+
+          gh pr merge "$PR_URL" --auto --squash --delete-branch
 
       - name: Create or update release PR
         if: steps.bump.outputs.skip != 'true'
