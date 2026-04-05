@@ -23,9 +23,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.actor.login != 'github-actions[bot]'
+    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout code
@@ -165,22 +163,56 @@ jobs:
         if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
         run: npx conventional-changelog -n changelog.config.mjs -i CHANGELOG.md -r 1
 
-      - name: Commit version bump and CHANGELOG to develop
+      - name: Commit version bump and CHANGELOG to a bump branch
         if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Fast-forward to the current remote tip before committing.
-          # If new commits landed since the workflow started, this ensures
-          # we don't push a stale base. Fails explicitly on conflicts so
-          # the next CI run can retry cleanly.
-          git fetch origin develop
-          git merge --ff-only origin/develop
+          BUMP_BRANCH="chore/release-v${{ steps.version.outputs.version }}"
+          git checkout -b "$BUMP_BRANCH"
 
           git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore: release v${{ steps.version.outputs.version }}"
-          git push origin develop
+          git push --force-with-lease origin "$BUMP_BRANCH"
+
+          echo "bump_branch=$BUMP_BRANCH" >> "$GITHUB_OUTPUT"
+        id: commit
+
+      - name: Create and auto-merge version bump PR
+        if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BUMP_BRANCH="${{ steps.commit.outputs.bump_branch }}"
+
+          # Check for existing bump PR (open or closed) to avoid duplicate creation failures
+          EXISTING_BUMP_PR=$(gh pr list --base develop --head "$BUMP_BRANCH" --state all --json url,state --jq '.[0]')
+
+          if [ -n "$EXISTING_BUMP_PR" ] && [ "$EXISTING_BUMP_PR" != "null" ]; then
+            PR_URL=$(echo "$EXISTING_BUMP_PR" | jq -r '.url')
+            PR_STATE=$(echo "$EXISTING_BUMP_PR" | jq -r '.state')
+            echo "Found existing bump PR ($PR_STATE): $PR_URL"
+
+            if [ "$PR_STATE" = "CLOSED" ]; then
+              gh pr reopen "$PR_URL"
+            fi
+          else
+            PR_URL=$(gh pr create \
+              --base develop \
+              --head "$BUMP_BRANCH" \
+              --title "chore: bump version to v${VERSION}" \
+              --body "Automated version bump to v${VERSION}. This PR will be auto-merged.")
+          fi
+
+          if ! gh pr merge "$PR_URL" --auto --squash --delete-branch; then
+            echo "::warning::Auto-merge unavailable. Attempting immediate merge."
+            if ! gh pr merge "$PR_URL" --squash --delete-branch; then
+              echo "::error::Bump PR could not be merged. Manual merge required: $PR_URL"
+              exit 1
+            fi
+          fi
 
       - name: Create or update release PR
         if: steps.bump.outputs.skip != 'true'
