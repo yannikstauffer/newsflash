@@ -178,7 +178,7 @@ jobs:
 
           git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore: release v${{ steps.version.outputs.version }}"
-          git push --force origin "$BUMP_BRANCH"
+          git push --force-with-lease origin "$BUMP_BRANCH"
 
           echo "bump_branch=$BUMP_BRANCH" >> "$GITHUB_OUTPUT"
         id: commit
@@ -191,11 +191,17 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           BUMP_BRANCH="${{ steps.commit.outputs.bump_branch }}"
 
-          EXISTING_BUMP_PR=$(gh pr list --base develop --head "$BUMP_BRANCH" --state open --json url --jq '.[0].url')
+          # Check for existing bump PR (open or closed) to avoid duplicate creation failures
+          EXISTING_BUMP_PR=$(gh pr list --base develop --head "$BUMP_BRANCH" --state all --json url,state --jq '.[0]')
 
           if [ -n "$EXISTING_BUMP_PR" ] && [ "$EXISTING_BUMP_PR" != "null" ]; then
-            echo "Bump PR already exists: $EXISTING_BUMP_PR"
-            PR_URL="$EXISTING_BUMP_PR"
+            PR_URL=$(echo "$EXISTING_BUMP_PR" | jq -r '.url')
+            PR_STATE=$(echo "$EXISTING_BUMP_PR" | jq -r '.state')
+            echo "Found existing bump PR ($PR_STATE): $PR_URL"
+
+            if [ "$PR_STATE" = "CLOSED" ]; then
+              gh pr reopen "$PR_URL"
+            fi
           else
             PR_URL=$(gh pr create \
               --base develop \
@@ -204,7 +210,10 @@ jobs:
               --body "Automated version bump to v${VERSION}. This PR will be auto-merged.")
           fi
 
-          gh pr merge "$PR_URL" --auto --squash --delete-branch
+          if ! gh pr merge "$PR_URL" --auto --squash --delete-branch; then
+            echo "::warning::Auto-merge unavailable. Attempting immediate merge."
+            gh pr merge "$PR_URL" --squash --delete-branch || echo "::warning::Bump PR could not be merged automatically. Manual merge required: $PR_URL"
+          fi
 
       - name: Create or update release PR
         if: steps.bump.outputs.skip != 'true'
