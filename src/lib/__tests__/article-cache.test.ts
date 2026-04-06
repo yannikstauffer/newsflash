@@ -36,6 +36,13 @@ beforeEach(async () => {
     deleteRequest.addEventListener("error", () =>
       reject(deleteRequest.error),
     )
+    deleteRequest.addEventListener("blocked", () =>
+      reject(
+        new Error(
+          "Failed to delete IndexedDB database: deletion was blocked by an open connection.",
+        ),
+      ),
+    )
   })
 })
 
@@ -80,6 +87,7 @@ describe("article-cache", () => {
       expect(articles).toHaveLength(1)
       expect(articles[0].id).toBe("art-1")
       expect(articles[0]).not.toHaveProperty("pinned")
+      expect(articles[0]).not.toHaveProperty("pinnedKey")
       expect(articles[0]).not.toHaveProperty("cachedAt")
     })
 
@@ -135,6 +143,7 @@ describe("article-cache", () => {
 
       for (const article of articles) {
         expect(article).not.toHaveProperty("pinned")
+        expect(article).not.toHaveProperty("pinnedKey")
         expect(article).not.toHaveProperty("cachedAt")
       }
     })

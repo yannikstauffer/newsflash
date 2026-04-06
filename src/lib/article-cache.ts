@@ -10,6 +10,7 @@ const DEFAULT_MAX_AGE_DAYS = 14
 
 export interface CachedArticle extends NormalizedArticle {
   readonly pinned: boolean
+  readonly pinnedKey: 0 | 1
   readonly cachedAt: Date
 }
 
@@ -20,14 +21,15 @@ interface ArticleCacheDB {
     readonly indexes: {
       readonly publishedAt: Date
       readonly source: string
-      readonly pinned: boolean
+      readonly pinnedKey: 0 | 1
     }
   }
 }
 
-let databasePromise: Promise<IDBPDatabase<ArticleCacheDB>> | undefined
+let databasePromise: Promise<IDBPDatabase<ArticleCacheDB> | undefined>
+  | undefined
 
-function openDatabase(): Promise<IDBPDatabase<ArticleCacheDB>> {
+function openDatabase(): Promise<IDBPDatabase<ArticleCacheDB> | undefined> {
   if (!databasePromise) {
     try {
       databasePromise = openDB<ArticleCacheDB>(DB_NAME, DB_VERSION, {
@@ -37,41 +39,40 @@ function openDatabase(): Promise<IDBPDatabase<ArticleCacheDB>> {
           })
           store.createIndex("publishedAt", "publishedAt")
           store.createIndex("source", "source")
-          store.createIndex("pinned", "pinned")
+          store.createIndex("pinnedKey", "pinnedKey")
         },
       }).catch(() => {
         databasePromise = undefined
-        return undefined as unknown as IDBPDatabase<ArticleCacheDB>
+        return undefined
       })
     } catch {
       databasePromise = undefined
-      return Promise.resolve(
-        undefined as unknown as IDBPDatabase<ArticleCacheDB>,
-      )
+      return Promise.resolve(undefined)
     }
   }
   return databasePromise
-}
-
-function isDatabaseAvailable(
-  database: IDBPDatabase<ArticleCacheDB> | undefined,
-): database is IDBPDatabase<ArticleCacheDB> {
-  return database !== undefined && database !== (undefined as unknown)
 }
 
 function toCachedArticle(
   article: NormalizedArticle,
   existing?: CachedArticle,
 ): CachedArticle {
+  const pinned = existing?.pinned ?? false
   return {
     ...article,
-    pinned: existing?.pinned ?? false,
+    pinned,
+    pinnedKey: pinned ? 1 : 0,
     cachedAt: existing?.cachedAt ?? new Date(),
   }
 }
 
 function toNormalizedArticle(cached: CachedArticle): NormalizedArticle {
-  const { pinned: _pinned, cachedAt: _cachedAt, ...article } = cached
+  const {
+    pinned: _pinned,
+    pinnedKey: _pinnedKey,
+    cachedAt: _cachedAt,
+    ...article
+  } = cached
   return article
 }
 
@@ -79,15 +80,31 @@ export async function upsertMany(
   articles: readonly NormalizedArticle[],
 ): Promise<void> {
   const database = await openDatabase()
-  if (!isDatabaseAvailable(database)) return
+  if (!database) return
 
   const tx = database.transaction(STORE_NAME, "readwrite")
   const store = tx.objectStore(STORE_NAME)
 
+  const uniqueIds = [...new Set(articles.map((article) => article.id))]
+  const existingEntries = await Promise.all(
+    uniqueIds.map(async (id) => [id, await store.get(id)] as const),
+  )
+  const existingById = new Map<string, CachedArticle | undefined>(
+    existingEntries,
+  )
+  const finalById = new Map<string, CachedArticle>()
+
   for (const article of articles) {
-    const existing = await store.get(article.id)
-    await store.put(toCachedArticle(article, existing))
+    const existing =
+      finalById.get(article.id) ?? existingById.get(article.id)
+    finalById.set(article.id, toCachedArticle(article, existing))
   }
+
+  await Promise.all(
+    [...finalById.values()].map((cachedArticle) =>
+      store.put(cachedArticle),
+    ),
+  )
 
   await tx.done
   await evict()
@@ -95,7 +112,7 @@ export async function upsertMany(
 
 export async function getAll(): Promise<NormalizedArticle[]> {
   const database = await openDatabase()
-  if (!isDatabaseAvailable(database)) return []
+  if (!database) return []
 
   const all = await database.getAll(STORE_NAME)
   return all.map(toNormalizedArticle)
@@ -106,7 +123,7 @@ export async function getByDateRange(
   end: Date,
 ): Promise<NormalizedArticle[]> {
   const database = await openDatabase()
-  if (!isDatabaseAvailable(database)) return []
+  if (!database) return []
 
   const range = IDBKeyRange.bound(start, end)
   const results = await database.getAllFromIndex(
@@ -122,12 +139,16 @@ export async function setPinned(
   pinned: boolean,
 ): Promise<void> {
   const database = await openDatabase()
-  if (!isDatabaseAvailable(database)) return
+  if (!database) return
 
   const article = await database.get(STORE_NAME, id)
   if (!article) return
 
-  await database.put(STORE_NAME, { ...article, pinned })
+  await database.put(STORE_NAME, {
+    ...article,
+    pinned,
+    pinnedKey: pinned ? 1 : 0,
+  })
 }
 
 /** @internal Reset module state — test-only */
@@ -143,12 +164,12 @@ export async function evict(
   maxAgeDays: number = DEFAULT_MAX_AGE_DAYS,
 ): Promise<void> {
   const database = await openDatabase()
-  if (!isDatabaseAvailable(database)) return
+  if (!database) return
 
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - maxAgeDays)
 
-  const range = IDBKeyRange.upperBound(cutoff)
+  const range = IDBKeyRange.upperBound(cutoff, true)
   const tx = database.transaction(STORE_NAME, "readwrite")
   const index = tx.objectStore(STORE_NAME).index("publishedAt")
 

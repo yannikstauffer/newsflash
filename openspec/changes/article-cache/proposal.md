@@ -26,5 +26,5 @@ Every page load fetches all enabled RSS feeds from scratch, showing a loading sp
 
 - New dependency: `idb` (npm)
 - New file: `src/lib/article-cache.ts`
-- New file: `src/lib/article-cache.test.ts`
+- New file: `src/lib/__tests__/article-cache.test.ts`
 - No changes to existing files — integration happens in a follow-up change
