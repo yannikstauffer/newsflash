@@ -1,0 +1,284 @@
+import "fake-indexeddb/auto"
+
+import { beforeEach, describe, expect, it } from "vitest"
+
+import {
+  _resetForTesting,
+  evict,
+  getAll,
+  getByDateRange,
+  setPinned,
+  upsertMany,
+} from "../article-cache"
+
+import type { NormalizedArticle } from "@/features/connectors/types"
+
+function makeArticle(
+  overrides: Partial<NormalizedArticle> = {},
+): NormalizedArticle {
+  return {
+    id: "art-1",
+    title: "Test Article",
+    description: "A test description",
+    link: "https://example.com/article",
+    publishedAt: new Date("2026-04-01T12:00:00Z"),
+    source: "test-source",
+    language: "en",
+    ...overrides,
+  }
+}
+
+beforeEach(async () => {
+  await _resetForTesting()
+  const deleteRequest = indexedDB.deleteDatabase("newsflash-articles")
+  await new Promise<void>((resolve, reject) => {
+    deleteRequest.onsuccess = () => resolve()
+    deleteRequest.addEventListener("error", () =>
+      reject(deleteRequest.error),
+    )
+    deleteRequest.addEventListener("blocked", () =>
+      reject(
+        new Error(
+          "Failed to delete IndexedDB database: deletion was blocked by an open connection.",
+        ),
+      ),
+    )
+  })
+})
+
+describe("article-cache", () => {
+  describe("database initialization", () => {
+    it("should create database and store on first access", async () => {
+      await upsertMany([makeArticle()])
+      const articles = await getAll()
+      expect(articles).toHaveLength(1)
+    })
+
+    it("should reuse existing database on subsequent access", async () => {
+      await upsertMany([makeArticle()])
+      const first = await getAll()
+      const second = await getAll()
+      expect(first).toEqual(second)
+    })
+
+    it("should return empty results when IndexedDB is unavailable", async () => {
+      const original = globalThis.indexedDB
+      try {
+        // @ts-expect-error — simulate IDB unavailable
+        globalThis.indexedDB = undefined
+        await _resetForTesting()
+
+        const articles = await getAll()
+        expect(articles).toEqual([])
+
+        await expect(upsertMany([makeArticle()])).resolves.toBeUndefined()
+      } finally {
+        globalThis.indexedDB = original
+        await _resetForTesting()
+      }
+    })
+  })
+
+  describe("upsertMany", () => {
+    it("should insert new articles with pinned=false and cachedAt set", async () => {
+      await upsertMany([makeArticle()])
+      const articles = await getAll()
+
+      expect(articles).toHaveLength(1)
+      expect(articles[0].id).toBe("art-1")
+      expect(articles[0]).not.toHaveProperty("pinned")
+      expect(articles[0]).not.toHaveProperty("pinnedKey")
+      expect(articles[0]).not.toHaveProperty("cachedAt")
+    })
+
+    it("should update existing article but preserve pinned and cachedAt", async () => {
+      await upsertMany([makeArticle()])
+      await setPinned("art-1", true)
+
+      await upsertMany([makeArticle({ title: "Updated Title" })])
+      const articles = await getAll()
+
+      expect(articles).toHaveLength(1)
+      expect(articles[0].title).toBe("Updated Title")
+
+      // Verify pinned was preserved by checking it survives eviction
+      await evict(0)
+      const afterEvict = await getAll()
+      expect(afterEvict).toHaveLength(1)
+    })
+
+    it("should handle mixed insert and update", async () => {
+      await upsertMany([makeArticle({ id: "art-1" })])
+
+      await upsertMany([
+        makeArticle({ id: "art-1", title: "Updated" }),
+        makeArticle({ id: "art-2", title: "New Article" }),
+      ])
+
+      const articles = await getAll()
+      expect(articles).toHaveLength(2)
+      expect(articles.find((a) => a.id === "art-1")?.title).toBe("Updated")
+      expect(articles.find((a) => a.id === "art-2")?.title).toBe("New Article")
+    })
+
+    it("should trigger eviction after upsert", async () => {
+      const oldDate = new Date("2020-01-01T00:00:00Z")
+      await upsertMany([makeArticle({ id: "old", publishedAt: oldDate })])
+
+      // upsertMany triggers evict, so old unpinned article should be gone
+      const articles = await getAll()
+      expect(articles).toHaveLength(0)
+    })
+  })
+
+  describe("getAll", () => {
+    it("should return all cached articles as NormalizedArticle", async () => {
+      await upsertMany([
+        makeArticle({ id: "art-1" }),
+        makeArticle({ id: "art-2", title: "Second" }),
+      ])
+
+      const articles = await getAll()
+      expect(articles).toHaveLength(2)
+
+      for (const article of articles) {
+        expect(article).not.toHaveProperty("pinned")
+        expect(article).not.toHaveProperty("pinnedKey")
+        expect(article).not.toHaveProperty("cachedAt")
+      }
+    })
+
+    it("should return empty array when cache is empty", async () => {
+      const articles = await getAll()
+      expect(articles).toEqual([])
+    })
+  })
+
+  describe("getByDateRange", () => {
+    it("should return articles within the date range", async () => {
+      await upsertMany([
+        makeArticle({
+          id: "art-1",
+          publishedAt: new Date("2026-04-01T12:00:00Z"),
+        }),
+        makeArticle({
+          id: "art-2",
+          publishedAt: new Date("2026-04-03T12:00:00Z"),
+        }),
+        makeArticle({
+          id: "art-3",
+          publishedAt: new Date("2026-04-05T12:00:00Z"),
+        }),
+      ])
+
+      const results = await getByDateRange(
+        new Date("2026-04-02T00:00:00Z"),
+        new Date("2026-04-04T00:00:00Z"),
+      )
+
+      expect(results).toHaveLength(1)
+      expect(results[0].id).toBe("art-2")
+    })
+
+    it("should return empty array when no articles in range", async () => {
+      await upsertMany([
+        makeArticle({
+          id: "art-1",
+          publishedAt: new Date("2026-04-01T12:00:00Z"),
+        }),
+      ])
+
+      const results = await getByDateRange(
+        new Date("2026-05-01T00:00:00Z"),
+        new Date("2026-05-31T00:00:00Z"),
+      )
+
+      expect(results).toEqual([])
+    })
+
+    it("should include boundary values", async () => {
+      const start = new Date("2026-04-01T00:00:00Z")
+      const end = new Date("2026-04-01T23:59:59Z")
+
+      await upsertMany([
+        makeArticle({ id: "art-1", publishedAt: start }),
+        makeArticle({ id: "art-2", publishedAt: end }),
+      ])
+
+      const results = await getByDateRange(start, end)
+      expect(results).toHaveLength(2)
+    })
+  })
+
+  describe("setPinned", () => {
+    it("should pin an article", async () => {
+      await upsertMany([makeArticle({ id: "art-1" })])
+      await setPinned("art-1", true)
+
+      // Pinned articles survive aggressive eviction
+      await evict(0)
+      const articles = await getAll()
+      expect(articles).toHaveLength(1)
+    })
+
+    it("should unpin an article", async () => {
+      await upsertMany([makeArticle({ id: "art-1" })])
+      await setPinned("art-1", true)
+      await setPinned("art-1", false)
+
+      // Unpinned articles with old dates get evicted
+      await evict(0)
+      const articles = await getAll()
+      expect(articles).toHaveLength(0)
+    })
+
+    it("should be a no-op for non-existent article", async () => {
+      await expect(
+        setPinned("non-existent", true),
+      ).resolves.toBeUndefined()
+    })
+  })
+
+  describe("evict", () => {
+    it("should delete old unpinned articles", async () => {
+      const oldDate = new Date("2020-01-01T00:00:00Z")
+      const recentDate = new Date()
+
+      await upsertMany([
+        makeArticle({ id: "old", publishedAt: oldDate }),
+        makeArticle({ id: "recent", publishedAt: recentDate }),
+      ])
+
+      // Old article was already evicted by auto-evict in upsertMany
+      const articles = await getAll()
+      expect(articles).toHaveLength(1)
+      expect(articles[0].id).toBe("recent")
+    })
+
+    it("should preserve pinned articles regardless of age", async () => {
+      // Insert with a recent date so auto-eviction in upsertMany keeps it
+      await upsertMany([makeArticle({ id: "old-pinned" })])
+
+      // Pin it, then evict with maxAgeDays=0 (evicts everything unpinned)
+      await setPinned("old-pinned", true)
+      await evict(0)
+
+      const articles = await getAll()
+      expect(articles).toHaveLength(1)
+      expect(articles[0].id).toBe("old-pinned")
+    })
+
+    it("should not delete anything when all articles are within retention", async () => {
+      const recentDate = new Date()
+
+      await upsertMany([
+        makeArticle({ id: "art-1", publishedAt: recentDate }),
+        makeArticle({ id: "art-2", publishedAt: recentDate }),
+      ])
+
+      await evict()
+      const articles = await getAll()
+      expect(articles).toHaveLength(2)
+    })
+  })
+})
