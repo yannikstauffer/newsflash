@@ -17,8 +17,14 @@ vi.mock("@/features/connectors/registry", () => ({
   connectors: [],
 }))
 
+vi.mock("@/lib/article-cache", () => ({
+  getAll: vi.fn().mockResolvedValue([]),
+  upsertMany: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { fetchFeed } from "@/features/connectors/fetch-feed"
 import { connectors } from "@/features/connectors/registry"
+import * as articleCache from "@/lib/article-cache"
 
 const mockFetchFeed = vi.mocked(fetchFeed)
 const mockConnectors = connectors as unknown as Array<{
@@ -28,6 +34,8 @@ const mockConnectors = connectors as unknown as Array<{
   feeds: Array<{ id: string; name: string }>
   parse: ReturnType<typeof vi.fn>
 }>
+const mockGetAll = vi.mocked(articleCache.getAll)
+const mockUpsertMany = vi.mocked(articleCache.upsertMany)
 
 function makeArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedArticle {
   return {
@@ -51,6 +59,8 @@ describe("useFeedData", () => {
     clearFeedCache()
     mockConnectors.length = 0
     vi.clearAllMocks()
+    mockGetAll.mockResolvedValue([])
+    mockUpsertMany.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -87,9 +97,7 @@ describe("useFeedData", () => {
 
     const { result } = renderHook(() => useFeedData(isFeedEnabled))
 
-    await act(async () => {
-      // Wait for the initial fetch triggered by useEffect
-    })
+    await act(async () => {})
 
     expect(result.current.articles).toHaveLength(2)
     expect(result.current.articles[0].id).toBe("a1")
@@ -131,7 +139,7 @@ describe("useFeedData", () => {
     expect(result.current.errors[0]).toContain("Network error")
   })
 
-  it("skips fetch when cache is populated", async () => {
+  it("skips fetch when L1 cache is populated", async () => {
     const article1 = makeArticle({ id: "a1", title: "Cached Article" })
 
     mockConnectors.push({
@@ -156,7 +164,7 @@ describe("useFeedData", () => {
 
     unmount()
 
-    // Second render: should use cache, no fetch
+    // Second render: should use L1 cache, no fetch, no IDB read
     const { result: secondResult } = renderHook(() =>
       useFeedData(isFeedEnabled),
     )
@@ -164,6 +172,8 @@ describe("useFeedData", () => {
     expect(secondResult.current.articles).toHaveLength(1)
     expect(secondResult.current.articles[0].id).toBe("a1")
     expect(mockFetchFeed).toHaveBeenCalledTimes(1) // Still 1, no new fetch
+    // getAll should only have been called once (first render), not for the second render
+    expect(mockGetAll).toHaveBeenCalledTimes(1)
   })
 
   it("fetches when cache is cleared", async () => {
@@ -367,17 +377,25 @@ describe("useFeedData", () => {
     })
 
     let resolveFetch: (value: string) => void
-    mockFetchFeed.mockImplementation(
-      () =>
-        new Promise<string>((resolve) => {
-          resolveFetch = resolve
-        }),
-    )
+    const fetchPromise = new Promise<void>((resolveOuter) => {
+      mockFetchFeed.mockImplementation(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveFetch = resolve
+            resolveOuter()
+          }),
+      )
+    })
 
     const { result } = renderHook(() => useFeedData(isFeedEnabled))
 
     // Loading should be true while fetch is in progress
     expect(result.current.loading).toBe(true)
+
+    // Wait for fetchFeed to actually be called
+    await act(async () => {
+      await fetchPromise
+    })
 
     await act(async () => {
       resolveFetch!("<xml/>")
@@ -529,5 +547,281 @@ describe("useFeedData", () => {
     expect(mockFetchFeed).toHaveBeenCalledTimes(1)
     expect(mockFetchFeed).toHaveBeenCalledWith("/api/rss/f1")
     expect(result.current.loading).toBe(false)
+  })
+
+  describe("L2 (IndexedDB) cache", () => {
+    it("shows cached articles from IDB immediately without spinner when L1 is empty", async () => {
+      const cachedArticle = makeArticle({ id: "cached-1", title: "From IDB" })
+      const networkArticle = makeArticle({
+        id: "net-1",
+        title: "From Network",
+        link: "https://example.com/net",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+      })
+
+      mockGetAll.mockResolvedValue([cachedArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [networkArticle]),
+      })
+
+      let resolveFetch: (value: string) => void
+      mockFetchFeed.mockImplementation(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveFetch = resolve
+          }),
+      )
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      // Wait for IDB read to complete
+      await act(async () => {})
+
+      // After IDB read, should show cached articles and not be loading
+      expect(result.current.articles).toHaveLength(1)
+      expect(result.current.articles[0].id).toBe("cached-1")
+      expect(result.current.loading).toBe(false)
+
+      // Resolve network fetch
+      await act(async () => {
+        resolveFetch!("<xml/>")
+      })
+
+      // After network fetch, should show merged articles
+      expect(result.current.articles).toHaveLength(2)
+    })
+
+    it("shows spinner when both L1 and L2 are empty", async () => {
+      mockGetAll.mockResolvedValue([])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => []),
+      })
+
+      let resolveFetch: (value: string) => void
+      const fetchPromise = new Promise<void>((resolveOuter) => {
+        mockFetchFeed.mockImplementation(
+          () =>
+            new Promise<string>((resolve) => {
+              resolveFetch = resolve
+              resolveOuter()
+            }),
+        )
+      })
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      // Loading should remain true since IDB is empty
+      expect(result.current.loading).toBe(true)
+
+      // Wait for fetchFeed to actually be called
+      await act(async () => {
+        await fetchPromise
+      })
+
+      await act(async () => {
+        resolveFetch!("<xml/>")
+      })
+
+      expect(result.current.loading).toBe(false)
+    })
+
+    it("background fetch updates articles after L2 hit", async () => {
+      const cachedArticle = makeArticle({ id: "cached-1", title: "Old Article" })
+      const freshArticle = makeArticle({
+        id: "fresh-1",
+        title: "Fresh Article",
+        link: "https://example.com/fresh",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+      })
+
+      mockGetAll.mockResolvedValue([cachedArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [freshArticle]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      await act(async () => {})
+
+      // After both IDB and network complete, should have merged articles
+      expect(result.current.articles).toHaveLength(2)
+      expect(result.current.articles[0].title).toBe("Fresh Article")
+      expect(result.current.articles[1].title).toBe("Old Article")
+    })
+
+    it("upserts network results into IDB after fetch", async () => {
+      const networkArticle = makeArticle({ id: "net-1", title: "Network Article" })
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [networkArticle]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      renderHook(() => useFeedData(isFeedEnabled))
+
+      await act(async () => {})
+
+      expect(mockUpsertMany).toHaveBeenCalledWith([networkArticle])
+    })
+
+    it("falls back to network-only when IDB read fails", async () => {
+      mockGetAll.mockRejectedValue(new Error("IDB unavailable"))
+
+      const networkArticle = makeArticle({ id: "net-1", title: "Network Article" })
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [networkArticle]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      await act(async () => {})
+
+      // Should still show network articles despite IDB failure
+      expect(result.current.articles).toHaveLength(1)
+      expect(result.current.articles[0].id).toBe("net-1")
+      expect(result.current.loading).toBe(false)
+    })
+  })
+
+  describe("refresh with IDB", () => {
+    it("upserts into IDB on manual refresh", async () => {
+      const networkArticle = makeArticle({ id: "net-1", title: "Refreshed Article" })
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [networkArticle]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      await act(async () => {})
+
+      mockUpsertMany.mockClear()
+
+      await act(async () => {
+        await result.current.refresh()
+      })
+
+      expect(mockUpsertMany).toHaveBeenCalledWith([networkArticle])
+    })
+
+    it("continues refresh when IDB upsert fails", async () => {
+      mockUpsertMany.mockRejectedValue(new Error("IDB write failed"))
+
+      const networkArticle = makeArticle({ id: "net-1", title: "Article" })
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [networkArticle]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      await act(async () => {})
+
+      // Should still show articles despite IDB write failure
+      expect(result.current.articles).toHaveLength(1)
+      expect(result.current.loading).toBe(false)
+    })
+  })
+
+  describe("historical day navigation", () => {
+    it("includes cached articles from IDB when not in network fetch results", async () => {
+      const oldCachedArticle = makeArticle({
+        id: "old-1",
+        title: "Old Cached Article",
+        link: "https://example.com/old",
+        publishedAt: new Date("2026-03-15T10:00:00Z"),
+      })
+      const freshArticle = makeArticle({
+        id: "fresh-1",
+        title: "Fresh Article",
+        link: "https://example.com/fresh",
+        publishedAt: new Date("2026-03-20T10:00:00Z"),
+      })
+
+      mockGetAll.mockResolvedValue([oldCachedArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [freshArticle]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      await act(async () => {})
+
+      // Both fresh and cached articles should be in the result
+      expect(result.current.articles).toHaveLength(2)
+      expect(result.current.articles.some((a) => a.id === "old-1")).toBe(true)
+      expect(result.current.articles.some((a) => a.id === "fresh-1")).toBe(true)
+    })
+
+    it("deduplicates when same article exists in both cache and network", async () => {
+      const article = makeArticle({ id: "a1", title: "Same Article" })
+
+      mockGetAll.mockResolvedValue([article])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [article]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      await act(async () => {})
+
+      // Should be deduplicated to 1
+      expect(result.current.articles).toHaveLength(1)
+    })
   })
 })

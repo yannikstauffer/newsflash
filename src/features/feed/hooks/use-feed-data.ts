@@ -5,6 +5,7 @@ import type { NormalizedArticle } from "@/features/connectors/types"
 import { feedProxyPath } from "@/config/feeds"
 import { fetchFeed } from "@/features/connectors/fetch-feed"
 import { connectors } from "@/features/connectors/registry"
+import * as articleCache from "@/lib/article-cache"
 
 interface FeedDataResult {
   articles: NormalizedArticle[]
@@ -26,7 +27,7 @@ export function clearFeedCache(): void {
   feedCache = null
 }
 
-function deduplicateArticles(articles: NormalizedArticle[]): NormalizedArticle[] {
+export function deduplicateArticles(articles: NormalizedArticle[]): NormalizedArticle[] {
   const seenKeys = new Set<string>()
   const seenLinks = new Set<string>()
   return articles.filter((article) => {
@@ -75,6 +76,15 @@ async function fetchAllFeeds(
   return { articles: deduplicated, errors: fetchErrors }
 }
 
+function mergeAndDeduplicate(
+  networkArticles: NormalizedArticle[],
+  cachedArticles: NormalizedArticle[],
+): NormalizedArticle[] {
+  const merged = [...networkArticles, ...cachedArticles]
+  const sorted = sortChronologically(merged)
+  return deduplicateArticles(sorted)
+}
+
 export function useFeedData(
   isFeedEnabled: (feedId: string) => boolean,
 ): FeedDataResult {
@@ -91,17 +101,22 @@ export function useFeedData(
   const shouldSkipInitialFetch = useRef(feedCache !== null)
 
   const applyFetchResult = useCallback(
-    (result: { articles: NormalizedArticle[]; errors: string[] }) => {
+    (
+      result: { articles: NormalizedArticle[]; errors: string[] },
+      cachedArticles: NormalizedArticle[],
+    ) => {
       const now = new Date()
+      const merged = mergeAndDeduplicate(result.articles, cachedArticles)
       feedCache = {
-        articles: result.articles,
+        articles: merged,
         errors: result.errors,
         lastRefreshedAt: now,
       }
-      setArticles(result.articles)
+      setArticles(merged)
       setErrors(result.errors)
       setLastRefreshedAt(now)
       setLoading(false)
+      articleCache.upsertMany(result.articles).catch(() => {})
     },
     [],
   )
@@ -110,7 +125,8 @@ export function useFeedData(
     setLoading(true)
     setErrors([])
     const result = await fetchAllFeeds(isFeedEnabled)
-    applyFetchResult(result)
+    const cached = await articleCache.getAll().catch(() => [] as NormalizedArticle[])
+    applyFetchResult(result, cached)
   }, [isFeedEnabled, applyFetchResult])
 
   useEffect(() => {
@@ -119,11 +135,29 @@ export function useFeedData(
       return
     }
     let cancelled = false
-    fetchAllFeeds(isFeedEnabled).then((result) => {
-      if (!cancelled) {
-        applyFetchResult(result)
+
+    async function load(): Promise<void> {
+      // L2: read from IndexedDB
+      const cachedArticles = await articleCache.getAll().catch(() => [] as NormalizedArticle[])
+
+      if (cancelled) return
+
+      if (cachedArticles.length > 0) {
+        const sorted = sortChronologically(cachedArticles)
+        const deduplicated = deduplicateArticles(sorted)
+        setArticles(deduplicated)
+        setLoading(false)
       }
-    })
+
+      // L3: always fetch from network in background
+      const result = await fetchAllFeeds(isFeedEnabled)
+      if (!cancelled) {
+        applyFetchResult(result, cachedArticles)
+      }
+    }
+
+    load()
+
     return () => {
       cancelled = true
     }

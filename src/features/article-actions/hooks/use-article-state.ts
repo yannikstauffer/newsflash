@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react"
 import type { NormalizedArticle } from "@/features/connectors/types"
 
 import { useSyncedStorage } from "@/hooks/use-synced-storage"
+import * as articleCache from "@/lib/article-cache"
 
 export const MAX_HIDDEN_IDS = 500
 export const MAX_READLIST_ITEMS = 200
@@ -133,6 +134,7 @@ export function useArticleState(): {
           ? next.slice(0, MAX_READLIST_ITEMS)
           : next
       })
+      articleCache.setPinned(article.id, true).catch(() => {})
     },
     [setStoredReadList],
   )
@@ -142,6 +144,7 @@ export function useArticleState(): {
       setStoredReadList((previous) =>
         previous.filter((a) => a.id !== articleId),
       )
+      articleCache.setPinned(articleId, false).catch(() => {})
     },
     [setStoredReadList],
   )
@@ -169,7 +172,12 @@ export function useArticleState(): {
 
   const clearReadList = useCallback(
     () => {
-      setStoredReadList([])
+      setStoredReadList((previous) => {
+        for (const article of previous) {
+          articleCache.setPinned(article.id, false).catch(() => {})
+        }
+        return []
+      })
     },
     [setStoredReadList],
   )
@@ -184,6 +192,9 @@ export function useArticleState(): {
         const next = [...newEntries, ...previous]
         return next.length > MAX_READLIST_ITEMS ? next.slice(0, MAX_READLIST_ITEMS) : next
       })
+      for (const article of articles) {
+        articleCache.setPinned(article.id, true).catch(() => {})
+      }
     },
     [setStoredReadList],
   )
