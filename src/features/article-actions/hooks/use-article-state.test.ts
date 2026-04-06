@@ -503,7 +503,7 @@ describe("useArticleState", () => {
   })
 
   describe("IDB cache pinning", () => {
-    it("upserts then pins article when adding to read list", async () => {
+    it("upserts article with pinned flag when adding to read list", () => {
       const article = makeArticle({ id: "heise:a1" })
       const { result } = renderHook(() => useArticleState())
 
@@ -511,11 +511,7 @@ describe("useArticleState", () => {
         result.current.addToReadList(article)
       })
 
-      // Flush the upsertMany -> setPinned promise chain
-      await act(async () => {})
-
-      expect(mockUpsertMany).toHaveBeenCalledWith([article])
-      expect(mockSetPinned).toHaveBeenCalledWith("heise:a1", true)
+      expect(mockUpsertMany).toHaveBeenCalledWith([article], { pinned: true })
     })
 
     it("calls setPinned(id, false) when removing from read list", () => {
@@ -554,7 +550,7 @@ describe("useArticleState", () => {
       expect(mockSetPinned).toHaveBeenCalledTimes(2)
     })
 
-    it("calls setPinned(id, true) for each article when restoring read list", () => {
+    it("upserts articles with pinned flag when restoring read list", () => {
       const articles = [
         makeArticle({ id: "heise:a1" }),
         makeArticle({ id: "heise:a2" }),
@@ -562,15 +558,13 @@ describe("useArticleState", () => {
 
       const { result } = renderHook(() => useArticleState())
 
-      mockSetPinned.mockClear()
+      mockUpsertMany.mockClear()
 
       act(() => {
         result.current.restoreReadList(articles)
       })
 
-      expect(mockSetPinned).toHaveBeenCalledWith("heise:a1", true)
-      expect(mockSetPinned).toHaveBeenCalledWith("heise:a2", true)
-      expect(mockSetPinned).toHaveBeenCalledTimes(2)
+      expect(mockUpsertMany).toHaveBeenCalledWith(articles, { pinned: true })
     })
 
     it("does not affect read-list operations when upsertMany fails", () => {

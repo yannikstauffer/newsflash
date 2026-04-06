@@ -134,10 +134,7 @@ export function useArticleState(): {
           ? next.slice(0, MAX_READLIST_ITEMS)
           : next
       })
-      articleCache
-        .upsertMany([article])
-        .then(() => articleCache.setPinned(article.id, true))
-        .catch(() => {})
+      articleCache.upsertMany([article], { pinned: true }).catch(() => {})
     },
     [setStoredReadList],
   )
@@ -193,9 +190,7 @@ export function useArticleState(): {
         const next = [...newEntries, ...previous]
         return next.length > MAX_READLIST_ITEMS ? next.slice(0, MAX_READLIST_ITEMS) : next
       })
-      for (const article of articles) {
-        articleCache.setPinned(article.id, true).catch(() => {})
-      }
+      articleCache.upsertMany(articles, { pinned: true }).catch(() => {})
     },
     [setStoredReadList],
   )

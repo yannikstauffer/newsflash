@@ -121,6 +121,31 @@ describe("article-cache", () => {
       expect(articles.find((a) => a.id === "art-2")?.title).toBe("New Article")
     })
 
+    it("should insert articles as pinned when pinned option is true", async () => {
+      const oldDate = new Date("2020-01-01T00:00:00Z")
+      await upsertMany([makeArticle({ id: "art-1", publishedAt: oldDate })], {
+        pinned: true,
+      })
+
+      // Pinned articles survive eviction (which runs automatically after upsert)
+      const articles = await getAll()
+      expect(articles).toHaveLength(1)
+      expect(articles[0].id).toBe("art-1")
+    })
+
+    it("should not override existing pinned state when pinned option is omitted", async () => {
+      await upsertMany([makeArticle({ id: "art-1" })])
+      await setPinned("art-1", true)
+
+      // Re-upsert without pinned option — should preserve pin
+      await upsertMany([makeArticle({ id: "art-1", title: "Updated" })])
+
+      await evict(0)
+      const articles = await getAll()
+      expect(articles).toHaveLength(1)
+      expect(articles[0].title).toBe("Updated")
+    })
+
     it("should trigger eviction after upsert", async () => {
       const oldDate = new Date("2020-01-01T00:00:00Z")
       await upsertMany([makeArticle({ id: "old", publishedAt: oldDate })])
