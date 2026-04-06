@@ -18,7 +18,7 @@ interface FeedDataResult {
 interface FeedCache {
   articles: NormalizedArticle[]
   errors: string[]
-  lastRefreshedAt: Date
+  lastRefreshedAt: Date | null
 }
 
 let feedCache: FeedCache | null = null
@@ -124,8 +124,10 @@ export function useFeedData(
   const refresh = useCallback(async () => {
     setLoading(true)
     setErrors([])
-    const result = await fetchAllFeeds(isFeedEnabled)
-    const cached = await articleCache.getAll().catch(() => [] as NormalizedArticle[])
+    const [result, cached] = await Promise.all([
+      fetchAllFeeds(isFeedEnabled),
+      articleCache.getAll().catch(() => [] as NormalizedArticle[]),
+    ])
     applyFetchResult(result, cached)
   }, [isFeedEnabled, applyFetchResult])
 
@@ -145,7 +147,14 @@ export function useFeedData(
       if (cachedArticles.length > 0) {
         const sorted = sortChronologically(cachedArticles)
         const deduplicated = deduplicateArticles(sorted)
+        feedCache = {
+          articles: deduplicated,
+          errors: [],
+          lastRefreshedAt: null,
+        }
         setArticles(deduplicated)
+        setErrors([])
+        setLastRefreshedAt(null)
         setLoading(false)
       }
 

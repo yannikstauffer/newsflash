@@ -172,14 +172,12 @@ export function useArticleState(): {
 
   const clearReadList = useCallback(
     () => {
-      setStoredReadList((previous) => {
-        for (const article of previous) {
-          articleCache.setPinned(article.id, false).catch(() => {})
-        }
-        return []
-      })
+      for (const article of storedReadList) {
+        articleCache.setPinned(article.id, false).catch(() => {})
+      }
+      setStoredReadList([])
     },
-    [setStoredReadList],
+    [storedReadList, setStoredReadList],
   )
 
   const restoreReadList = useCallback(
