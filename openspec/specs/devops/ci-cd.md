@@ -4,19 +4,19 @@
 
 ## ADDED Requirements
 
-### Requirement: CI workflow runs on pull requests
-The CI workflow SHALL execute on every pull request targeting the `main` or `develop` branch, on every push to `main`, and on every push to `develop`.
+### Requirement: CI workflow runs on pull requests and pushes
+The CI workflow SHALL execute on every pull request targeting the `develop` or `master` branch, on every push to `develop`, and on every push to `master`.
 
 #### Scenario: Pull request triggers CI
-- **WHEN** a pull request is opened or updated targeting `main` or `develop`
-- **THEN** the CI workflow MUST run all quality gate steps
-
-#### Scenario: Push to main triggers CI
-- **WHEN** code is pushed directly to `main`
+- **WHEN** a pull request is opened or updated targeting `develop` or `master`
 - **THEN** the CI workflow MUST run all quality gate steps
 
 #### Scenario: Push to develop triggers CI
 - **WHEN** code is pushed directly to `develop`
+- **THEN** the CI workflow MUST run all quality gate steps
+
+#### Scenario: Push to master triggers CI
+- **WHEN** code is pushed directly to `master`
 - **THEN** the CI workflow MUST run all quality gate steps
 
 ### Requirement: CI runs lint check
@@ -102,53 +102,6 @@ The CI workflow SHALL install Playwright browsers before running E2E tests.
 - **WHEN** the E2E test step runs
 - **THEN** Playwright browsers MUST be installed and available for test execution
 
-## From: release-artifacts/spec.md
-
-## Requirements
-
-### Requirement: Production build is attached to releases
-The release workflow SHALL build the production bundle and attach it as a tarball (`dist.tar.gz`) to the GitHub Release.
-
-#### Scenario: dist tarball is attached
-- **WHEN** a GitHub Release is created by the release workflow
-- **THEN** the release MUST have a `dist.tar.gz` asset containing the production build output
-
-### Requirement: Test results XML is attached to releases
-The release workflow SHALL run unit tests with JUnit XML output and attach the results file to the GitHub Release.
-
-#### Scenario: Test results are attached
-- **WHEN** a GitHub Release is created by the release workflow
-- **THEN** the release MUST have a test results XML file as an asset
-
-#### Scenario: Tests fail during release
-- **WHEN** unit tests fail during the release workflow
-- **THEN** the workflow MUST fail and no release assets SHALL be attached
-
-### Requirement: Coverage report is attached to releases
-The release workflow SHALL generate an HTML coverage report and attach it as a zip archive to the GitHub Release.
-
-#### Scenario: Coverage report is attached
-- **WHEN** a GitHub Release is created by the release workflow
-- **THEN** the release MUST have a `coverage-report.zip` asset containing the HTML coverage report
-
-### Requirement: Playwright report is attached to releases
-The release workflow SHALL run Playwright E2E tests and attach the HTML report (including screenshots) as a zip archive to the GitHub Release.
-
-#### Scenario: Playwright report is attached
-- **WHEN** a GitHub Release is created by the release workflow
-- **THEN** the release MUST have a `playwright-report.zip` asset containing the Playwright HTML report with screenshots
-
-#### Scenario: E2E tests fail during release
-- **WHEN** Playwright tests fail during the release workflow
-- **THEN** the workflow MUST fail and no release assets SHALL be attached
-
-### Requirement: Playwright traces are not attached to releases
-Playwright trace files SHALL NOT be attached to GitHub Releases due to their size. They are only available as CI workflow artifacts.
-
-#### Scenario: Traces excluded from release
-- **WHEN** a GitHub Release is created
-- **THEN** the release assets MUST NOT include Playwright trace files
-
 ## From: release-automation/spec.md
 
 ## Requirements
@@ -214,19 +167,31 @@ The release workflow SHALL scan all conventional commits between the latest `v*`
 - **WHEN** there are no commits between the last `v*` tag and HEAD
 - **THEN** the workflow MUST skip the release and exit successfully
 
-### Requirement: Release workflow bumps version in package.json
-The release workflow SHALL update the `version` field in `package.json` to the new version number and commit the change to `develop`.
+### Requirement: Release workflow computes version from the last tag
+The release workflow SHALL compute the new version by applying the bump type to the last tag's version, NOT by bumping the current `package.json` version.
 
-#### Scenario: Version is bumped in package.json
-- **WHEN** the workflow determines a bump type of `patch`, `minor`, or `major`
-- **THEN** `package.json` MUST be updated with the new version number
+#### Scenario: Version computed from tag
+- **WHEN** the last tag is `v1.3.0` and the bump type is `minor`
+- **THEN** the new version MUST be `1.4.0` regardless of what `package.json` currently contains
 
-#### Scenario: Version bump is committed to develop
-- **WHEN** the version is bumped in `package.json`
-- **THEN** a commit with message `chore: release v<version>` MUST be pushed to the `develop` branch
+#### Scenario: Version unchanged from previous run
+- **WHEN** the computed version matches the current `package.json` version
+- **THEN** the workflow MUST skip the version bump commit and PR update
 
-### Requirement: Release workflow generates CHANGELOG
-The release workflow SHALL generate or update `CHANGELOG.md` with entries grouped by conventional commit type, matching the section grouping: Features, Bug Fixes, Performance Improvements, Code Refactoring.
+#### Scenario: Version changes due to new commit type
+- **WHEN** the last tag is `v1.3.0`, `package.json` is `1.3.1` (from a previous fix), and a `feat:` commit arrives
+- **THEN** the new version MUST be `1.4.0` and `package.json` MUST be updated
+
+### Requirement: Release workflow bumps version in package.json on develop
+The release workflow SHALL update `package.json` and `package-lock.json` with the computed version and commit to `develop`.
+
+#### Scenario: Version bump committed to develop
+- **WHEN** the computed version differs from `package.json`
+- **THEN** a commit with message `chore: release v<version>` MUST be pushed directly to the `develop` branch
+- **AND** the commit MUST include `package.json`, `package-lock.json`, and `CHANGELOG.md`
+
+### Requirement: Release workflow generates CHANGELOG on develop
+The release workflow SHALL generate or update `CHANGELOG.md` with entries grouped by conventional commit type and commit the update to `develop`.
 
 #### Scenario: CHANGELOG includes grouped entries
 - **WHEN** a release includes `feat:` and `fix:` commits
@@ -236,49 +201,34 @@ The release workflow SHALL generate or update `CHANGELOG.md` with entries groupe
 - **WHEN** the CHANGELOG is generated
 - **THEN** the CHANGELOG update MUST be included in the same commit as the version bump (`chore: release v<version>`)
 
-### Requirement: Release workflow fast-forward merges develop to master
-The release workflow SHALL merge `develop` into `master` using fast-forward only (`--ff-only`).
+### Requirement: Release workflow creates or updates a release PR
+The release workflow SHALL maintain a single pull request from `develop` to `master`.
 
-#### Scenario: Fast-forward merge succeeds
-- **WHEN** `master` is an ancestor of `develop`
-- **THEN** `master` MUST be updated to point to the same commit as `develop` via fast-forward
+#### Scenario: No release PR exists
+- **WHEN** no open PR exists with base `master` and head `develop`
+- **THEN** the workflow MUST create a new PR with title `chore: release v<version>`
 
-#### Scenario: Fast-forward merge fails
-- **WHEN** `master` has diverged from `develop` and fast-forward is not possible
-- **THEN** the workflow MUST fail with a clear error message and MUST NOT create a release
+#### Scenario: Release PR already exists
+- **WHEN** an open PR exists with base `master` and head `develop` and the version has changed
+- **THEN** the workflow MUST update the PR title to `chore: release v<version>`
 
-### Requirement: Release workflow creates a git tag
-The release workflow SHALL create and push a git tag in the format `v<version>` (e.g., `v1.2.0`).
+#### Scenario: Release PR exists and version unchanged
+- **WHEN** an open PR exists and the computed version matches the PR title version
+- **THEN** the workflow MUST NOT update the PR (the new commits appear automatically)
 
-#### Scenario: Tag is created after merge
-- **WHEN** the fast-forward merge to `master` succeeds
-- **THEN** a git tag `v<version>` MUST be created and pushed to the remote
+### Requirement: Release workflow does NOT build, test, or create artifacts
+The release workflow SHALL NOT run build, lint, test, or artifact packaging steps. These are handled by the CI workflow.
 
-### Requirement: Release workflow creates a GitHub Release
-The release workflow SHALL create a GitHub Release associated with the new tag, with the CHANGELOG entries for this version as the release body.
+#### Scenario: No build steps in release workflow
+- **WHEN** the release workflow runs
+- **THEN** it MUST NOT execute `npm run build`, `npm run test`, `npm run lint`, or any artifact packaging commands
 
-#### Scenario: GitHub Release is created
-- **WHEN** the tag is pushed
-- **THEN** a GitHub Release MUST be created with title `v<version>` and body containing the CHANGELOG entries for this version
+### Requirement: Release workflow does NOT create tags or GitHub Releases
+The release workflow SHALL NOT create git tags or GitHub Releases. These are handled by the release finalize workflow.
 
-### Requirement: Release workflow attaches build artifacts
-The release workflow SHALL build the project and attach artifacts to the GitHub Release: `dist.tar.gz`, `coverage-report.zip`, and `playwright-report.zip`.
-
-#### Scenario: dist tarball is attached
-- **WHEN** a GitHub Release is created by the release workflow
-- **THEN** the release MUST have a `dist.tar.gz` asset containing the production build output
-
-#### Scenario: Coverage report is attached
-- **WHEN** a GitHub Release is created by the release workflow
-- **THEN** the release MUST have a `coverage-report.zip` asset containing the HTML coverage report
-
-#### Scenario: Playwright report is attached
-- **WHEN** a GitHub Release is created by the release workflow
-- **THEN** the release MUST have a `playwright-report.zip` asset containing the Playwright HTML report
-
-#### Scenario: Build failure prevents release
-- **WHEN** the build or tests fail during the release workflow
-- **THEN** the workflow MUST fail and no GitHub Release SHALL be created
+#### Scenario: No tag creation in release workflow
+- **WHEN** the release workflow completes
+- **THEN** no git tags SHALL have been created or pushed
 
 ### Requirement: Release workflow uses concurrency control
 The release workflow SHALL use a concurrency group to ensure only one release runs at a time.
@@ -288,8 +238,63 @@ The release workflow SHALL use a concurrency group to ensure only one release ru
 - **THEN** the new workflow MUST wait for the running one to complete before starting
 
 ### Requirement: Release workflow uses minimal permissions
-The release workflow SHALL request only the GitHub token permissions it needs: `contents: write`.
+The release workflow SHALL request `contents: write` and `pull-requests: write`.
 
 #### Scenario: Workflow permissions are scoped
 - **WHEN** the release workflow runs
+- **THEN** it MUST declare `contents: write` and `pull-requests: write` permissions and no others
+
+## From: release-finalization/spec.md
+
+## Requirements
+
+### Requirement: Release finalize triggers on release PR merge to master
+The release finalize workflow SHALL trigger when a pull request from `develop` to `master` is merged.
+
+#### Scenario: Release PR merged triggers finalize
+- **WHEN** a PR with head `develop` and base `master` is merged
+- **THEN** the release finalize workflow MUST be triggered
+
+#### Scenario: Non-release PR does not trigger
+- **WHEN** a PR from a branch other than `develop` is merged to `master`
+- **THEN** the release finalize workflow MUST NOT execute
+
+#### Scenario: Closed-without-merge does not trigger
+- **WHEN** the release PR is closed without merging
+- **THEN** the release finalize workflow MUST NOT execute
+
+### Requirement: Release finalize extracts version from package.json
+The release finalize workflow SHALL read the version from `package.json` at the merge commit.
+
+#### Scenario: Version extracted from package.json
+- **WHEN** the release finalize workflow runs
+- **THEN** it MUST read the version from `package.json` (not from the branch name or PR title)
+
+### Requirement: Release finalize creates a git tag on the merge commit
+The release finalize workflow SHALL create and push a git tag `v<version>` on the merge commit SHA.
+
+#### Scenario: Tag created on merge commit
+- **WHEN** the release PR is merged with a merge commit
+- **THEN** a tag `v<version>` MUST be created on the merge commit SHA
+- **AND** the tag MUST be pushed to the remote
+
+### Requirement: Release finalize creates a GitHub Release
+The release finalize workflow SHALL create a GitHub Release with the tag and changelog-based release notes.
+
+#### Scenario: GitHub Release created with changelog
+- **WHEN** the tag is created
+- **THEN** a GitHub Release MUST be created with title `v<version>` and body containing the CHANGELOG entries for this version
+
+### Requirement: Release finalize does NOT attach artifacts
+The release finalize workflow SHALL NOT attach any build artifacts to the GitHub Release.
+
+#### Scenario: No artifacts on release
+- **WHEN** a GitHub Release is created
+- **THEN** it MUST NOT have any attached assets (no dist.tar.gz, no reports)
+
+### Requirement: Release finalize uses minimal permissions
+The release finalize workflow SHALL request only `contents: write`.
+
+#### Scenario: Permissions are scoped
+- **WHEN** the release finalize workflow runs
 - **THEN** it MUST declare `contents: write` permission and no others

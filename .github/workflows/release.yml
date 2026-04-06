@@ -1,10 +1,9 @@
 name: Release
 
 # Prerequisites (GitHub repository settings, not managed by this file):
-#   - "Allow auto-merge" must be enabled in the repository settings.
-#   - Squash merging must be allowed for PRs.
+#   - Merge commits must be enabled for PRs to master.
 #   - Branch protection on `develop`: require PR and status checks to pass.
-#   - Vercel production branch must be set to `develop` (continuous deployment).
+#   - Vercel production branch must be set to `master`.
 
 on:
   workflow_run:
@@ -24,9 +23,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.actor.login != 'github-actions[bot]'
+    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout code
@@ -48,12 +45,21 @@ jobs:
       - name: Analyze commits and determine bump type
         id: bump
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 --match "v*" --match "newsflash-v*" 2>/dev/null || echo "")
+          # Use sorted tag list instead of git describe, because tags live on
+          # master merge commits which are not ancestors of develop.
+          LAST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n 1)
 
           if [ -z "$LAST_TAG" ]; then
             RANGE="HEAD"
           else
-            RANGE="${LAST_TAG}..HEAD"
+            # The tag lives on a master merge commit, not in develop's ancestry.
+            # Use merge-base to find the common ancestor and scope the range correctly.
+            MERGE_BASE=$(git merge-base "$LAST_TAG" HEAD 2>/dev/null || echo "")
+            if [ -z "$MERGE_BASE" ]; then
+              RANGE="HEAD"
+            else
+              RANGE="${MERGE_BASE}..HEAD"
+            fi
           fi
 
           SUBJECTS=$(git log "$RANGE" --pretty=format:"%s" 2>/dev/null || echo "")
@@ -110,79 +116,128 @@ jobs:
           echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "Determined bump type: $BUMP"
 
-      - name: Install dependencies
-        if: steps.bump.outputs.skip != 'true'
-        run: npm ci
-
-      - name: Bump version
+      - name: Compute version from last tag
         if: steps.bump.outputs.skip != 'true'
         id: version
         run: |
-          npm version ${{ steps.bump.outputs.bump }} --no-git-tag-version
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "New version: $VERSION"
+          LAST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n 1)
+          LAST_TAG="${LAST_TAG:-v0.0.0}"
+          TAG_VERSION="${LAST_TAG#v}"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$TAG_VERSION"
+          BUMP="${{ steps.bump.outputs.bump }}"
+
+          if [ "$BUMP" = "major" ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif [ "$BUMP" = "minor" ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          elif [ "$BUMP" = "patch" ]; then
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Computed version: $NEW_VERSION (from tag $LAST_TAG, bump $BUMP)"
+
+          if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
+            echo "Version already matches package.json. Skipping bump."
+            echo "needs_bump=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_bump=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
+        run: npm ci
+
+      - name: Bump version in package.json
+        if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
+        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version
 
       - name: Generate CHANGELOG
-        if: steps.bump.outputs.skip != 'true'
+        if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
         run: npx conventional-changelog -n changelog.config.mjs -i CHANGELOG.md -r 1
 
-      - name: Build
-        if: steps.bump.outputs.skip != 'true'
-        run: npm run build
-
-      - name: Run tests with coverage and JUnit output
-        if: steps.bump.outputs.skip != 'true'
-        run: npm run test:coverage -- --reporter=junit --outputFile=test-results.xml
-
-      - name: Install Playwright browsers
-        if: steps.bump.outputs.skip != 'true'
-        run: npx playwright install --with-deps
-
-      - name: Run Playwright E2E tests
-        if: steps.bump.outputs.skip != 'true'
-        run: npm run test:e2e
-
-      - name: Commit version bump and CHANGELOG to release branch
-        if: steps.bump.outputs.skip != 'true'
+      - name: Commit version bump and CHANGELOG to a bump branch
+        if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          BRANCH="release/v${{ steps.version.outputs.version }}"
-          git checkout -b "$BRANCH"
+
+          BUMP_BRANCH="chore/release-v${{ steps.version.outputs.version }}"
+          git checkout -b "$BUMP_BRANCH"
+
           git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore: release v${{ steps.version.outputs.version }}"
-          git push origin "$BRANCH"
+          git push --force-with-lease origin "$BUMP_BRANCH"
 
-      - name: Create PR to develop with auto-merge
+          echo "bump_branch=$BUMP_BRANCH" >> "$GITHUB_OUTPUT"
+        id: commit
+
+      - name: Create and auto-merge version bump PR
+        if: steps.bump.outputs.skip != 'true' && steps.version.outputs.needs_bump == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BUMP_BRANCH="${{ steps.commit.outputs.bump_branch }}"
+
+          # Check for existing bump PR (open or closed) to avoid duplicate creation failures
+          EXISTING_BUMP_PR=$(gh pr list --base develop --head "$BUMP_BRANCH" --state all --json url,state --jq '.[0]')
+
+          if [ -n "$EXISTING_BUMP_PR" ] && [ "$EXISTING_BUMP_PR" != "null" ]; then
+            PR_URL=$(echo "$EXISTING_BUMP_PR" | jq -r '.url')
+            PR_STATE=$(echo "$EXISTING_BUMP_PR" | jq -r '.state')
+            echo "Found existing bump PR ($PR_STATE): $PR_URL"
+
+            if [ "$PR_STATE" = "CLOSED" ]; then
+              gh pr reopen "$PR_URL"
+            fi
+          else
+            PR_URL=$(gh pr create \
+              --base develop \
+              --head "$BUMP_BRANCH" \
+              --title "chore: bump version to v${VERSION}" \
+              --body "Automated version bump to v${VERSION}. This PR will be auto-merged.")
+          fi
+
+          if ! gh pr merge "$PR_URL" --auto --squash --delete-branch; then
+            echo "::warning::Auto-merge unavailable. Attempting immediate merge."
+            if ! gh pr merge "$PR_URL" --squash --delete-branch; then
+              echo "::error::Bump PR could not be merged. Manual merge required: $PR_URL"
+              exit 1
+            fi
+          fi
+
+      - name: Create or update release PR
         if: steps.bump.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          BRANCH="release/v${VERSION}"
-          gh pr create \
-            --base develop \
-            --head "$BRANCH" \
-            --title "chore: release v${VERSION}" \
-            --body "Automated release PR for v${VERSION}. Merges version bump and CHANGELOG update into develop."
-          gh pr merge "$BRANCH" --auto --squash --delete-branch
+          EXISTING_PR=$(gh pr list --base master --head develop --state open --json number,title --jq '.[0]')
 
-      - name: Package release artifacts
-        if: steps.bump.outputs.skip != 'true'
-        run: |
-          tar -czf dist.tar.gz dist/
-          zip -r coverage-report.zip coverage/
-          zip -r playwright-report.zip playwright-report/
+          if [ -z "$EXISTING_PR" ] || [ "$EXISTING_PR" = "null" ]; then
+            echo "Creating new release PR..."
+            gh pr create \
+              --base master \
+              --head develop \
+              --title "chore: release v${VERSION}" \
+              --body "Automated release PR for v${VERSION}. Merge this PR to cut a release."
+          else
+            PR_NUMBER=$(echo "$EXISTING_PR" | jq -r '.number')
+            PR_TITLE=$(echo "$EXISTING_PR" | jq -r '.title')
+            EXPECTED_TITLE="chore: release v${VERSION}"
 
-      - name: Upload release artifacts
-        if: steps.bump.outputs.skip != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-artifacts
-          path: |
-            dist.tar.gz
-            test-results.xml
-            coverage-report.zip
-            playwright-report.zip
-          retention-days: 1
+            if [ "$PR_TITLE" != "$EXPECTED_TITLE" ]; then
+              echo "Updating PR #${PR_NUMBER} title to: ${EXPECTED_TITLE}"
+              gh pr edit "$PR_NUMBER" --title "$EXPECTED_TITLE"
+            else
+              echo "PR #${PR_NUMBER} already has correct title. No update needed."
+            fi
+          fi

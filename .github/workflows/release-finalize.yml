@@ -1,16 +1,15 @@
 name: Release Finalize
 
-# After the release PR merges into develop, create the git tag and GitHub
-# Release with build artifacts from the release workflow.
+# After the release PR (develop → master) is merged, create the git tag
+# and GitHub Release with changelog-based release notes.
 
 on:
   pull_request:
     types: [closed]
-    branches: [develop]
+    branches: [master]
 
 permissions:
   contents: write
-  actions: read
 
 jobs:
   finalize:
@@ -18,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.event.pull_request.merged == true &&
-      startsWith(github.head_ref, 'release/')
+      github.head_ref == 'develop'
 
     steps:
       - name: Checkout code
@@ -27,11 +26,23 @@ jobs:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 1
 
-      - name: Extract version from branch name
+      - name: Verify merge commit
+        run: |
+          PARENT_COUNT=$(git cat-file -p HEAD | grep -c "^parent")
+          if [ "$PARENT_COUNT" -lt 2 ]; then
+            echo "::error::Release PR was not merged with a merge commit (found $PARENT_COUNT parent(s)). Release-train requires merge commits. Skipping."
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Extract version from package.json
         id: version
         run: |
-          BRANCH="${{ github.head_ref }}"
-          VERSION="${BRANCH#release/v}"
+          VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create and push tag
@@ -42,20 +53,6 @@ jobs:
           SHA="${{ github.event.pull_request.merge_commit_sha }}"
           git tag "$TAG" "$SHA"
           git push origin "$TAG"
-
-      - name: Download release artifacts
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          BRANCH="release/v${{ steps.version.outputs.version }}"
-          RUN_ID=$(gh run list \
-            --workflow="release.yml" \
-            --branch="$BRANCH" \
-            --status=success \
-            --limit=1 \
-            --json databaseId \
-            --jq '.[0].databaseId')
-          gh run download "$RUN_ID" --name release-artifacts --dir ./artifacts
 
       - name: Extract release notes from CHANGELOG
         run: |
@@ -68,8 +65,4 @@ jobs:
         run: |
           gh release create "v${{ steps.version.outputs.version }}" \
             --title "v${{ steps.version.outputs.version }}" \
-            --notes-file release-notes.md \
-            artifacts/dist.tar.gz \
-            artifacts/test-results.xml \
-            artifacts/coverage-report.zip \
-            artifacts/playwright-report.zip
+            --notes-file release-notes.md
