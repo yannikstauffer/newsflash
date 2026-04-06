@@ -11,11 +11,13 @@ import type { NormalizedArticle } from "@/features/connectors/types"
 
 vi.mock("@/lib/article-cache", () => ({
   setPinned: vi.fn().mockResolvedValue(undefined),
+  upsertMany: vi.fn().mockResolvedValue(undefined),
 }))
 
 import * as articleCache from "@/lib/article-cache"
 
 const mockSetPinned = vi.mocked(articleCache.setPinned)
+const mockUpsertMany = vi.mocked(articleCache.upsertMany)
 
 const HIDDEN_KEY = "newsflash:hidden"
 const READLIST_KEY = "newsflash:readlist"
@@ -501,7 +503,7 @@ describe("useArticleState", () => {
   })
 
   describe("IDB cache pinning", () => {
-    it("calls setPinned(id, true) when adding to read list", () => {
+    it("upserts then pins article when adding to read list", async () => {
       const article = makeArticle({ id: "heise:a1" })
       const { result } = renderHook(() => useArticleState())
 
@@ -509,6 +511,10 @@ describe("useArticleState", () => {
         result.current.addToReadList(article)
       })
 
+      // Flush the upsertMany -> setPinned promise chain
+      await act(async () => {})
+
+      expect(mockUpsertMany).toHaveBeenCalledWith([article])
       expect(mockSetPinned).toHaveBeenCalledWith("heise:a1", true)
     })
 
@@ -567,8 +573,8 @@ describe("useArticleState", () => {
       expect(mockSetPinned).toHaveBeenCalledTimes(2)
     })
 
-    it("does not affect read-list operations when setPinned fails", () => {
-      mockSetPinned.mockRejectedValue(new Error("IDB unavailable"))
+    it("does not affect read-list operations when upsertMany fails", () => {
+      mockUpsertMany.mockRejectedValue(new Error("IDB unavailable"))
 
       const article = makeArticle({ id: "heise:a1" })
       const { result } = renderHook(() => useArticleState())
@@ -577,13 +583,24 @@ describe("useArticleState", () => {
         result.current.addToReadList(article)
       })
 
-      // Read list should still work despite pin failure
+      // Read list should still work despite IDB failure
       expect(result.current.readListIds).toEqual(["heise:a1"])
+    })
+
+    it("does not affect read-list operations when setPinned fails", () => {
+      mockSetPinned.mockRejectedValue(new Error("IDB unavailable"))
+
+      const { result } = renderHook(() => useArticleState())
 
       act(() => {
-        result.current.removeFromReadList("heise:a1")
+        result.current.addToReadList(makeArticle({ id: "heise:a2" }))
       })
 
+      act(() => {
+        result.current.removeFromReadList("heise:a2")
+      })
+
+      // Read list should still work despite pin failure
       expect(result.current.readListIds).toEqual([])
     })
   })

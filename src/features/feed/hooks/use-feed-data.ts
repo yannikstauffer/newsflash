@@ -98,7 +98,9 @@ export function useFeedData(
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(
     () => feedCache?.lastRefreshedAt ?? null,
   )
-  const shouldSkipInitialFetch = useRef(feedCache !== null)
+  const shouldSkipInitialFetch = useRef(
+    feedCache !== null && feedCache.lastRefreshedAt !== null,
+  )
 
   const applyFetchResult = useCallback(
     (

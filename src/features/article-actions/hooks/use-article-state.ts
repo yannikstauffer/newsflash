@@ -134,7 +134,10 @@ export function useArticleState(): {
           ? next.slice(0, MAX_READLIST_ITEMS)
           : next
       })
-      articleCache.setPinned(article.id, true).catch(() => {})
+      articleCache
+        .upsertMany([article])
+        .then(() => articleCache.setPinned(article.id, true))
+        .catch(() => {})
     },
     [setStoredReadList],
   )

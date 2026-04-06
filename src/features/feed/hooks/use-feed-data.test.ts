@@ -710,6 +710,42 @@ describe("useFeedData", () => {
       expect(result.current.articles[0].id).toBe("net-1")
       expect(result.current.loading).toBe(false)
     })
+
+    it("revalidates on remount when L1 was populated from L2 without network completion", async () => {
+      const cachedArticle = makeArticle({ id: "cached-1", title: "From IDB" })
+
+      mockGetAll.mockResolvedValue([cachedArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [cachedArticle]),
+      })
+
+      // Network fetch that never resolves (simulates unmount before completion)
+      mockFetchFeed.mockImplementation(() => new Promise<string>(() => {}))
+
+      const { unmount } = renderHook(() => useFeedData(isFeedEnabled))
+
+      // Wait for IDB read to populate L1
+      await act(async () => {})
+
+      unmount()
+
+      // Now network fetch resolves on remount
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result: secondResult } = renderHook(() => useFeedData(isFeedEnabled))
+
+      // Should still trigger a background fetch since lastRefreshedAt is null
+      await act(async () => {})
+
+      expect(secondResult.current.articles).toHaveLength(1)
+      // Verify network fetch was triggered (not skipped by shouldSkipInitialFetch)
+      expect(mockFetchFeed).toHaveBeenCalled()
+    })
   })
 
   describe("refresh with IDB", () => {
