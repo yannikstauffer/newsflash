@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react"
 import type { NormalizedArticle } from "@/features/connectors/types"
 
 import { useSyncedStorage } from "@/hooks/use-synced-storage"
+import * as articleCache from "@/lib/article-cache"
 
 export const MAX_HIDDEN_IDS = 500
 export const MAX_READLIST_ITEMS = 200
@@ -126,13 +127,24 @@ export function useArticleState(): {
 
   const addToReadList = useCallback(
     (article: NormalizedArticle) => {
+      let didAdd = false
+      let droppedId: string | undefined
       setStoredReadList((previous) => {
         if (previous.some((a) => a.id === article.id)) return previous
+        didAdd = true
         const next = [toStored(article), ...previous]
-        return next.length > MAX_READLIST_ITEMS
-          ? next.slice(0, MAX_READLIST_ITEMS)
-          : next
+        if (next.length > MAX_READLIST_ITEMS) {
+          droppedId = next.at(-1)?.id
+          return next.slice(0, MAX_READLIST_ITEMS)
+        }
+        return next
       })
+      if (didAdd) {
+        articleCache.upsertMany([article], { pinned: true }).catch(() => {})
+        if (droppedId) {
+          articleCache.setPinned(droppedId, false).catch(() => {})
+        }
+      }
     },
     [setStoredReadList],
   )
@@ -142,6 +154,7 @@ export function useArticleState(): {
       setStoredReadList((previous) =>
         previous.filter((a) => a.id !== articleId),
       )
+      articleCache.setPinned(articleId, false).catch(() => {})
     },
     [setStoredReadList],
   )
@@ -169,21 +182,37 @@ export function useArticleState(): {
 
   const clearReadList = useCallback(
     () => {
+      const ids = storedReadList.map((a) => a.id)
+      articleCache.bulkSetPinned(ids, false).catch(() => {})
       setStoredReadList([])
     },
-    [setStoredReadList],
+    [storedReadList, setStoredReadList],
   )
 
   const restoreReadList = useCallback(
     (articles: NormalizedArticle[]) => {
+      let articlesToPin: NormalizedArticle[] = []
+      let droppedIds: string[] = []
       setStoredReadList((previous) => {
         const existingIds = new Set(previous.map((a) => a.id))
-        const newEntries = articles
-          .filter((a) => !existingIds.has(a.id))
-          .map(toStored)
-        const next = [...newEntries, ...previous]
-        return next.length > MAX_READLIST_ITEMS ? next.slice(0, MAX_READLIST_ITEMS) : next
+        const newEntries = articles.filter((a) => !existingIds.has(a.id))
+        const allEntries = [...newEntries.map(toStored), ...previous]
+        const capped = allEntries.length > MAX_READLIST_ITEMS
+          ? allEntries.slice(0, MAX_READLIST_ITEMS)
+          : allEntries
+        const cappedIds = new Set(capped.map((a) => a.id))
+        articlesToPin = articles.filter((a) => cappedIds.has(a.id))
+        droppedIds = previous
+          .filter((a) => !cappedIds.has(a.id))
+          .map((a) => a.id)
+        return capped
       })
+      if (articlesToPin.length > 0) {
+        articleCache.upsertMany(articlesToPin, { pinned: true }).catch(() => {})
+      }
+      if (droppedIds.length > 0) {
+        articleCache.bulkSetPinned(droppedIds, false).catch(() => {})
+      }
     },
     [setStoredReadList],
   )
@@ -199,9 +228,16 @@ export function useArticleState(): {
 
   const removeReadListBySource = useCallback(
     (sourceId: string) => {
-      setStoredReadList((previous) =>
-        previous.filter((a) => a.source !== sourceId),
-      )
+      let removedIds: string[] = []
+      setStoredReadList((previous) => {
+        removedIds = previous
+          .filter((a) => a.source === sourceId)
+          .map((a) => a.id)
+        return previous.filter((a) => a.source !== sourceId)
+      })
+      if (removedIds.length > 0) {
+        articleCache.bulkSetPinned(removedIds, false).catch(() => {})
+      }
     },
     [setStoredReadList],
   )
