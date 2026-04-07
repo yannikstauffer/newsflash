@@ -11,12 +11,14 @@ import type { NormalizedArticle } from "@/features/connectors/types"
 
 vi.mock("@/lib/article-cache", () => ({
   setPinned: vi.fn().mockResolvedValue(undefined),
+  bulkSetPinned: vi.fn().mockResolvedValue(undefined),
   upsertMany: vi.fn().mockResolvedValue(undefined),
 }))
 
 import * as articleCache from "@/lib/article-cache"
 
 const mockSetPinned = vi.mocked(articleCache.setPinned)
+const mockBulkSetPinned = vi.mocked(articleCache.bulkSetPinned)
 const mockUpsertMany = vi.mocked(articleCache.upsertMany)
 
 const HIDDEN_KEY = "newsflash:hidden"
@@ -531,7 +533,7 @@ describe("useArticleState", () => {
       expect(mockSetPinned).toHaveBeenCalledWith("heise:a1", false)
     })
 
-    it("calls setPinned(id, false) for each article when clearing read list", () => {
+    it("calls bulkSetPinned with all ids when clearing read list", () => {
       const { result } = renderHook(() => useArticleState())
 
       act(() => {
@@ -539,15 +541,17 @@ describe("useArticleState", () => {
         result.current.addToReadList(makeArticle({ id: "heise:a2" }))
       })
 
-      mockSetPinned.mockClear()
+      mockBulkSetPinned.mockClear()
 
       act(() => {
         result.current.clearReadList()
       })
 
-      expect(mockSetPinned).toHaveBeenCalledWith("heise:a2", false)
-      expect(mockSetPinned).toHaveBeenCalledWith("heise:a1", false)
-      expect(mockSetPinned).toHaveBeenCalledTimes(2)
+      expect(mockBulkSetPinned).toHaveBeenCalledWith(
+        ["heise:a2", "heise:a1"],
+        false,
+      )
+      expect(mockBulkSetPinned).toHaveBeenCalledTimes(1)
     })
 
     it("upserts articles with pinned flag when restoring read list", () => {

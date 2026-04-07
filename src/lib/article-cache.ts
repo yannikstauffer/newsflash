@@ -153,6 +153,31 @@ export async function setPinned(
   })
 }
 
+export async function bulkSetPinned(
+  ids: readonly string[],
+  pinned: boolean,
+): Promise<void> {
+  const database = await openDatabase()
+  if (!database || ids.length === 0) return
+
+  const tx = database.transaction(STORE_NAME, "readwrite")
+  const store = tx.objectStore(STORE_NAME)
+
+  await Promise.all(
+    ids.map(async (id) => {
+      const article = await store.get(id)
+      if (!article) return
+      await store.put({
+        ...article,
+        pinned,
+        pinnedKey: pinned ? 1 : 0,
+      })
+    }),
+  )
+
+  await tx.done
+}
+
 /** @internal Reset module state — test-only */
 export async function _resetForTesting(): Promise<void> {
   if (databasePromise) {

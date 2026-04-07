@@ -127,14 +127,20 @@ export function useArticleState(): {
 
   const addToReadList = useCallback(
     (article: NormalizedArticle) => {
+      let droppedId: string | undefined
       setStoredReadList((previous) => {
         if (previous.some((a) => a.id === article.id)) return previous
         const next = [toStored(article), ...previous]
-        return next.length > MAX_READLIST_ITEMS
-          ? next.slice(0, MAX_READLIST_ITEMS)
-          : next
+        if (next.length > MAX_READLIST_ITEMS) {
+          droppedId = next.at(-1)?.id
+          return next.slice(0, MAX_READLIST_ITEMS)
+        }
+        return next
       })
       articleCache.upsertMany([article], { pinned: true }).catch(() => {})
+      if (droppedId) {
+        articleCache.setPinned(droppedId, false).catch(() => {})
+      }
     },
     [setStoredReadList],
   )
@@ -172,9 +178,8 @@ export function useArticleState(): {
 
   const clearReadList = useCallback(
     () => {
-      for (const article of storedReadList) {
-        articleCache.setPinned(article.id, false).catch(() => {})
-      }
+      const ids = storedReadList.map((a) => a.id)
+      articleCache.bulkSetPinned(ids, false).catch(() => {})
       setStoredReadList([])
     },
     [storedReadList, setStoredReadList],
@@ -182,20 +187,23 @@ export function useArticleState(): {
 
   const restoreReadList = useCallback(
     (articles: NormalizedArticle[]) => {
-      const existingIds = new Set(storedReadList.map((a) => a.id))
-      const newEntries = articles.filter((a) => !existingIds.has(a.id))
-      const allEntries = [...newEntries.map(toStored), ...storedReadList]
-      const capped = allEntries.length > MAX_READLIST_ITEMS
-        ? allEntries.slice(0, MAX_READLIST_ITEMS)
-        : allEntries
-      setStoredReadList(capped)
-      const cappedIds = new Set(capped.map((a) => a.id))
-      const articlesToPin = articles.filter((a) => cappedIds.has(a.id))
+      let articlesToPin: NormalizedArticle[] = []
+      setStoredReadList((previous) => {
+        const existingIds = new Set(previous.map((a) => a.id))
+        const newEntries = articles.filter((a) => !existingIds.has(a.id))
+        const allEntries = [...newEntries.map(toStored), ...previous]
+        const capped = allEntries.length > MAX_READLIST_ITEMS
+          ? allEntries.slice(0, MAX_READLIST_ITEMS)
+          : allEntries
+        const cappedIds = new Set(capped.map((a) => a.id))
+        articlesToPin = articles.filter((a) => cappedIds.has(a.id))
+        return capped
+      })
       if (articlesToPin.length > 0) {
         articleCache.upsertMany(articlesToPin, { pinned: true }).catch(() => {})
       }
     },
-    [storedReadList, setStoredReadList],
+    [setStoredReadList],
   )
 
   const removeHiddenBySource = useCallback(
