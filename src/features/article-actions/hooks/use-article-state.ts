@@ -188,6 +188,7 @@ export function useArticleState(): {
   const restoreReadList = useCallback(
     (articles: NormalizedArticle[]) => {
       let articlesToPin: NormalizedArticle[] = []
+      let droppedIds: string[] = []
       setStoredReadList((previous) => {
         const existingIds = new Set(previous.map((a) => a.id))
         const newEntries = articles.filter((a) => !existingIds.has(a.id))
@@ -197,10 +198,16 @@ export function useArticleState(): {
           : allEntries
         const cappedIds = new Set(capped.map((a) => a.id))
         articlesToPin = articles.filter((a) => cappedIds.has(a.id))
+        droppedIds = previous
+          .filter((a) => !cappedIds.has(a.id))
+          .map((a) => a.id)
         return capped
       })
       if (articlesToPin.length > 0) {
         articleCache.upsertMany(articlesToPin, { pinned: true }).catch(() => {})
+      }
+      if (droppedIds.length > 0) {
+        articleCache.bulkSetPinned(droppedIds, false).catch(() => {})
       }
     },
     [setStoredReadList],
@@ -217,9 +224,16 @@ export function useArticleState(): {
 
   const removeReadListBySource = useCallback(
     (sourceId: string) => {
-      setStoredReadList((previous) =>
-        previous.filter((a) => a.source !== sourceId),
-      )
+      let removedIds: string[] = []
+      setStoredReadList((previous) => {
+        removedIds = previous
+          .filter((a) => a.source === sourceId)
+          .map((a) => a.id)
+        return previous.filter((a) => a.source !== sourceId)
+      })
+      if (removedIds.length > 0) {
+        articleCache.bulkSetPinned(removedIds, false).catch(() => {})
+      }
     },
     [setStoredReadList],
   )

@@ -191,6 +191,24 @@ describe("useArticleState", () => {
       expect(result.current.readListIds).not.toContain("heise:art-0")
     })
 
+    it("unpins the dropped article when adding at max capacity", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        for (let index = 0; index < MAX_READLIST_ITEMS; index++) {
+          result.current.addToReadList(makeArticle({ id: `heise:art-${index}` }))
+        }
+      })
+
+      mockSetPinned.mockClear()
+
+      act(() => {
+        result.current.addToReadList(makeArticle({ id: "heise:new-art" }))
+      })
+
+      expect(mockSetPinned).toHaveBeenCalledWith("heise:art-0", false)
+    })
+
     it("truncates an oversized existing list to max on next write", () => {
       const stored = Array.from({ length: MAX_READLIST_ITEMS + 30 }, (_, index) => ({
         id: `heise:art-${index}`,
@@ -296,6 +314,31 @@ describe("useArticleState", () => {
 
       const stored = JSON.parse(localStorage.getItem(READLIST_KEY) ?? "[]")
       expect(stored).toEqual([])
+    })
+
+    it("unpins removed articles in IDB when removing by source", () => {
+      const heiseArticle1 = makeArticle({ id: "heise:h1", source: "heise" })
+      const heiseArticle2 = makeArticle({ id: "heise:h2", source: "heise" })
+      const srfArticle = makeArticle({ id: "srf:s1", source: "srf" })
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.addToReadList(heiseArticle1)
+        result.current.addToReadList(heiseArticle2)
+        result.current.addToReadList(srfArticle)
+      })
+
+      mockBulkSetPinned.mockClear()
+
+      act(() => {
+        result.current.removeReadListBySource("heise")
+      })
+
+      expect(mockBulkSetPinned).toHaveBeenCalledWith(
+        ["heise:h2", "heise:h1"],
+        false,
+      )
     })
   })
 
@@ -590,6 +633,39 @@ describe("useArticleState", () => {
       expect(pinnedArticles).toHaveLength(MAX_READLIST_ITEMS)
       expect(pinnedArticles[0].id).toBe("heise:art-0")
       expect(pinnedArticles[MAX_READLIST_ITEMS - 1].id).toBe(`heise:art-${MAX_READLIST_ITEMS - 1}`)
+    })
+
+    it("unpins previous items dropped by cap when restoring", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      // Fill read list to capacity
+      act(() => {
+        for (let index = 0; index < MAX_READLIST_ITEMS; index++) {
+          result.current.addToReadList(makeArticle({ id: `heise:existing-${index}` }))
+        }
+      })
+
+      mockBulkSetPinned.mockClear()
+
+      // Restore articles that push existing ones past the cap
+      const newArticles = Array.from({ length: 10 }, (_, index) =>
+        makeArticle({ id: `heise:new-${index}` }),
+      )
+
+      act(() => {
+        result.current.restoreReadList(newArticles)
+      })
+
+      // The last 10 existing items should be unpinned
+      const unpinCall = mockBulkSetPinned.mock.calls.find(
+        ([, pinned]) => pinned === false,
+      )
+      expect(unpinCall).toBeDefined()
+      const unpinnedIds = unpinCall![0] as string[]
+      expect(unpinnedIds).toHaveLength(10)
+      for (let index = 0; index < 10; index++) {
+        expect(unpinnedIds).toContain(`heise:existing-${index}`)
+      }
     })
 
     it("does not affect read-list operations when upsertMany fails", () => {
