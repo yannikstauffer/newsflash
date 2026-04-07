@@ -18,6 +18,7 @@ vi.mock("@/features/connectors/registry", () => ({
 }))
 
 vi.mock("@/lib/article-cache", () => ({
+  evict: vi.fn().mockResolvedValue(undefined),
   getAll: vi.fn().mockResolvedValue([]),
   upsertMany: vi.fn().mockResolvedValue(undefined),
 }))

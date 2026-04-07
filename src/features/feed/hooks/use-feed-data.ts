@@ -118,7 +118,9 @@ export function useFeedData(
       setErrors(result.errors)
       setLastRefreshedAt(now)
       setLoading(false)
-      articleCache.upsertMany(result.articles).catch(() => {})
+      if (result.articles.length > 0) {
+        articleCache.upsertMany(result.articles).catch(() => {})
+      }
     },
     [],
   )
@@ -141,7 +143,8 @@ export function useFeedData(
     let cancelled = false
 
     async function load(): Promise<void> {
-      // L2: read from IndexedDB
+      // L2: evict stale entries then read from IndexedDB
+      await articleCache.evict().catch(() => {})
       const cachedArticles = await articleCache.getAll().catch(() => [] as NormalizedArticle[])
 
       if (cancelled) return
