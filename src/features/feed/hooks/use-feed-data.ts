@@ -5,6 +5,7 @@ import type { NormalizedArticle } from "@/features/connectors/types"
 import { feedProxyPath } from "@/config/feeds"
 import { fetchFeed } from "@/features/connectors/fetch-feed"
 import { connectors } from "@/features/connectors/registry"
+import * as articleCache from "@/lib/article-cache"
 
 interface FeedDataResult {
   articles: NormalizedArticle[]
@@ -17,7 +18,7 @@ interface FeedDataResult {
 interface FeedCache {
   articles: NormalizedArticle[]
   errors: string[]
-  lastRefreshedAt: Date
+  lastRefreshedAt: Date | null
 }
 
 let feedCache: FeedCache | null = null
@@ -75,6 +76,34 @@ async function fetchAllFeeds(
   return { articles: deduplicated, errors: fetchErrors }
 }
 
+function getFullyEnabledSources(
+  isFeedEnabled: (feedId: string) => boolean,
+): Set<string> {
+  const sources = new Set<string>()
+  for (const connector of connectors) {
+    if (connector.feeds.every((feed) => isFeedEnabled(feed.id))) {
+      sources.add(connector.id)
+    }
+  }
+  return sources
+}
+
+function filterByEnabledSources(
+  articles: NormalizedArticle[],
+  enabledSources: Set<string>,
+): NormalizedArticle[] {
+  return articles.filter((article) => enabledSources.has(article.source))
+}
+
+function mergeAndDeduplicate(
+  networkArticles: NormalizedArticle[],
+  cachedArticles: NormalizedArticle[],
+): NormalizedArticle[] {
+  const merged = [...networkArticles, ...cachedArticles]
+  const sorted = sortChronologically(merged)
+  return deduplicateArticles(sorted)
+}
+
 export function useFeedData(
   isFeedEnabled: (feedId: string) => boolean,
 ): FeedDataResult {
@@ -88,20 +117,29 @@ export function useFeedData(
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(
     () => feedCache?.lastRefreshedAt ?? null,
   )
-  const shouldSkipInitialFetch = useRef(feedCache !== null)
+  const shouldSkipInitialFetch = useRef(
+    feedCache !== null && feedCache.lastRefreshedAt !== null,
+  )
 
   const applyFetchResult = useCallback(
-    (result: { articles: NormalizedArticle[]; errors: string[] }) => {
+    (
+      result: { articles: NormalizedArticle[]; errors: string[] },
+      cachedArticles: NormalizedArticle[],
+    ) => {
       const now = new Date()
+      const merged = mergeAndDeduplicate(result.articles, cachedArticles)
       feedCache = {
-        articles: result.articles,
+        articles: merged,
         errors: result.errors,
         lastRefreshedAt: now,
       }
-      setArticles(result.articles)
+      setArticles(merged)
       setErrors(result.errors)
       setLastRefreshedAt(now)
       setLoading(false)
+      if (result.articles.length > 0) {
+        articleCache.upsertMany(result.articles).catch(() => {})
+      }
     },
     [],
   )
@@ -109,8 +147,13 @@ export function useFeedData(
   const refresh = useCallback(async () => {
     setLoading(true)
     setErrors([])
-    const result = await fetchAllFeeds(isFeedEnabled)
-    applyFetchResult(result)
+    const enabledSources = getFullyEnabledSources(isFeedEnabled)
+    await articleCache.evict().catch(() => {})
+    const [result, cached] = await Promise.all([
+      fetchAllFeeds(isFeedEnabled),
+      articleCache.getAll().catch(() => [] as NormalizedArticle[]),
+    ])
+    applyFetchResult(result, filterByEnabledSources(cached, enabledSources))
   }, [isFeedEnabled, applyFetchResult])
 
   useEffect(() => {
@@ -119,11 +162,39 @@ export function useFeedData(
       return
     }
     let cancelled = false
-    fetchAllFeeds(isFeedEnabled).then((result) => {
-      if (!cancelled) {
-        applyFetchResult(result)
+
+    async function load(): Promise<void> {
+      // L2: evict stale entries then read from IndexedDB
+      const enabledSources = getFullyEnabledSources(isFeedEnabled)
+      await articleCache.evict().catch(() => {})
+      const allCached = await articleCache.getAll().catch(() => [] as NormalizedArticle[])
+      const cachedArticles = filterByEnabledSources(allCached, enabledSources)
+
+      if (cancelled) return
+
+      if (cachedArticles.length > 0) {
+        const sorted = sortChronologically(cachedArticles)
+        const deduplicated = deduplicateArticles(sorted)
+        feedCache = {
+          articles: deduplicated,
+          errors: [],
+          lastRefreshedAt: null,
+        }
+        setArticles(deduplicated)
+        setErrors([])
+        setLastRefreshedAt(null)
+        setLoading(false)
       }
-    })
+
+      // L3: always fetch from network in background
+      const result = await fetchAllFeeds(isFeedEnabled)
+      if (!cancelled) {
+        applyFetchResult(result, cachedArticles)
+      }
+    }
+
+    load()
+
     return () => {
       cancelled = true
     }
