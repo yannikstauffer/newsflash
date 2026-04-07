@@ -27,7 +27,7 @@ export function clearFeedCache(): void {
   feedCache = null
 }
 
-export function deduplicateArticles(articles: NormalizedArticle[]): NormalizedArticle[] {
+function deduplicateArticles(articles: NormalizedArticle[]): NormalizedArticle[] {
   const seenKeys = new Set<string>()
   const seenLinks = new Set<string>()
   return articles.filter((article) => {
