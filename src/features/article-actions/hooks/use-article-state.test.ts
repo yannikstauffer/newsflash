@@ -209,6 +209,23 @@ describe("useArticleState", () => {
       expect(mockSetPinned).toHaveBeenCalledWith("heise:art-0", false)
     })
 
+    it("skips IDB upsert when adding a duplicate article", () => {
+      const article = makeArticle({ id: "heise:a1" })
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.addToReadList(article)
+      })
+
+      mockUpsertMany.mockClear()
+
+      act(() => {
+        result.current.addToReadList(article)
+      })
+
+      expect(mockUpsertMany).not.toHaveBeenCalled()
+    })
+
     it("truncates an oversized existing list to max on next write", () => {
       const stored = Array.from({ length: MAX_READLIST_ITEMS + 30 }, (_, index) => ({
         id: `heise:art-${index}`,

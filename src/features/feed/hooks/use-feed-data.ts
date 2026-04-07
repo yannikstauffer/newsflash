@@ -148,6 +148,7 @@ export function useFeedData(
     setLoading(true)
     setErrors([])
     const enabledSources = getFullyEnabledSources(isFeedEnabled)
+    await articleCache.evict().catch(() => {})
     const [result, cached] = await Promise.all([
       fetchAllFeeds(isFeedEnabled),
       articleCache.getAll().catch(() => [] as NormalizedArticle[]),

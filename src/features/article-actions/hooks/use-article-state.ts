@@ -127,9 +127,11 @@ export function useArticleState(): {
 
   const addToReadList = useCallback(
     (article: NormalizedArticle) => {
+      let didAdd = false
       let droppedId: string | undefined
       setStoredReadList((previous) => {
         if (previous.some((a) => a.id === article.id)) return previous
+        didAdd = true
         const next = [toStored(article), ...previous]
         if (next.length > MAX_READLIST_ITEMS) {
           droppedId = next.at(-1)?.id
@@ -137,9 +139,11 @@ export function useArticleState(): {
         }
         return next
       })
-      articleCache.upsertMany([article], { pinned: true }).catch(() => {})
-      if (droppedId) {
-        articleCache.setPinned(droppedId, false).catch(() => {})
+      if (didAdd) {
+        articleCache.upsertMany([article], { pinned: true }).catch(() => {})
+        if (droppedId) {
+          articleCache.setPinned(droppedId, false).catch(() => {})
+        }
       }
     },
     [setStoredReadList],
