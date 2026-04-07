@@ -76,6 +76,25 @@ async function fetchAllFeeds(
   return { articles: deduplicated, errors: fetchErrors }
 }
 
+function getFullyEnabledSources(
+  isFeedEnabled: (feedId: string) => boolean,
+): Set<string> {
+  const sources = new Set<string>()
+  for (const connector of connectors) {
+    if (connector.feeds.every((feed) => isFeedEnabled(feed.id))) {
+      sources.add(connector.id)
+    }
+  }
+  return sources
+}
+
+function filterByEnabledSources(
+  articles: NormalizedArticle[],
+  enabledSources: Set<string>,
+): NormalizedArticle[] {
+  return articles.filter((article) => enabledSources.has(article.source))
+}
+
 function mergeAndDeduplicate(
   networkArticles: NormalizedArticle[],
   cachedArticles: NormalizedArticle[],
@@ -128,11 +147,12 @@ export function useFeedData(
   const refresh = useCallback(async () => {
     setLoading(true)
     setErrors([])
+    const enabledSources = getFullyEnabledSources(isFeedEnabled)
     const [result, cached] = await Promise.all([
       fetchAllFeeds(isFeedEnabled),
       articleCache.getAll().catch(() => [] as NormalizedArticle[]),
     ])
-    applyFetchResult(result, cached)
+    applyFetchResult(result, filterByEnabledSources(cached, enabledSources))
   }, [isFeedEnabled, applyFetchResult])
 
   useEffect(() => {
@@ -144,8 +164,10 @@ export function useFeedData(
 
     async function load(): Promise<void> {
       // L2: evict stale entries then read from IndexedDB
+      const enabledSources = getFullyEnabledSources(isFeedEnabled)
       await articleCache.evict().catch(() => {})
-      const cachedArticles = await articleCache.getAll().catch(() => [] as NormalizedArticle[])
+      const allCached = await articleCache.getAll().catch(() => [] as NormalizedArticle[])
+      const cachedArticles = filterByEnabledSources(allCached, enabledSources)
 
       if (cancelled) return
 

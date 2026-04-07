@@ -52,6 +52,7 @@ function makeArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedArti
 }
 
 const selectiveFeedEnabled = (feedId: string) => feedId === "f1"
+const partialFeedEnabled = (feedId: string) => feedId !== "f3"
 
 describe("useFeedData", () => {
   const isFeedEnabled = vi.fn(() => true)
@@ -552,10 +553,11 @@ describe("useFeedData", () => {
 
   describe("L2 (IndexedDB) cache", () => {
     it("shows cached articles from IDB immediately without spinner when L1 is empty", async () => {
-      const cachedArticle = makeArticle({ id: "cached-1", title: "From IDB" })
+      const cachedArticle = makeArticle({ id: "cached-1", title: "From IDB", source: "c1" })
       const networkArticle = makeArticle({
         id: "net-1",
         title: "From Network",
+        source: "c1",
         link: "https://example.com/net",
         publishedAt: new Date("2026-03-20T12:00:00Z"),
       })
@@ -645,10 +647,11 @@ describe("useFeedData", () => {
     })
 
     it("background fetch updates articles after L2 hit", async () => {
-      const cachedArticle = makeArticle({ id: "cached-1", title: "Old Article" })
+      const cachedArticle = makeArticle({ id: "cached-1", title: "Old Article", source: "c1" })
       const freshArticle = makeArticle({
         id: "fresh-1",
         title: "Fresh Article",
+        source: "c1",
         link: "https://example.com/fresh",
         publishedAt: new Date("2026-03-20T12:00:00Z"),
       })
@@ -693,6 +696,41 @@ describe("useFeedData", () => {
       await act(async () => {})
 
       expect(mockUpsertMany).toHaveBeenCalledWith([networkArticle])
+    })
+
+    it("excludes cached articles from sources with disabled feeds", async () => {
+      const cachedFromEnabled = makeArticle({ id: "c1-1", title: "Enabled Source", source: "c1" })
+      const cachedFromDisabled = makeArticle({ id: "c2-1", title: "Disabled Source", source: "c2" })
+
+      mockGetAll.mockResolvedValue([cachedFromEnabled, cachedFromDisabled])
+
+      mockConnectors.push(
+        {
+          id: "c1",
+          name: "Connector 1",
+          language: "en",
+          feeds: [{ id: "f1", name: "Feed 1" }],
+          parse: vi.fn(() => []),
+        },
+        {
+          id: "c2",
+          name: "Connector 2",
+          language: "en",
+          feeds: [{ id: "f2", name: "Feed 2" }, { id: "f3", name: "Feed 3" }],
+          parse: vi.fn(() => []),
+        },
+      )
+
+      // f3 is disabled, so c2 is not fully enabled
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(partialFeedEnabled))
+
+      await act(async () => {})
+
+      // Only articles from fully-enabled source c1 should appear
+      expect(result.current.articles).toHaveLength(1)
+      expect(result.current.articles[0].source).toBe("c1")
     })
 
     it("falls back to network-only when IDB read fails", async () => {
@@ -814,12 +852,14 @@ describe("useFeedData", () => {
       const oldCachedArticle = makeArticle({
         id: "old-1",
         title: "Old Cached Article",
+        source: "c1",
         link: "https://example.com/old",
         publishedAt: new Date("2026-03-15T10:00:00Z"),
       })
       const freshArticle = makeArticle({
         id: "fresh-1",
         title: "Fresh Article",
+        source: "c1",
         link: "https://example.com/fresh",
         publishedAt: new Date("2026-03-20T10:00:00Z"),
       })
