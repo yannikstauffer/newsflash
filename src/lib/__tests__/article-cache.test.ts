@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 
 import {
   _resetForTesting,
+  bulkSetPinned,
   evict,
   getAll,
   getByDateRange,
@@ -261,6 +262,54 @@ describe("article-cache", () => {
       await expect(
         setPinned("non-existent", true),
       ).resolves.toBeUndefined()
+    })
+  })
+
+  describe("bulkSetPinned", () => {
+    it("should pin multiple articles in a single transaction", async () => {
+      await upsertMany([
+        makeArticle({ id: "art-1" }),
+        makeArticle({ id: "art-2" }),
+        makeArticle({ id: "art-3" }),
+      ])
+
+      await bulkSetPinned(["art-1", "art-3"], true)
+
+      // Pinned articles survive aggressive eviction, unpinned don't
+      await evict(0)
+      const articles = await getAll()
+      expect(articles).toHaveLength(2)
+      expect(articles.map((a) => a.id).sort()).toEqual(["art-1", "art-3"])
+    })
+
+    it("should unpin multiple articles in a single transaction", async () => {
+      await upsertMany([
+        makeArticle({ id: "art-1" }),
+        makeArticle({ id: "art-2" }),
+      ])
+      await bulkSetPinned(["art-1", "art-2"], true)
+      await bulkSetPinned(["art-1", "art-2"], false)
+
+      await evict(0)
+      const articles = await getAll()
+      expect(articles).toHaveLength(0)
+    })
+
+    it("should skip non-existent ids without error", async () => {
+      await upsertMany([makeArticle({ id: "art-1" })])
+
+      await expect(
+        bulkSetPinned(["art-1", "non-existent", "also-missing"], true),
+      ).resolves.toBeUndefined()
+
+      await evict(0)
+      const articles = await getAll()
+      expect(articles).toHaveLength(1)
+      expect(articles[0].id).toBe("art-1")
+    })
+
+    it("should be a no-op for empty ids array", async () => {
+      await expect(bulkSetPinned([], true)).resolves.toBeUndefined()
     })
   })
 

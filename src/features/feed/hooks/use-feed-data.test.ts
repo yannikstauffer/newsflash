@@ -570,12 +570,15 @@ describe("useFeedData", () => {
       })
 
       let resolveFetch: (value: string) => void
-      mockFetchFeed.mockImplementation(
-        () =>
-          new Promise<string>((resolve) => {
-            resolveFetch = resolve
-          }),
-      )
+      const fetchCalled = new Promise<void>((resolveOuter) => {
+        mockFetchFeed.mockImplementation(
+          () =>
+            new Promise<string>((resolve) => {
+              resolveFetch = resolve
+              resolveOuter()
+            }),
+        )
+      })
 
       const { result } = renderHook(() => useFeedData(isFeedEnabled))
 
@@ -586,6 +589,11 @@ describe("useFeedData", () => {
       expect(result.current.articles).toHaveLength(1)
       expect(result.current.articles[0].id).toBe("cached-1")
       expect(result.current.loading).toBe(false)
+
+      // Wait for fetchFeed to actually be called before resolving
+      await act(async () => {
+        await fetchCalled
+      })
 
       // Resolve network fetch
       await act(async () => {
