@@ -567,6 +567,27 @@ describe("useArticleState", () => {
       expect(mockUpsertMany).toHaveBeenCalledWith(articles, { pinned: true })
     })
 
+    it("only pins articles that survive the cap when restoring", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      // Restore more articles than the cap allows
+      const articles = Array.from({ length: MAX_READLIST_ITEMS + 5 }, (_, index) =>
+        makeArticle({ id: `heise:art-${index}` }),
+      )
+
+      mockUpsertMany.mockClear()
+
+      act(() => {
+        result.current.restoreReadList(articles)
+      })
+
+      // Only the first MAX_READLIST_ITEMS articles should be pinned
+      const pinnedArticles = mockUpsertMany.mock.calls[0][0] as NormalizedArticle[]
+      expect(pinnedArticles).toHaveLength(MAX_READLIST_ITEMS)
+      expect(pinnedArticles[0].id).toBe("heise:art-0")
+      expect(pinnedArticles[MAX_READLIST_ITEMS - 1].id).toBe(`heise:art-${MAX_READLIST_ITEMS - 1}`)
+    })
+
     it("does not affect read-list operations when upsertMany fails", () => {
       mockUpsertMany.mockRejectedValue(new Error("IDB unavailable"))
 

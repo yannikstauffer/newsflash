@@ -182,17 +182,20 @@ export function useArticleState(): {
 
   const restoreReadList = useCallback(
     (articles: NormalizedArticle[]) => {
-      setStoredReadList((previous) => {
-        const existingIds = new Set(previous.map((a) => a.id))
-        const newEntries = articles
-          .filter((a) => !existingIds.has(a.id))
-          .map(toStored)
-        const next = [...newEntries, ...previous]
-        return next.length > MAX_READLIST_ITEMS ? next.slice(0, MAX_READLIST_ITEMS) : next
-      })
-      articleCache.upsertMany(articles, { pinned: true }).catch(() => {})
+      const existingIds = new Set(storedReadList.map((a) => a.id))
+      const newEntries = articles.filter((a) => !existingIds.has(a.id))
+      const allEntries = [...newEntries.map(toStored), ...storedReadList]
+      const capped = allEntries.length > MAX_READLIST_ITEMS
+        ? allEntries.slice(0, MAX_READLIST_ITEMS)
+        : allEntries
+      setStoredReadList(capped)
+      const cappedIds = new Set(capped.map((a) => a.id))
+      const articlesToPin = articles.filter((a) => cappedIds.has(a.id))
+      if (articlesToPin.length > 0) {
+        articleCache.upsertMany(articlesToPin, { pinned: true }).catch(() => {})
+      }
     },
-    [setStoredReadList],
+    [storedReadList, setStoredReadList],
   )
 
   const removeHiddenBySource = useCallback(
