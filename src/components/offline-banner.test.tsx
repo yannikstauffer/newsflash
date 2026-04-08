@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import i18n from "i18next"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { OfflineBanner } from "./offline-banner"
 
@@ -13,14 +14,21 @@ const mockUseOnlineStatus = vi.mocked(useOnlineStatus)
 
 describe("OfflineBanner", () => {
   const originalOnLine = navigator.onLine
+  let originalLanguage: string
 
-  afterEach(() => {
+  beforeEach(async () => {
+    originalLanguage = i18n.language
+    await i18n.changeLanguage("en")
+  })
+
+  afterEach(async () => {
     vi.restoreAllMocks()
     Object.defineProperty(navigator, "onLine", {
       value: originalOnLine,
       writable: true,
       configurable: true,
     })
+    await i18n.changeLanguage(originalLanguage)
   })
 
   it("renders nothing when online", () => {

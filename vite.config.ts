@@ -30,7 +30,7 @@ export default defineConfig({
       injectRegister: "auto",
       manifest: false,
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        globPatterns: ["**/*.{js,css,html,json,svg,png,woff2}"],
         navigateFallback: "index.html",
       },
     }),
