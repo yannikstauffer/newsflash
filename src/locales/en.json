@@ -82,6 +82,9 @@
     "invalidEmail": "Please enter a valid email address.",
     "sendError": "Failed to send magic link. Please try again."
   },
+  "offline": {
+    "banner": "You're offline — showing cached content"
+  },
   "error": {
     "heading": "Something went wrong",
     "message": "An unexpected error occurred. Please reload the page to try again.",

@@ -82,6 +82,9 @@
     "invalidEmail": "Bitte gib eine gültige E-Mail-Adresse ein.",
     "sendError": "Magic Link konnte nicht gesendet werden. Bitte versuche es erneut."
   },
+  "offline": {
+    "banner": "Du bist offline — es werden zwischengespeicherte Inhalte angezeigt"
+  },
   "error": {
     "heading": "Etwas ist schiefgelaufen",
     "message": "Ein unerwarteter Fehler ist aufgetreten. Bitte lade die Seite neu, um es erneut zu versuchen.",
