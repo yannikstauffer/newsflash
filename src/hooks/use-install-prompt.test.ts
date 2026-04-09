@@ -108,6 +108,69 @@ describe("useInstallPrompt", () => {
     expect(result.current.isDismissed).toBe(false)
   })
 
+  it("clears deferred event after dismissed — second triggerInstall is a no-op", async () => {
+    const mockEvent = {
+      preventDefault: vi.fn(),
+      prompt: vi.fn().mockResolvedValue({ outcome: "dismissed" }),
+    }
+
+    const { result } = renderHook(() => useInstallPrompt())
+
+    act(() => {
+      for (const listener of beforeInstallListeners) {
+        listener(mockEvent as unknown as Event)
+      }
+    })
+
+    expect(result.current.canInstall).toBe(true)
+
+    await act(async () => {
+      await result.current.triggerInstall()
+    })
+
+    expect(mockEvent.prompt).toHaveBeenCalledTimes(1)
+    expect(result.current.canInstall).toBe(false)
+
+    // Event is single-use — second call should be a no-op
+    mockEvent.prompt.mockClear()
+    await act(async () => {
+      await result.current.triggerInstall()
+    })
+
+    expect(mockEvent.prompt).not.toHaveBeenCalled()
+  })
+
+  it("clears deferred event and resets canInstall when prompt() rejects", async () => {
+    const mockEvent = {
+      preventDefault: vi.fn(),
+      prompt: vi.fn().mockRejectedValue(new Error("prompt failed")),
+    }
+
+    const { result } = renderHook(() => useInstallPrompt())
+
+    act(() => {
+      for (const listener of beforeInstallListeners) {
+        listener(mockEvent as unknown as Event)
+      }
+    })
+
+    expect(result.current.canInstall).toBe(true)
+
+    await act(async () => {
+      await result.current.triggerInstall()
+    })
+
+    expect(result.current.canInstall).toBe(false)
+
+    // Event cleared — second call is a no-op
+    mockEvent.prompt.mockClear()
+    await act(async () => {
+      await result.current.triggerInstall()
+    })
+
+    expect(mockEvent.prompt).not.toHaveBeenCalled()
+  })
+
   it("returns canInstall=false when standalone", () => {
     mockIsStandalone.mockReturnValue(true)
 

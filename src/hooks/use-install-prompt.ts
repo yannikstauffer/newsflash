@@ -50,17 +50,22 @@ export function useInstallPrompt(): InstallPromptResult {
       setCanInstall(true)
     }
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+    globalThis.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+      globalThis.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
     }
   }, [])
 
   const triggerInstall = useCallback(async () => {
     const prompt = deferredPrompt.current
     if (!prompt) return
-    const result = await prompt.prompt()
-    if (result.outcome === "accepted") {
+    try {
+      await prompt.prompt()
+    } catch {
+      // prompt() may reject if the event is stale or the browser cancels
+    } finally {
+      // prompt() is single-use — always clear, even on rejection.
+      // Chrome fires a new beforeinstallprompt on next visit if dismissed.
       deferredPrompt.current = null
       setCanInstall(false)
     }
