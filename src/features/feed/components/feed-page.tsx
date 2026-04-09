@@ -4,6 +4,7 @@ import { useFeedPage } from "../hooks/use-feed-page"
 import { formatRelativeTime } from "../utils/format-time"
 
 import { InstallBanner } from "@/components/install-banner"
+import { LastSyncedIndicator } from "@/components/last-synced-indicator"
 
 export function FeedPage() {
   const { filterBarProps, feedListProps, lastRefreshedAt } = useFeedPage()
@@ -18,6 +19,8 @@ export function FeedPage() {
           {`Refreshed ${formatRelativeTime(lastRefreshedAt)}`}
         </p>
       )}
+
+      <LastSyncedIndicator />
 
       <FeedList
         articles={feedListProps.filteredArticles}
