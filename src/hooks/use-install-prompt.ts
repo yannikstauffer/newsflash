@@ -59,11 +59,12 @@ export function useInstallPrompt(): InstallPromptResult {
   const triggerInstall = useCallback(async () => {
     const prompt = deferredPrompt.current
     if (!prompt) return
-    const result = await prompt.prompt()
-    // prompt() is single-use — clear regardless of outcome.
-    // Chrome will fire a new beforeinstallprompt on next visit if dismissed.
-    deferredPrompt.current = null
-    if (result.outcome === "accepted") {
+    try {
+      await prompt.prompt()
+    } finally {
+      // prompt() is single-use — always clear, even on rejection.
+      // Chrome fires a new beforeinstallprompt on next visit if dismissed.
+      deferredPrompt.current = null
       setCanInstall(false)
     }
   }, [])

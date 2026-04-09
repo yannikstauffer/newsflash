@@ -129,6 +129,7 @@ describe("useInstallPrompt", () => {
     })
 
     expect(mockEvent.prompt).toHaveBeenCalledTimes(1)
+    expect(result.current.canInstall).toBe(false)
 
     // Event is single-use — second call should be a no-op
     mockEvent.prompt.mockClear()
