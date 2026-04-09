@@ -50,9 +50,9 @@ export function useInstallPrompt(): InstallPromptResult {
       setCanInstall(true)
     }
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+    globalThis.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+      globalThis.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
     }
   }, [])
 
@@ -60,8 +60,10 @@ export function useInstallPrompt(): InstallPromptResult {
     const prompt = deferredPrompt.current
     if (!prompt) return
     const result = await prompt.prompt()
+    // prompt() is single-use — clear regardless of outcome.
+    // Chrome will fire a new beforeinstallprompt on next visit if dismissed.
+    deferredPrompt.current = null
     if (result.outcome === "accepted") {
-      deferredPrompt.current = null
       setCanInstall(false)
     }
   }, [])
