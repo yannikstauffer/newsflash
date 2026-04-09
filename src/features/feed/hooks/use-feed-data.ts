@@ -131,6 +131,7 @@ export function useFeedData(
 
       const hasCachedData = cachedArticles.length > 0
       const visibleErrors = hasCachedData ? [] : result.errors
+      const fetchSucceeded = result.articles.length > 0 || result.errors.length === 0
 
       if (hasCachedData && result.errors.length > 0) {
         for (const error of result.errors) {
@@ -138,14 +139,16 @@ export function useFeedData(
         }
       }
 
+      const updatedRefreshedAt = fetchSucceeded ? now : feedCache?.lastRefreshedAt ?? null
+
       feedCache = {
         articles: merged,
         errors: visibleErrors,
-        lastRefreshedAt: now,
+        lastRefreshedAt: updatedRefreshedAt,
       }
       setArticles(merged)
       setErrors(visibleErrors)
-      setLastRefreshedAt(now)
+      setLastRefreshedAt(updatedRefreshedAt)
       setLoading(false)
       if (result.articles.length > 0) {
         articleCache.upsertMany(result.articles).catch(() => {})

@@ -881,6 +881,28 @@ describe("useFeedData", () => {
       expect(result.current.errors).toHaveLength(0)
     })
 
+    it("does not update lastRefreshedAt when fetch fails and errors are suppressed", async () => {
+      const cachedArticle = makeArticle({ id: "cached-1", title: "Cached", source: "c1" })
+
+      mockGetAll.mockResolvedValue([cachedArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(),
+      })
+
+      mockFetchFeed.mockRejectedValueOnce(new Error("Network error"))
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      expect(result.current.errors).toHaveLength(0)
+      expect(result.current.lastRefreshedAt).toBeNull()
+    })
+
     it("surfaces errors when IDB cache is empty", async () => {
       mockGetAll.mockResolvedValue([])
 
