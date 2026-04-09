@@ -128,13 +128,23 @@ export function useFeedData(
     ) => {
       const now = new Date()
       const merged = mergeAndDeduplicate(result.articles, cachedArticles)
+
+      const hasCachedData = cachedArticles.length > 0
+      const visibleErrors = hasCachedData ? [] : result.errors
+
+      if (hasCachedData && result.errors.length > 0) {
+        for (const error of result.errors) {
+          console.error("[feed] suppressed offline error:", error)
+        }
+      }
+
       feedCache = {
         articles: merged,
-        errors: result.errors,
+        errors: visibleErrors,
         lastRefreshedAt: now,
       }
       setArticles(merged)
-      setErrors(result.errors)
+      setErrors(visibleErrors)
       setLastRefreshedAt(now)
       setLoading(false)
       if (result.articles.length > 0) {

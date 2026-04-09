@@ -1,3 +1,5 @@
+import { useCallback, useRef, useState } from "react"
+
 import { formatAbsoluteTime, formatShortTime } from "../utils/format-time"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
@@ -10,16 +12,28 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
+  const [imageError, setImageError] = useState(false)
+  const imageErrorRef = useRef(false)
+
+  const imageRef = useCallback((node: HTMLImageElement | null) => {
+    if (!node) return
+    node.addEventListener("error", () => {
+      imageErrorRef.current = true
+      setImageError(true)
+    })
+  }, [])
+
   return (
     <article
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1: focusable for keyboard shortcuts
       tabIndex={0}
-      className={`group relative grid ${article.imageUrl ? "grid-cols-[auto_1fr]" : "grid-cols-1"} gap-3 rounded-lg bg-card p-3 shadow-sm transition-all duration-150 hover:shadow-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 dark:shadow-[0_1px_3px_rgba(0,0,0,0.4)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.5)] md:gap-4 md:p-4 ${
+      className={`group relative grid ${article.imageUrl && !imageError ? "grid-cols-[auto_1fr]" : "grid-cols-1"} gap-3 rounded-lg bg-card p-3 shadow-sm transition-all duration-150 hover:shadow-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 dark:shadow-[0_1px_3px_rgba(0,0,0,0.4)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.5)] md:gap-4 md:p-4 ${
         dimmed ? "opacity-50" : ""
       }`}
     >
-      {article.imageUrl && (
+      {article.imageUrl && !imageError && (
         <img
+          ref={imageRef}
           src={article.imageUrl}
           alt=""
           loading="lazy"

@@ -847,6 +847,88 @@ describe("useFeedData", () => {
     })
   })
 
+  describe("offline error suppression", () => {
+    it("suppresses errors when IDB cache has articles", async () => {
+      const cachedArticle = makeArticle({ id: "cached-1", title: "Cached", source: "c1" })
+
+      mockGetAll.mockResolvedValue([cachedArticle])
+
+      mockConnectors.push(
+        {
+          id: "c1",
+          name: "Connector 1",
+          language: "en",
+          feeds: [{ id: "f1", name: "Feed 1" }],
+          parse: vi.fn(() => []),
+        },
+        {
+          id: "c2",
+          name: "Connector 2",
+          language: "en",
+          feeds: [{ id: "f2", name: "Feed 2" }],
+          parse: vi.fn(),
+        },
+      )
+
+      mockFetchFeed
+        .mockResolvedValueOnce("<xml/>")
+        .mockRejectedValueOnce(new Error("Network error"))
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      expect(result.current.articles).toHaveLength(1)
+      expect(result.current.errors).toHaveLength(0)
+    })
+
+    it("surfaces errors when IDB cache is empty", async () => {
+      mockGetAll.mockResolvedValue([])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(),
+      })
+
+      mockFetchFeed.mockRejectedValueOnce(new Error("Network error"))
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      expect(result.current.errors).toHaveLength(1)
+      expect(result.current.errors[0]).toContain("Network error")
+    })
+
+    it("logs suppressed errors to console.error", async () => {
+      const cachedArticle = makeArticle({ id: "cached-1", title: "Cached", source: "c1" })
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+      mockGetAll.mockResolvedValue([cachedArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(),
+      })
+
+      mockFetchFeed.mockRejectedValueOnce(new Error("Network error"))
+
+      renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "[feed] suppressed offline error:",
+        expect.stringContaining("Network error"),
+      )
+
+      consoleSpy.mockRestore()
+    })
+  })
+
   describe("historical day navigation", () => {
     it("includes cached articles from IDB when not in network fetch results", async () => {
       const oldCachedArticle = makeArticle({

@@ -32,6 +32,31 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,json,svg,png,woff2}"],
         navigateFallback: "index.html",
+        runtimeCaching: [
+          {
+            urlPattern: /\/api\/rss\/.*/,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "feed-api-cache",
+              networkTimeoutSeconds: 5,
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 3 * 24 * 60 * 60,
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/.*\.(jpg|jpeg|png|webp|gif|avif)/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "article-images-cache",
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 7 * 24 * 60 * 60,
+              },
+            },
+          },
+        ],
       },
     }),
   ],

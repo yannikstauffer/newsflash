@@ -1,5 +1,6 @@
 import { useDrag } from "@use-gesture/react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 
 import type { RefObject } from "react"
 
@@ -71,7 +72,11 @@ export function usePullToRefresh({
 
       if (last) {
         if (my >= PULL_THRESHOLD) {
-          onRefreshRef.current()
+          if (navigator.onLine) {
+            onRefreshRef.current()
+          } else {
+            toast("You're offline")
+          }
         } else {
           setRawPullOffset(0)
         }

@@ -1,7 +1,12 @@
 import { act, renderHook } from "@testing-library/react"
+import { toast } from "sonner"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { usePullToRefresh } from "./use-pull-to-refresh"
+
+vi.mock("sonner", () => ({
+  toast: vi.fn(),
+}))
 
 type DragHandler = (state: {
   movement: [number, number]
@@ -251,6 +256,69 @@ describe("usePullToRefresh", () => {
       })
 
       expect(cancel).toHaveBeenCalled()
+    })
+  })
+
+  describe("offline awareness", () => {
+    it("shows toast and skips refresh when offline", () => {
+      mockMatchMedia(true)
+      Object.defineProperty(navigator, "onLine", { value: false, writable: true })
+      const onRefresh = vi.fn()
+
+      renderHook(() =>
+        usePullToRefresh({ onRefresh, isRefreshing: false }),
+      )
+
+      act(() => {
+        capturedDragHandler!({
+          movement: [0, 70],
+          last: false,
+          cancel: vi.fn(),
+        })
+      })
+
+      act(() => {
+        capturedDragHandler!({
+          movement: [0, 70],
+          last: true,
+          cancel: vi.fn(),
+        })
+      })
+
+      expect(onRefresh).not.toHaveBeenCalled()
+      expect(toast).toHaveBeenCalledWith("You're offline")
+
+      Object.defineProperty(navigator, "onLine", { value: true, writable: true })
+    })
+
+    it("proceeds with refresh when online", () => {
+      mockMatchMedia(true)
+      vi.mocked(toast).mockClear()
+      Object.defineProperty(navigator, "onLine", { value: true, writable: true })
+      const onRefresh = vi.fn()
+
+      renderHook(() =>
+        usePullToRefresh({ onRefresh, isRefreshing: false }),
+      )
+
+      act(() => {
+        capturedDragHandler!({
+          movement: [0, 70],
+          last: false,
+          cancel: vi.fn(),
+        })
+      })
+
+      act(() => {
+        capturedDragHandler!({
+          movement: [0, 70],
+          last: true,
+          cancel: vi.fn(),
+        })
+      })
+
+      expect(onRefresh).toHaveBeenCalledOnce()
+      expect(toast).not.toHaveBeenCalled()
     })
   })
 

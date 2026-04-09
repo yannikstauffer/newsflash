@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { act, render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
 import { ArticleCard } from "./article-card"
@@ -41,5 +41,38 @@ describe("ArticleCard", () => {
 
     const article = screen.getByRole("article")
     expect(article.className).toContain("group")
+  })
+
+  it("hides image and switches to single-column layout when image fails to load", () => {
+    const { container } = render(
+      <ArticleCard
+        article={makeArticle({ imageUrl: "https://example.com/broken.jpg" })}
+      />,
+    )
+
+    const img = container.querySelector("img")
+    expect(img).toBeInTheDocument()
+
+    const articleBefore = screen.getByRole("article")
+    expect(articleBefore.className).toContain("grid-cols-[auto_1fr]")
+
+    act(() => {
+      img!.dispatchEvent(new Event("error"))
+    })
+
+    const articleAfter = screen.getByRole("article")
+    expect(articleAfter.className).toContain("grid-cols-1")
+    expect(articleAfter.className).not.toContain("grid-cols-[auto_1fr]")
+    expect(container.querySelector("img")).not.toBeInTheDocument()
+  })
+
+  it("renders without image when no imageUrl is provided", () => {
+    const { container } = render(
+      <ArticleCard article={makeArticle({ imageUrl: undefined })} />,
+    )
+
+    expect(container.querySelector("img")).not.toBeInTheDocument()
+    const article = screen.getByRole("article")
+    expect(article.className).toContain("grid-cols-1")
   })
 })
