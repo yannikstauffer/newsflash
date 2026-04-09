@@ -11,11 +11,15 @@ const STORAGE_KEY = "newsflash:install-dismissed"
 const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
 
 function isDismissedRecently(): boolean {
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return false
-  const timestamp = Number(raw)
-  if (Number.isNaN(timestamp)) return false
-  return Date.now() - timestamp < COOLDOWN_MS
+  try {
+    const raw = globalThis.localStorage.getItem(STORAGE_KEY)
+    if (!raw) return false
+    const timestamp = Number(raw)
+    if (Number.isNaN(timestamp)) return false
+    return Date.now() - timestamp < COOLDOWN_MS
+  } catch {
+    return false
+  }
 }
 
 function isIosSafari(): boolean {
@@ -63,7 +67,11 @@ export function useInstallPrompt(): InstallPromptResult {
   }, [])
 
   const dismiss = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, String(Date.now()))
+    try {
+      globalThis.localStorage.setItem(STORAGE_KEY, String(Date.now()))
+    } catch {
+      // localStorage unavailable or full
+    }
     setDismissed(true)
   }, [])
 

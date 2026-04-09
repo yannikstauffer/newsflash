@@ -1,7 +1,10 @@
 import { useSyncExternalStore } from "react"
 
 function getSnapshot(): boolean {
-  if (window.matchMedia("(display-mode: standalone)").matches) {
+  if (
+    typeof globalThis.matchMedia === "function" &&
+    globalThis.matchMedia("(display-mode: standalone)").matches
+  ) {
     return true
   }
   if ("standalone" in navigator && (navigator as Navigator & { standalone?: boolean }).standalone) {
@@ -11,7 +14,10 @@ function getSnapshot(): boolean {
 }
 
 function subscribe(callback: () => void): () => void {
-  const mediaQuery = window.matchMedia("(display-mode: standalone)")
+  if (typeof globalThis.matchMedia !== "function") {
+    return () => {}
+  }
+  const mediaQuery = globalThis.matchMedia("(display-mode: standalone)")
   mediaQuery.addEventListener("change", callback)
   return () => {
     mediaQuery.removeEventListener("change", callback)
