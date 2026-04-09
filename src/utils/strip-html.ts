@@ -7,6 +7,10 @@ export function stripHtml(html: string): string {
     return ""
   }
 
+  if (typeof DOMParser === "undefined") {
+    return html
+  }
+
   const parsed = new DOMParser().parseFromString(html, "text/html")
   const text = parsed.body.textContent ?? ""
   return text.replaceAll(/\s+/g, " ").trim()
