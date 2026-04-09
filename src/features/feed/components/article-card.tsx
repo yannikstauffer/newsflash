@@ -12,11 +12,13 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
-  const [imageError, setImageError] = useState(false)
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
 
   const handleImageError = useCallback(() => {
-    setImageError(true)
-  }, [])
+    setFailedUrl((current) => current ?? article.imageUrl ?? null)
+  }, [article.imageUrl])
+
+  const imageError = failedUrl === article.imageUrl
 
   return (
     <article
