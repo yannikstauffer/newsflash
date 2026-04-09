@@ -32,7 +32,7 @@ function mockMatchMedia(pointerCoarse: boolean) {
   }))
 }
 
-const originalOnLineDescriptor = Object.getOwnPropertyDescriptor(navigator, "onLine")
+const originalOnLine = navigator.onLine
 
 describe("usePullToRefresh", () => {
   beforeEach(() => {
@@ -43,11 +43,7 @@ describe("usePullToRefresh", () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
-    if (originalOnLineDescriptor) {
-      Object.defineProperty(navigator, "onLine", originalOnLineDescriptor)
-    } else {
-      Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true })
-    }
+    Object.defineProperty(navigator, "onLine", { value: originalOnLine, writable: true, configurable: true })
   })
 
   describe("touch detection", () => {
