@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 declare const self: ServiceWorkerGlobalScope
 
+import { CacheableResponsePlugin } from "workbox-cacheable-response"
 import { clientsClaim } from "workbox-core"
 import { ExpirationPlugin } from "workbox-expiration"
 import { createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching"
@@ -45,6 +46,7 @@ registerRoute(
   new CacheFirst({
     cacheName: "article-images-cache",
     plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
       new ExpirationPlugin({
         maxEntries: 200,
         maxAgeSeconds: 7 * 24 * 60 * 60,
@@ -70,8 +72,8 @@ async function syncFeeds(): Promise<void> {
     const result = await fetchAndParseAllFeeds(feedIds)
     if (result.articles.length > 0) {
       await articleCache.upsertMany(result.articles)
+      await setLastSyncedAt(new Date())
     }
-    await setLastSyncedAt(new Date())
   } catch (error) {
     console.error("[sw] periodic sync failed:", error)
   }
