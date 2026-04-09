@@ -10,7 +10,7 @@ import { CacheFirst, NetworkFirst } from "workbox-strategies"
 import { feedUrls } from "@/config/feeds"
 import * as articleCache from "@/lib/article-cache"
 import { fetchAndParseAllFeeds } from "@/lib/feed-pipeline"
-import { setLastSyncedAt } from "@/lib/sync-metadata"
+import { getFeedPreferences, setLastSyncedAt } from "@/lib/sync-metadata"
 
 // Auto-update: take control immediately
 self.skipWaiting()
@@ -54,10 +54,20 @@ registerRoute(
 )
 
 // Periodic Background Sync: pre-warm article cache
+async function getEnabledFeedIds(): Promise<string[]> {
+  const allFeedIds = Object.keys(feedUrls)
+  const preferences = await getFeedPreferences().catch(() => null)
+  if (!preferences) return allFeedIds
+  return allFeedIds.filter((id) =>
+    // eslint-disable-next-line security/detect-object-injection -- id is from our feedUrls config
+    preferences[id] !== false,
+  )
+}
+
 async function syncFeeds(): Promise<void> {
   try {
-    const allFeedIds = Object.keys(feedUrls)
-    const result = await fetchAndParseAllFeeds(allFeedIds)
+    const feedIds = await getEnabledFeedIds()
+    const result = await fetchAndParseAllFeeds(feedIds)
     if (result.articles.length > 0) {
       await articleCache.upsertMany(result.articles)
     }

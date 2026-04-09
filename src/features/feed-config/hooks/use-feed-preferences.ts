@@ -1,6 +1,7 @@
-import { useCallback } from "react"
+import { useCallback, useEffect } from "react"
 
 import { useSyncedStorage } from "@/hooks/use-synced-storage"
+import { setFeedPreferences } from "@/lib/sync-metadata"
 
 const STORAGE_KEY = "newsflash:feed-prefs"
 
@@ -16,6 +17,10 @@ export function useFeedPreferences(): {
   const [store, setStore] = useSyncedStorage<Record<string, boolean>>(STORAGE_KEY, {})
 
   const preferences: Record<string, boolean> = store
+
+  useEffect(() => {
+    setFeedPreferences(store).catch(() => {})
+  }, [store])
 
   const isFeedEnabled = useCallback(
     (feedId: string): boolean => {
