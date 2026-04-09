@@ -3,11 +3,14 @@ import { FilterBar } from "./filter-bar"
 import { useFeedPage } from "../hooks/use-feed-page"
 import { formatRelativeTime } from "../utils/format-time"
 
+import { InstallBanner } from "@/components/install-banner"
+
 export function FeedPage() {
   const { filterBarProps, feedListProps, lastRefreshedAt } = useFeedPage()
 
   return (
     <div className="flex flex-col gap-4">
+      <InstallBanner />
       <FilterBar {...filterBarProps} />
 
       {lastRefreshedAt && (
