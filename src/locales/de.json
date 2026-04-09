@@ -83,7 +83,8 @@
     "sendError": "Magic Link konnte nicht gesendet werden. Bitte versuche es erneut."
   },
   "offline": {
-    "banner": "Du bist offline — es werden zwischengespeicherte Inhalte angezeigt"
+    "banner": "Du bist offline — es werden zwischengespeicherte Inhalte angezeigt",
+    "pullToRefresh": "Du bist offline"
   },
   "error": {
     "heading": "Etwas ist schiefgelaufen",

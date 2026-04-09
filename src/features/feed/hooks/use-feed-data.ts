@@ -128,14 +128,27 @@ export function useFeedData(
     ) => {
       const now = new Date()
       const merged = mergeAndDeduplicate(result.articles, cachedArticles)
+
+      const hasCachedData = cachedArticles.length > 0
+      const visibleErrors = hasCachedData ? [] : result.errors
+      const fetchSucceeded = result.articles.length > 0 || result.errors.length === 0
+
+      if (hasCachedData && result.errors.length > 0) {
+        for (const error of result.errors) {
+          console.error("[feed] suppressed fetch error (cached data available):", error)
+        }
+      }
+
+      const updatedRefreshedAt = fetchSucceeded ? now : feedCache?.lastRefreshedAt ?? null
+
       feedCache = {
         articles: merged,
-        errors: result.errors,
-        lastRefreshedAt: now,
+        errors: visibleErrors,
+        lastRefreshedAt: updatedRefreshedAt,
       }
       setArticles(merged)
-      setErrors(result.errors)
-      setLastRefreshedAt(now)
+      setErrors(visibleErrors)
+      setLastRefreshedAt(updatedRefreshedAt)
       setLoading(false)
       if (result.articles.length > 0) {
         articleCache.upsertMany(result.articles).catch(() => {})
