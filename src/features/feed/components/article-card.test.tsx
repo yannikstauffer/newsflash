@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
 import { ArticleCard } from "./article-card"
@@ -56,9 +56,7 @@ describe("ArticleCard", () => {
     const articleBefore = screen.getByRole("article")
     expect(articleBefore.className).toContain("grid-cols-[auto_1fr]")
 
-    act(() => {
-      img!.dispatchEvent(new Event("error"))
-    })
+    fireEvent.error(img!)
 
     const articleAfter = screen.getByRole("article")
     expect(articleAfter.className).toContain("grid-cols-1")

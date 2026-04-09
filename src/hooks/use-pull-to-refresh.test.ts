@@ -37,6 +37,8 @@ function mockMatchMedia(pointerCoarse: boolean) {
   }))
 }
 
+const originalOnLineDescriptor = Object.getOwnPropertyDescriptor(navigator, "onLine")
+
 describe("usePullToRefresh", () => {
   beforeEach(() => {
     capturedDragHandler = undefined
@@ -46,6 +48,11 @@ describe("usePullToRefresh", () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    if (originalOnLineDescriptor) {
+      Object.defineProperty(navigator, "onLine", originalOnLineDescriptor)
+    } else {
+      Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true })
+    }
   })
 
   describe("touch detection", () => {
@@ -262,7 +269,7 @@ describe("usePullToRefresh", () => {
   describe("offline awareness", () => {
     it("shows toast and skips refresh when offline", () => {
       mockMatchMedia(true)
-      Object.defineProperty(navigator, "onLine", { value: false, writable: true })
+      Object.defineProperty(navigator, "onLine", { value: false, writable: true, configurable: true })
       const onRefresh = vi.fn()
 
       renderHook(() =>
@@ -287,14 +294,12 @@ describe("usePullToRefresh", () => {
 
       expect(onRefresh).not.toHaveBeenCalled()
       expect(toast).toHaveBeenCalledWith("You're offline")
-
-      Object.defineProperty(navigator, "onLine", { value: true, writable: true })
     })
 
     it("proceeds with refresh when online", () => {
       mockMatchMedia(true)
       vi.mocked(toast).mockClear()
-      Object.defineProperty(navigator, "onLine", { value: true, writable: true })
+      Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true })
       const onRefresh = vi.fn()
 
       renderHook(() =>

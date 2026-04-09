@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useState } from "react"
 
 import { formatAbsoluteTime, formatShortTime } from "../utils/format-time"
 
@@ -13,14 +13,9 @@ interface ArticleCardProps {
 
 export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
   const [imageError, setImageError] = useState(false)
-  const imageErrorRef = useRef(false)
 
-  const imageRef = useCallback((node: HTMLImageElement | null) => {
-    if (!node) return
-    node.addEventListener("error", () => {
-      imageErrorRef.current = true
-      setImageError(true)
-    })
+  const handleImageError = useCallback(() => {
+    setImageError(true)
   }, [])
 
   return (
@@ -32,14 +27,15 @@ export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
       }`}
     >
       {article.imageUrl && !imageError && (
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
         <img
-          ref={imageRef}
           src={article.imageUrl}
           alt=""
           loading="lazy"
           width={96}
           height={96}
           className="size-24 shrink-0 self-center rounded-lg object-cover"
+          onError={handleImageError}
         />
       )}
       <div className="min-w-0 text-left">
