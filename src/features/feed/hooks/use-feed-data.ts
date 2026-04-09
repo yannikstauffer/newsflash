@@ -2,10 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
-import { feedProxyPath } from "@/config/feeds"
-import { fetchFeed } from "@/features/connectors/fetch-feed"
 import { connectors } from "@/features/connectors/registry"
 import * as articleCache from "@/lib/article-cache"
+import { fetchAndParseAllFeeds } from "@/lib/feed-pipeline"
 
 interface FeedDataResult {
   articles: NormalizedArticle[]
@@ -47,33 +46,25 @@ function sortChronologically(articles: NormalizedArticle[]): NormalizedArticle[]
   )
 }
 
+function getEnabledFeedIds(
+  isFeedEnabled: (feedId: string) => boolean,
+): string[] {
+  return connectors.flatMap((connector) =>
+    connector.feeds
+      .filter((feed) => isFeedEnabled(feed.id))
+      .map((feed) => feed.id),
+  )
+}
+
 async function fetchAllFeeds(
   isFeedEnabled: (feedId: string) => boolean,
 ): Promise<{ articles: NormalizedArticle[]; errors: string[] }> {
-  const fetchErrors: string[] = []
-
-  const feedPromises = connectors.flatMap((connector) =>
-    connector.feeds
-      .filter((feed) => isFeedEnabled(feed.id))
-      .map(async (feed): Promise<NormalizedArticle[]> => {
-        try {
-          const xml = await fetchFeed(feedProxyPath(feed.id))
-          return connector.parse(xml)
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Unknown error"
-          fetchErrors.push(`${connector.name} (${feed.name}): ${message}`)
-          return []
-        }
-      }),
-  )
-
-  const results = await Promise.all(feedPromises)
-  const allArticles = results.flat()
-  const sorted = sortChronologically(allArticles)
+  const feedIds = getEnabledFeedIds(isFeedEnabled)
+  const result = await fetchAndParseAllFeeds(feedIds)
+  const sorted = sortChronologically(result.articles)
   const deduplicated = deduplicateArticles(sorted)
 
-  return { articles: deduplicated, errors: fetchErrors }
+  return { articles: deduplicated, errors: result.errors }
 }
 
 function getFullyEnabledSources(

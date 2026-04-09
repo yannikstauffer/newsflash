@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { useArticleState } from "@/features/article-actions"
 import { SyncNavIcon } from "@/features/sync/components/sync-nav-icon"
 import { SyncProvider } from "@/features/sync/sync-context"
+import { usePeriodicSync } from "@/hooks/use-periodic-sync"
 import { useThemePreference } from "@/hooks/use-theme-preference"
 
 interface NavItem {
@@ -33,6 +34,7 @@ function formatBadgeCount(count: number): string {
 export function AppLayout() {
   const { t } = useTranslation()
   useThemePreference()
+  usePeriodicSync()
   const { readListIds } = useArticleState()
   const readListCount = readListIds.length
 
