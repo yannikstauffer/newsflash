@@ -65,6 +65,20 @@ describe("registerPeriodicSync", () => {
     expect(mockRegister).not.toHaveBeenCalled()
   })
 
+  it("skips when permissions.query throws", async () => {
+    Object.defineProperty(navigator, "permissions", {
+      value: {
+        query: vi.fn().mockRejectedValue(new TypeError("Not supported")),
+      },
+      writable: true,
+      configurable: true,
+    })
+
+    await registerPeriodicSync()
+
+    expect(mockRegister).not.toHaveBeenCalled()
+  })
+
   it("skips when serviceWorker is not available", async () => {
     const original = navigator.serviceWorker
     Object.defineProperty(navigator, "serviceWorker", {

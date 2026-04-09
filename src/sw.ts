@@ -3,8 +3,8 @@ declare const self: ServiceWorkerGlobalScope
 
 import { clientsClaim } from "workbox-core"
 import { ExpirationPlugin } from "workbox-expiration"
-import { precacheAndRoute } from "workbox-precaching"
-import { registerRoute } from "workbox-routing"
+import { createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching"
+import { NavigationRoute, registerRoute } from "workbox-routing"
 import { CacheFirst, NetworkFirst } from "workbox-strategies"
 
 import { feedUrls } from "@/config/feeds"
@@ -18,6 +18,9 @@ clientsClaim()
 
 // Precache assets injected by vite-plugin-pwa
 precacheAndRoute(self.__WB_MANIFEST)
+
+// SPA navigation fallback: serve precached index.html for all navigation requests
+registerRoute(new NavigationRoute(createHandlerBoundToURL("index.html")))
 
 // Runtime caching: feed API requests (NetworkFirst with 5s timeout)
 registerRoute(

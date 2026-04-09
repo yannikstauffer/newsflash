@@ -16,11 +16,14 @@ export async function registerPeriodicSync(): Promise<void> {
 
   if (!registration.periodicSync) return
 
-  const status = await navigator.permissions.query({
-    name: "periodic-background-sync" as PermissionName,
-  })
-
-  if (status.state !== "granted") return
+  try {
+    const status = await navigator.permissions.query({
+      name: "periodic-background-sync" as PermissionName,
+    })
+    if (status.state !== "granted") return
+  } catch {
+    return
+  }
 
   await registration.periodicSync.register(SYNC_TAG, {
     minInterval: MIN_INTERVAL_MS,
