@@ -7,6 +7,7 @@ import type { ReactNode } from "react"
 
 import { ErrorBoundary } from "@/components/error-boundary"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { OfflineBanner } from "@/components/offline-banner"
 import { Toaster } from "@/components/ui/sonner"
 import { useArticleState } from "@/features/article-actions"
 import { SyncNavIcon } from "@/features/sync/components/sync-nav-icon"
@@ -85,6 +86,8 @@ export function AppLayout() {
             })}
           </div>
         </nav>
+
+        <OfflineBanner />
 
         <main id="main-content" className="flex-1 p-3 pb-16 sm:pb-0 md:p-6">
           <ErrorBoundary>
