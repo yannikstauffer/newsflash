@@ -61,6 +61,8 @@ export function useInstallPrompt(): InstallPromptResult {
     if (!prompt) return
     try {
       await prompt.prompt()
+    } catch {
+      // prompt() may reject if the event is stale or the browser cancels
     } finally {
       // prompt() is single-use — always clear, even on rejection.
       // Chrome fires a new beforeinstallprompt on next visit if dismissed.
