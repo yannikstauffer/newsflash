@@ -1,12 +1,7 @@
 import { act, renderHook } from "@testing-library/react"
-import { toast } from "sonner"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { usePullToRefresh } from "./use-pull-to-refresh"
-
-vi.mock("sonner", () => ({
-  toast: vi.fn(),
-}))
 
 type DragHandler = (state: {
   movement: [number, number]
@@ -267,13 +262,14 @@ describe("usePullToRefresh", () => {
   })
 
   describe("offline awareness", () => {
-    it("shows toast and skips refresh when offline", () => {
+    it("calls onOffline and skips refresh when offline", () => {
       mockMatchMedia(true)
       Object.defineProperty(navigator, "onLine", { value: false, writable: true, configurable: true })
       const onRefresh = vi.fn()
+      const onOffline = vi.fn()
 
       renderHook(() =>
-        usePullToRefresh({ onRefresh, isRefreshing: false }),
+        usePullToRefresh({ onRefresh, onOffline, isRefreshing: false }),
       )
 
       act(() => {
@@ -293,17 +289,17 @@ describe("usePullToRefresh", () => {
       })
 
       expect(onRefresh).not.toHaveBeenCalled()
-      expect(toast).toHaveBeenCalledWith("You're offline")
+      expect(onOffline).toHaveBeenCalledOnce()
     })
 
     it("proceeds with refresh when online", () => {
       mockMatchMedia(true)
-      vi.mocked(toast).mockClear()
       Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true })
       const onRefresh = vi.fn()
+      const onOffline = vi.fn()
 
       renderHook(() =>
-        usePullToRefresh({ onRefresh, isRefreshing: false }),
+        usePullToRefresh({ onRefresh, onOffline, isRefreshing: false }),
       )
 
       act(() => {
@@ -323,7 +319,7 @@ describe("usePullToRefresh", () => {
       })
 
       expect(onRefresh).toHaveBeenCalledOnce()
-      expect(toast).not.toHaveBeenCalled()
+      expect(onOffline).not.toHaveBeenCalled()
     })
   })
 

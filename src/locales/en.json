@@ -83,7 +83,8 @@
     "sendError": "Failed to send magic link. Please try again."
   },
   "offline": {
-    "banner": "You're offline — showing cached content"
+    "banner": "You're offline — showing cached content",
+    "pullToRefresh": "You're offline"
   },
   "error": {
     "heading": "Something went wrong",

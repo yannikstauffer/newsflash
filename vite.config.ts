@@ -46,7 +46,7 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: /^https:\/\/.*\.(jpg|jpeg|png|webp|gif|avif)/i,
+            urlPattern: /^https:\/\/.*\.(jpg|jpeg|png|webp|gif|avif)(\?|#|$)/i,
             handler: "CacheFirst",
             options: {
               cacheName: "article-images-cache",

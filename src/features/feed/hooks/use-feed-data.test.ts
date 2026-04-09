@@ -921,7 +921,7 @@ describe("useFeedData", () => {
       await act(async () => {})
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "[feed] suppressed offline error:",
+        "[feed] suppressed fetch error (cached data available):",
         expect.stringContaining("Network error"),
       )
 

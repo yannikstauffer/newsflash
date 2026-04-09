@@ -134,7 +134,7 @@ export function useFeedData(
 
       if (hasCachedData && result.errors.length > 0) {
         for (const error of result.errors) {
-          console.error("[feed] suppressed offline error:", error)
+          console.error("[feed] suppressed fetch error (cached data available):", error)
         }
       }
 
