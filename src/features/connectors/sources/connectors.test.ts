@@ -71,6 +71,7 @@ describe("connectors", () => {
       expect(articles[0].title).toBeTruthy()
       expect(articles[0].link).toBeTruthy()
       expect(articles[0].id).toBeTruthy()
+      expect(articles[0].processed).toBe(true)
     },
   )
 
