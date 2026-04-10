@@ -983,11 +983,14 @@ describe("useFeedData", () => {
       expect(article!.processed).toBe(true)
     })
 
-    it("fixes up articles with missing processed flag (pre-PR IDB entries)", async () => {
+    it("stamps legacy articles (missing processed flag) as processed without re-processing", async () => {
+      // Legacy description contains literal `<...>` text (e.g., from a
+      // decoded `&lt;b&gt;`). Re-running stripHtml would corrupt it by
+      // treating `<b>` as a tag.
       const legacyArticle = makeArticle({
         id: "legacy-1",
         title: "Legacy",
-        description: "Already stripped text",
+        description: "Use <b> to bold text",
         imageUrl: "https://example.com/existing.jpg",
         source: "c1",
         // processed: undefined — simulates pre-PR cached entries
@@ -1011,7 +1014,8 @@ describe("useFeedData", () => {
       const article = result.current.articles.find((a) => a.id === "legacy-1")
       expect(article).toBeDefined()
       expect(article!.processed).toBe(true)
-      expect(article!.description).toBe("Already stripped text")
+      // Description preserved verbatim — no re-processing
+      expect(article!.description).toBe("Use <b> to bold text")
       expect(article!.imageUrl).toBe("https://example.com/existing.jpg")
     })
 

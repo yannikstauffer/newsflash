@@ -33,6 +33,13 @@ function ensureProcessed(articles: NormalizedArticle[]): NormalizedArticle[] {
     if (article.processed === true) {
       return article
     }
+    // Legacy entries (pre-flag) were already processed by the main thread when
+    // they were written. Trust them and only stamp the flag — re-running
+    // stripHtml on already-decoded text could corrupt descriptions containing
+    // literal `<...>` characters.
+    if (article.processed === undefined) {
+      return { ...article, processed: true }
+    }
     const { imageUrl: inlineImage, html: cleanedHtml } =
       extractLeadingImage(article.description)
     return {

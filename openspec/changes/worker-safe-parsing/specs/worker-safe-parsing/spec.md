@@ -38,10 +38,10 @@ The feed data hook SHALL process articles whose `processed` field is not strictl
 - **THEN** those articles SHALL have `stripHtml` and `extractLeadingImage` applied to their `description` before being set in React state
 - **AND** the resulting articles SHALL have `processed` set to `true`
 
-#### Scenario: Legacy articles without processed flag are fixed up
+#### Scenario: Legacy articles without processed flag are stamped but not re-processed
 - **WHEN** articles are read from IndexedDB and some have `processed === undefined` (pre-flag entries)
-- **THEN** those articles SHALL also be run through the fixup pipeline
-- **AND** the resulting articles SHALL have `processed` set to `true`
+- **THEN** those articles SHALL have `processed` set to `true`
+- **AND** their `description` and `imageUrl` SHALL be preserved unchanged (they were already processed by the main thread when written, and re-running `stripHtml` on decoded text could corrupt literal `<...>` characters)
 
 #### Scenario: Already-processed articles pass through unchanged
 - **WHEN** articles are read from IndexedDB and all have `processed === true`
