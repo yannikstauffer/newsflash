@@ -30,7 +30,7 @@ export function clearFeedCache(): void {
 
 function ensureProcessed(articles: NormalizedArticle[]): NormalizedArticle[] {
   return articles.map((article) => {
-    if (article.processed !== false) {
+    if (article.processed === true) {
       return article
     }
     const { imageUrl: inlineImage, html: cleanedHtml } =

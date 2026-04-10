@@ -42,7 +42,7 @@ Key files:
 
 **Choice:** Add `processed?: boolean` to `NormalizedArticle`. The flag is set by `base-parser.ts` based on whether `DOMParser` was available during parsing.
 
-**Why not a `looksLikeHtml()` heuristic?** A regex like `/<[a-z][\s\S]*>/i` could detect HTML in `description`, but has edge cases (text containing angle brackets). The explicit flag is ~5 lines more code and eliminates all ambiguity. Existing IDB articles without the field are treated as `processed: true` (backward compatible via `article.processed !== false`).
+**Why not a `looksLikeHtml()` heuristic?** A regex like `/<[a-z][\s\S]*>/i` could detect HTML in `description`, but has edge cases (text containing angle brackets). The explicit flag is ~5 lines more code and eliminates all ambiguity. The fixup guard is `article.processed !== true`, so any article without the flag (pre-PR IDB entries) is also run through the fixup pipeline. Re-running `stripHtml`/`extractLeadingImage` on already-processed text is a safe no-op, and this keeps the in-memory invariant clean: after fixup, every article has `processed === true`.
 
 ### Decision 3: Synchronous fixup before first `setArticles`
 

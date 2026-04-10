@@ -983,6 +983,38 @@ describe("useFeedData", () => {
       expect(article!.processed).toBe(true)
     })
 
+    it("fixes up articles with missing processed flag (pre-PR IDB entries)", async () => {
+      const legacyArticle = makeArticle({
+        id: "legacy-1",
+        title: "Legacy",
+        description: "Already stripped text",
+        imageUrl: "https://example.com/existing.jpg",
+        source: "c1",
+        // processed: undefined — simulates pre-PR cached entries
+      })
+
+      mockGetAll.mockResolvedValue([legacyArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => []),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const article = result.current.articles.find((a) => a.id === "legacy-1")
+      expect(article).toBeDefined()
+      expect(article!.processed).toBe(true)
+      expect(article!.description).toBe("Already stripped text")
+      expect(article!.imageUrl).toBe("https://example.com/existing.jpg")
+    })
+
     it("passes through already-processed articles unchanged", async () => {
       const processedArticle = makeArticle({
         id: "proc-1",
