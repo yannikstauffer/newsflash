@@ -70,8 +70,13 @@
     "description": "Melde dich an, um ausgeblendete Artikel, Leseliste und Feed-Einstellungen auf allen Geräten zu synchronisieren.",
     "emailLabel": "E-Mail-Adresse",
     "emailPlaceholder": "du@beispiel.de",
-    "sendMagicLink": "Magic Link senden",
-    "magicLinkSent": "Prüfe deine E-Mails für den Magic Link zum Anmelden.",
+    "sendCode": "Code senden",
+    "codeSentTo": "Wir haben einen 6-stelligen Code an {{email}} gesendet. Gib ihn unten ein, um dich anzumelden.",
+    "codeLabel": "Bestätigungscode",
+    "codePlaceholder": "123456",
+    "verifyCode": "Bestätigen",
+    "useDifferentEmail": "Andere E-Mail-Adresse verwenden",
+    "verifyError": "Ungültiger oder abgelaufener Code. Bitte versuche es erneut.",
     "signedInAs": "Angemeldet als {{email}}",
     "lastSynced": "Zuletzt synchronisiert: {{time}}",
     "neverSynced": "Noch nie synchronisiert",
@@ -80,7 +85,17 @@
     "synced": "Synchronisiert",
     "signOut": "Abmelden",
     "invalidEmail": "Bitte gib eine gültige E-Mail-Adresse ein.",
-    "sendError": "Magic Link konnte nicht gesendet werden. Bitte versuche es erneut."
+    "sendError": "Code konnte nicht gesendet werden. Bitte versuche es erneut."
+  },
+  "install": {
+    "settingsHeading": "App installieren",
+    "settingsDescription": "Installiere Newsflash auf deinem Gerät für ein natives App-Erlebnis.",
+    "settingsInstallButton": "Newsflash installieren",
+    "settingsIosInstructions": "Zum Installieren: Tippe in Safari auf «Teilen», dann «Zum Home-Bildschirm»."
+  },
+  "offline": {
+    "banner": "Du bist offline — es werden zwischengespeicherte Inhalte angezeigt",
+    "pullToRefresh": "Du bist offline"
   },
   "error": {
     "heading": "Etwas ist schiefgelaufen",
