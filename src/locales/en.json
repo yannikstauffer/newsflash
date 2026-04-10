@@ -82,8 +82,19 @@
     "invalidEmail": "Please enter a valid email address.",
     "sendError": "Failed to send magic link. Please try again."
   },
+  "install": {
+    "bannerMessage": "Get the full app experience",
+    "installButton": "Install",
+    "dismissLabel": "Dismiss install prompt",
+    "iosInstructions": "Tap Share, then \"Add to Home Screen\"",
+    "settingsHeading": "Install App",
+    "settingsDescription": "Install Newsflash on your device for a native app experience.",
+    "settingsInstallButton": "Install Newsflash",
+    "settingsIosInstructions": "To install: Tap the Share button in Safari, then \"Add to Home Screen\"."
+  },
   "offline": {
-    "banner": "You're offline — showing cached content"
+    "banner": "You're offline — showing cached content",
+    "pullToRefresh": "You're offline"
   },
   "error": {
     "heading": "Something went wrong",

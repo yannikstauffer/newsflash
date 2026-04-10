@@ -5,6 +5,7 @@ import type { RefObject } from "react"
 
 interface UsePullToRefreshOptions {
   readonly onRefresh: () => void
+  readonly onOffline?: () => void
   readonly isRefreshing: boolean
 }
 
@@ -26,6 +27,7 @@ function isTouchDevice(): boolean {
 
 export function usePullToRefresh({
   onRefresh,
+  onOffline,
   isRefreshing,
 }: UsePullToRefreshOptions): UsePullToRefreshResult {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -40,6 +42,11 @@ export function usePullToRefresh({
   useEffect(() => {
     onRefreshRef.current = onRefresh
   }, [onRefresh])
+
+  const onOfflineRef = useRef(onOffline)
+  useEffect(() => {
+    onOfflineRef.current = onOffline
+  }, [onOffline])
 
   const handleDrag = useCallback(
     ({
@@ -71,7 +78,11 @@ export function usePullToRefresh({
 
       if (last) {
         if (my >= PULL_THRESHOLD) {
-          onRefreshRef.current()
+          if (navigator.onLine) {
+            onRefreshRef.current()
+          } else {
+            onOfflineRef.current?.()
+          }
         } else {
           setRawPullOffset(0)
         }

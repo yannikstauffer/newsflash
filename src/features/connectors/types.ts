@@ -30,4 +30,5 @@ export interface NormalizedArticle {
   language: "de" | "en"
   imageUrl?: string
   category?: string
+  processed?: boolean
 }

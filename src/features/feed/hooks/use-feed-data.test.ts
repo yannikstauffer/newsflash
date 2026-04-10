@@ -847,6 +847,271 @@ describe("useFeedData", () => {
     })
   })
 
+  describe("offline error suppression", () => {
+    it("suppresses errors when IDB cache has articles", async () => {
+      const cachedArticle = makeArticle({ id: "cached-1", title: "Cached", source: "c1" })
+
+      mockGetAll.mockResolvedValue([cachedArticle])
+
+      mockConnectors.push(
+        {
+          id: "c1",
+          name: "Connector 1",
+          language: "en",
+          feeds: [{ id: "f1", name: "Feed 1" }],
+          parse: vi.fn(() => []),
+        },
+        {
+          id: "c2",
+          name: "Connector 2",
+          language: "en",
+          feeds: [{ id: "f2", name: "Feed 2" }],
+          parse: vi.fn(),
+        },
+      )
+
+      mockFetchFeed
+        .mockResolvedValueOnce("<xml/>")
+        .mockRejectedValueOnce(new Error("Network error"))
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      expect(result.current.articles).toHaveLength(1)
+      expect(result.current.errors).toHaveLength(0)
+    })
+
+    it("does not update lastRefreshedAt when fetch fails and errors are suppressed", async () => {
+      const cachedArticle = makeArticle({ id: "cached-1", title: "Cached", source: "c1" })
+
+      mockGetAll.mockResolvedValue([cachedArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(),
+      })
+
+      mockFetchFeed.mockRejectedValueOnce(new Error("Network error"))
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      expect(result.current.errors).toHaveLength(0)
+      expect(result.current.lastRefreshedAt).toBeNull()
+    })
+
+    it("surfaces errors when IDB cache is empty", async () => {
+      mockGetAll.mockResolvedValue([])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(),
+      })
+
+      mockFetchFeed.mockRejectedValueOnce(new Error("Network error"))
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      expect(result.current.errors).toHaveLength(1)
+      expect(result.current.errors[0]).toContain("Network error")
+    })
+
+    it("logs suppressed errors to console.error", async () => {
+      const cachedArticle = makeArticle({ id: "cached-1", title: "Cached", source: "c1" })
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+      mockGetAll.mockResolvedValue([cachedArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(),
+      })
+
+      mockFetchFeed.mockRejectedValueOnce(new Error("Network error"))
+
+      renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "[feed] suppressed fetch error (cached data available):",
+        expect.stringContaining("Network error"),
+      )
+
+      consoleSpy.mockRestore()
+    })
+  })
+
+  describe("ensureProcessed fixup", () => {
+    it("fixes up unprocessed articles from IDB before rendering", async () => {
+      const unprocessedArticle = makeArticle({
+        id: "unproc-1",
+        title: "Unprocessed",
+        description: '<img src="https://example.com/photo.jpg"><p>Raw HTML desc</p>',
+        source: "c1",
+        processed: false,
+      })
+
+      mockGetAll.mockResolvedValue([unprocessedArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => []),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const article = result.current.articles.find((a) => a.id === "unproc-1")
+      expect(article).toBeDefined()
+      expect(article!.description).toBe("Raw HTML desc")
+      expect(article!.imageUrl).toBe("https://example.com/photo.jpg")
+      expect(article!.processed).toBe(true)
+    })
+
+    it("stamps legacy articles (missing processed flag) as processed without re-processing", async () => {
+      // Legacy description contains literal `<...>` text (e.g., from a
+      // decoded `&lt;b&gt;`). Re-running stripHtml would corrupt it by
+      // treating `<b>` as a tag.
+      const legacyArticle = makeArticle({
+        id: "legacy-1",
+        title: "Legacy",
+        description: "Use <b> to bold text",
+        imageUrl: "https://example.com/existing.jpg",
+        source: "c1",
+        // processed: undefined — simulates pre-PR cached entries
+      })
+
+      mockGetAll.mockResolvedValue([legacyArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => []),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const article = result.current.articles.find((a) => a.id === "legacy-1")
+      expect(article).toBeDefined()
+      expect(article!.processed).toBe(true)
+      // Description preserved verbatim — no re-processing
+      expect(article!.description).toBe("Use <b> to bold text")
+      expect(article!.imageUrl).toBe("https://example.com/existing.jpg")
+    })
+
+    it("passes through already-processed articles unchanged", async () => {
+      const processedArticle = makeArticle({
+        id: "proc-1",
+        title: "Processed",
+        description: "Clean text",
+        imageUrl: "https://example.com/existing.jpg",
+        source: "c1",
+        processed: true,
+      })
+
+      mockGetAll.mockResolvedValue([processedArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => []),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const article = result.current.articles.find((a) => a.id === "proc-1")
+      expect(article).toBeDefined()
+      expect(article!.description).toBe("Clean text")
+      expect(article!.imageUrl).toBe("https://example.com/existing.jpg")
+    })
+
+    it("preserves existing imageUrl on unprocessed articles", async () => {
+      const unprocessedWithImage = makeArticle({
+        id: "unproc-2",
+        title: "Has Image",
+        description: "<p>Some HTML</p>",
+        imageUrl: "https://example.com/xml-image.jpg",
+        source: "c1",
+        processed: false,
+      })
+
+      mockGetAll.mockResolvedValue([unprocessedWithImage])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => []),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const article = result.current.articles.find((a) => a.id === "unproc-2")
+      expect(article).toBeDefined()
+      expect(article!.imageUrl).toBe("https://example.com/xml-image.jpg")
+      expect(article!.description).toBe("Some HTML")
+      expect(article!.processed).toBe(true)
+    })
+
+    it("does not write back to IDB after fixup", async () => {
+      const unprocessedArticle = makeArticle({
+        id: "unproc-3",
+        title: "No Writeback",
+        description: "<p>HTML</p>",
+        source: "c1",
+        processed: false,
+      })
+
+      mockGetAll.mockResolvedValue([unprocessedArticle])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => []),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      // upsertMany should not be called for fixup (only for network results)
+      // network returned 0 articles, so upsertMany should not be called at all
+      expect(mockUpsertMany).not.toHaveBeenCalled()
+    })
+  })
+
   describe("historical day navigation", () => {
     it("includes cached articles from IDB when not in network fetch results", async () => {
       const oldCachedArticle = makeArticle({

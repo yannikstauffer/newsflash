@@ -32,6 +32,8 @@ function mockMatchMedia(pointerCoarse: boolean) {
   }))
 }
 
+const originalOnLine = navigator.onLine
+
 describe("usePullToRefresh", () => {
   beforeEach(() => {
     capturedDragHandler = undefined
@@ -41,6 +43,7 @@ describe("usePullToRefresh", () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    Object.defineProperty(navigator, "onLine", { value: originalOnLine, writable: true, configurable: true })
   })
 
   describe("touch detection", () => {
@@ -251,6 +254,68 @@ describe("usePullToRefresh", () => {
       })
 
       expect(cancel).toHaveBeenCalled()
+    })
+  })
+
+  describe("offline awareness", () => {
+    it("calls onOffline and skips refresh when offline", () => {
+      mockMatchMedia(true)
+      Object.defineProperty(navigator, "onLine", { value: false, writable: true, configurable: true })
+      const onRefresh = vi.fn()
+      const onOffline = vi.fn()
+
+      renderHook(() =>
+        usePullToRefresh({ onRefresh, onOffline, isRefreshing: false }),
+      )
+
+      act(() => {
+        capturedDragHandler!({
+          movement: [0, 70],
+          last: false,
+          cancel: vi.fn(),
+        })
+      })
+
+      act(() => {
+        capturedDragHandler!({
+          movement: [0, 70],
+          last: true,
+          cancel: vi.fn(),
+        })
+      })
+
+      expect(onRefresh).not.toHaveBeenCalled()
+      expect(onOffline).toHaveBeenCalledOnce()
+    })
+
+    it("proceeds with refresh when online", () => {
+      mockMatchMedia(true)
+      Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true })
+      const onRefresh = vi.fn()
+      const onOffline = vi.fn()
+
+      renderHook(() =>
+        usePullToRefresh({ onRefresh, onOffline, isRefreshing: false }),
+      )
+
+      act(() => {
+        capturedDragHandler!({
+          movement: [0, 70],
+          last: false,
+          cancel: vi.fn(),
+        })
+      })
+
+      act(() => {
+        capturedDragHandler!({
+          movement: [0, 70],
+          last: true,
+          cancel: vi.fn(),
+        })
+      })
+
+      expect(onRefresh).toHaveBeenCalledOnce()
+      expect(onOffline).not.toHaveBeenCalled()
     })
   })
 

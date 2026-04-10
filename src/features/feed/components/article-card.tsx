@@ -1,3 +1,5 @@
+import { useCallback, useState } from "react"
+
 import { formatAbsoluteTime, formatShortTime } from "../utils/format-time"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
@@ -10,15 +12,24 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+
+  const handleImageError = useCallback(() => {
+    setFailedUrl((current) => current ?? article.imageUrl ?? null)
+  }, [article.imageUrl])
+
+  const imageError = failedUrl === article.imageUrl
+
   return (
     <article
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1: focusable for keyboard shortcuts
       tabIndex={0}
-      className={`group relative grid ${article.imageUrl ? "grid-cols-[auto_1fr]" : "grid-cols-1"} gap-3 rounded-lg bg-card p-3 shadow-sm transition-all duration-150 hover:shadow-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 dark:shadow-[0_1px_3px_rgba(0,0,0,0.4)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.5)] md:gap-4 md:p-4 ${
+      className={`group relative grid ${article.imageUrl && !imageError ? "grid-cols-[auto_1fr]" : "grid-cols-1"} gap-3 rounded-lg bg-card p-3 shadow-sm transition-all duration-150 hover:shadow-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 dark:shadow-[0_1px_3px_rgba(0,0,0,0.4)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.5)] md:gap-4 md:p-4 ${
         dimmed ? "opacity-50" : ""
       }`}
     >
-      {article.imageUrl && (
+      {article.imageUrl && !imageError && (
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
         <img
           src={article.imageUrl}
           alt=""
@@ -26,6 +37,7 @@ export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
           width={96}
           height={96}
           className="size-24 shrink-0 self-center rounded-lg object-cover"
+          onError={handleImageError}
         />
       )}
       <div className="min-w-0 text-left">

@@ -26,12 +26,14 @@ export default defineConfig({
     tailwindcss(),
     react(),
     VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       registerType: "autoUpdate",
       injectRegister: "auto",
       manifest: false,
-      workbox: {
+      injectManifest: {
         globPatterns: ["**/*.{js,css,html,json,svg,png,woff2}"],
-        navigateFallback: "index.html",
       },
     }),
   ],
