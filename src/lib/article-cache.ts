@@ -56,8 +56,9 @@ function openDatabase(): Promise<IDBPDatabase<ArticleCacheDB> | undefined> {
 function toCachedArticle(
   article: NormalizedArticle,
   existing?: CachedArticle,
+  forcePinned?: boolean,
 ): CachedArticle {
-  const pinned = existing?.pinned ?? false
+  const pinned = forcePinned ?? existing?.pinned ?? false
   return {
     ...article,
     pinned,
@@ -78,6 +79,7 @@ function toNormalizedArticle(cached: CachedArticle): NormalizedArticle {
 
 export async function upsertMany(
   articles: readonly NormalizedArticle[],
+  options?: { readonly pinned?: boolean },
 ): Promise<void> {
   const database = await openDatabase()
   if (!database) return
@@ -97,7 +99,7 @@ export async function upsertMany(
   for (const article of articles) {
     const existing =
       finalById.get(article.id) ?? existingById.get(article.id)
-    finalById.set(article.id, toCachedArticle(article, existing))
+    finalById.set(article.id, toCachedArticle(article, existing, options?.pinned))
   }
 
   await Promise.all(
@@ -149,6 +151,31 @@ export async function setPinned(
     pinned,
     pinnedKey: pinned ? 1 : 0,
   })
+}
+
+export async function bulkSetPinned(
+  ids: readonly string[],
+  pinned: boolean,
+): Promise<void> {
+  const database = await openDatabase()
+  if (!database || ids.length === 0) return
+
+  const tx = database.transaction(STORE_NAME, "readwrite")
+  const store = tx.objectStore(STORE_NAME)
+
+  await Promise.all(
+    ids.map(async (id) => {
+      const article = await store.get(id)
+      if (!article) return
+      await store.put({
+        ...article,
+        pinned,
+        pinnedKey: pinned ? 1 : 0,
+      })
+    }),
+  )
+
+  await tx.done
 }
 
 /** @internal Reset module state — test-only */

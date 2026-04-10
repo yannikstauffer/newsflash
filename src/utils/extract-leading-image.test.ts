@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { extractLeadingImage } from "./extract-leading-image"
 
@@ -156,5 +156,32 @@ describe("extractLeadingImage", () => {
     expect(result.imageUrl).toBe("https://example.com/photo.jpg")
     expect(result.html).toContain("Caption")
     expect(result.html).toContain("Body")
+  })
+
+  describe("without DOMParser (service worker context)", () => {
+    const originalDOMParser = globalThis.DOMParser
+
+    afterEach(() => {
+      globalThis.DOMParser = originalDOMParser
+    })
+
+    it("returns undefined imageUrl and original html when DOMParser is unavailable", () => {
+      vi.stubGlobal("DOMParser", undefined)
+
+      const html = '<img src="photo.jpg"><p>Text</p>'
+      const result = extractLeadingImage(html)
+
+      expect(result.imageUrl).toBeUndefined()
+      expect(result.html).toBe(html)
+    })
+
+    it("returns undefined imageUrl and empty string for empty input without DOMParser", () => {
+      vi.stubGlobal("DOMParser", undefined)
+
+      const result = extractLeadingImage("")
+
+      expect(result.imageUrl).toBeUndefined()
+      expect(result.html).toBe("")
+    })
   })
 })

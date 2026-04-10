@@ -123,6 +123,8 @@ function extractCategory(category: unknown): string | undefined {
   return undefined
 }
 
+const isDomParserAvailable = typeof DOMParser !== "undefined"
+
 function parseRssItems(
   items: RssItem[],
   source: string,
@@ -144,6 +146,7 @@ function parseRssItems(
       language,
       imageUrl: dedicatedImage ?? inlineImage,
       category: extractCategory(item.category),
+      processed: isDomParserAvailable,
     }
   })
 }
@@ -196,6 +199,7 @@ function parseAtomEntries(
       language,
       imageUrl: dedicatedImage ?? inlineImage,
       category: extractCategory(entry.category),
+      processed: isDomParserAvailable,
     }
   })
 }
