@@ -32,5 +32,9 @@ export default defineConfig({
     command: "npm run dev",
     port: 5173,
     reuseExistingServer: !process.env.CI,
+    env: {
+      VITE_SUPABASE_URL: "https://e2e-test.supabase.co",
+      VITE_SUPABASE_ANON_KEY: "e2e-test-anon-key",
+    },
   },
 })

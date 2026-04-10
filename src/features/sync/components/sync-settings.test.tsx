@@ -24,14 +24,23 @@ vi.mock("../sync-service", () => ({
 }))
 
 const mockSignInWithOtp = vi.fn()
+const mockVerifyOtp = vi.fn()
 vi.mock("@/lib/supabase", () => ({
   getSupabaseClient: () =>
     Promise.resolve({
       auth: {
         signInWithOtp: mockSignInWithOtp,
+        verifyOtp: mockVerifyOtp,
       },
     }),
 }))
+
+async function submitEmail(email: string) {
+  const emailInput = screen.getByTestId("sync-email-input")
+  const form = emailInput.closest("form")!
+  fireEvent.change(emailInput, { target: { value: email } })
+  fireEvent.submit(form)
+}
 
 describe("SyncSettings", () => {
   beforeEach(() => {
@@ -54,7 +63,7 @@ describe("SyncSettings", () => {
       render(<SyncSettings />)
 
       expect(screen.getByTestId("sync-email-input")).toBeInTheDocument()
-      expect(screen.getByTestId("send-magic-link-button")).toBeInTheDocument()
+      expect(screen.getByTestId("send-code-button")).toBeInTheDocument()
       expect(screen.getByText("Cross-Device Sync")).toBeInTheDocument()
     })
 
@@ -65,14 +74,10 @@ describe("SyncSettings", () => {
       expect(screen.queryByTestId("sign-out-button")).not.toBeInTheDocument()
     })
 
-    it("shows validation error for invalid email", async () => {
+    it("shows validation error for invalid email and does not call signInWithOtp", async () => {
       render(<SyncSettings />)
 
-      const emailInput = screen.getByTestId("sync-email-input")
-      const form = emailInput.closest("form")!
-
-      fireEvent.change(emailInput, { target: { value: "invalid" } })
-      fireEvent.submit(form)
+      await submitEmail("invalid")
 
       await waitFor(() => {
         expect(screen.getByTestId("sync-email-error")).toBeInTheDocument()
@@ -80,37 +85,95 @@ describe("SyncSettings", () => {
       expect(mockSignInWithOtp).not.toHaveBeenCalled()
     })
 
-    it("sends magic link on valid email submit", async () => {
+    it("advances to the code-entry step on valid email submit", async () => {
       mockSignInWithOtp.mockResolvedValue({ error: null })
 
       render(<SyncSettings />)
 
-      const emailInput = screen.getByTestId("sync-email-input")
-      const form = emailInput.closest("form")!
-
-      fireEvent.change(emailInput, { target: { value: "test@example.com" } })
-      fireEvent.submit(form)
+      await submitEmail("test@example.com")
 
       await waitFor(() => {
-        expect(screen.getByTestId("magic-link-sent")).toBeInTheDocument()
+        expect(screen.getByTestId("sync-code-input")).toBeInTheDocument()
       })
+      expect(screen.getByTestId("verify-code-button")).toBeInTheDocument()
       expect(mockSignInWithOtp).toHaveBeenCalledWith({ email: "test@example.com" })
     })
 
-    it("shows error when magic link send fails", async () => {
+    it("shows error when send fails and stays on email step", async () => {
       mockSignInWithOtp.mockResolvedValue({ error: { message: "Rate limited" } })
 
       render(<SyncSettings />)
 
-      const emailInput = screen.getByTestId("sync-email-input")
-      const form = emailInput.closest("form")!
-
-      fireEvent.change(emailInput, { target: { value: "test@example.com" } })
-      fireEvent.submit(form)
+      await submitEmail("test@example.com")
 
       await waitFor(() => {
         expect(screen.getByTestId("sync-email-error")).toBeInTheDocument()
       })
+      expect(screen.queryByTestId("sync-code-input")).not.toBeInTheDocument()
+    })
+
+    it("verifies the code with the expected payload", async () => {
+      mockSignInWithOtp.mockResolvedValue({ error: null })
+      mockVerifyOtp.mockResolvedValue({ error: null })
+
+      render(<SyncSettings />)
+
+      await submitEmail("test@example.com")
+
+      const codeInput = await screen.findByTestId("sync-code-input")
+      const codeForm = codeInput.closest("form")!
+      fireEvent.change(codeInput, { target: { value: "123456" } })
+      fireEvent.submit(codeForm)
+
+      await waitFor(() => {
+        expect(mockVerifyOtp).toHaveBeenCalledWith({
+          email: "test@example.com",
+          token: "123456",
+          type: "email",
+        })
+      })
+    })
+
+    it("shows a generic error when verifyOtp fails and stays on the code step", async () => {
+      mockSignInWithOtp.mockResolvedValue({ error: null })
+      mockVerifyOtp.mockResolvedValue({ error: { message: "bad code" } })
+
+      render(<SyncSettings />)
+
+      await submitEmail("test@example.com")
+
+      const codeInput = await screen.findByTestId("sync-code-input")
+      const codeForm = codeInput.closest("form")!
+      fireEvent.change(codeInput, { target: { value: "123456" } })
+      fireEvent.submit(codeForm)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("sync-code-error")).toBeInTheDocument()
+      })
+      expect(screen.getByTestId("sync-code-input")).toBeInTheDocument()
+    })
+
+    it("returns to the email step and clears the code via 'Use a different email'", async () => {
+      mockSignInWithOtp.mockResolvedValue({ error: null })
+
+      render(<SyncSettings />)
+
+      await submitEmail("test@example.com")
+
+      const codeInput = await screen.findByTestId("sync-code-input")
+      fireEvent.change(codeInput, { target: { value: "999999" } })
+
+      fireEvent.click(screen.getByTestId("use-different-email-button"))
+
+      await waitFor(() => {
+        expect(screen.getByTestId("sync-email-input")).toBeInTheDocument()
+      })
+      expect(screen.queryByTestId("sync-code-input")).not.toBeInTheDocument()
+
+      mockSignInWithOtp.mockResolvedValue({ error: null })
+      await submitEmail("other@example.com")
+      const nextCodeInput = await screen.findByTestId("sync-code-input")
+      expect((nextCodeInput as HTMLInputElement).value).toBe("")
     })
   })
 
