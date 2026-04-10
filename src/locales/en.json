@@ -83,10 +83,6 @@
     "sendError": "Failed to send magic link. Please try again."
   },
   "install": {
-    "bannerMessage": "Get the full app experience",
-    "installButton": "Install",
-    "dismissLabel": "Dismiss install prompt",
-    "iosInstructions": "Tap Share, then \"Add to Home Screen\"",
     "settingsHeading": "Install App",
     "settingsDescription": "Install Newsflash on your device for a native app experience.",
     "settingsInstallButton": "Install Newsflash",
