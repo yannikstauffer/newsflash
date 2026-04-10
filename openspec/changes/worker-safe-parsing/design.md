@@ -42,7 +42,14 @@ Key files:
 
 **Choice:** Add `processed?: boolean` to `NormalizedArticle`. The flag is set by `base-parser.ts` based on whether `DOMParser` was available during parsing.
 
-**Why not a `looksLikeHtml()` heuristic?** A regex like `/<[a-z][\s\S]*>/i` could detect HTML in `description`, but has edge cases (text containing angle brackets). The explicit flag is ~5 lines more code and eliminates all ambiguity. Existing IDB articles without the field are treated as `processed: true` (backward compatible via `article.processed !== false`).
+**Why not a `looksLikeHtml()` heuristic?** A regex like `/<[a-z][\s\S]*>/i` could detect HTML in `description`, but has edge cases (text containing angle brackets). The explicit flag is ~5 lines more code and eliminates all ambiguity.
+
+**Three-way handling in `ensureProcessed`:**
+- `processed === true` → pass through unchanged.
+- `processed === false` → run the full `extractLeadingImage` + `stripHtml` fixup pipeline.
+- `processed === undefined` (pre-flag legacy IDB entries) → stamp `processed: true` but preserve `description`/`imageUrl` as-is. These entries were already processed by the main thread when they were written (pre-PR code path), so re-running `stripHtml` would be unsafe: a decoded description containing literal `<...>` text (e.g., `Use <b> to bold` from an earlier decoded `&lt;b&gt;`) would be re-interpreted as a tag and stripped, corrupting the content.
+
+After fixup, every article in memory has `processed === true`, giving a clean invariant without risking data corruption for legacy entries.
 
 ### Decision 3: Synchronous fixup before first `setArticles`
 

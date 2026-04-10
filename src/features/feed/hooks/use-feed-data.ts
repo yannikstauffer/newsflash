@@ -5,6 +5,8 @@ import type { NormalizedArticle } from "@/features/connectors/types"
 import { connectors } from "@/features/connectors/registry"
 import * as articleCache from "@/lib/article-cache"
 import { fetchAndParseAllFeeds } from "@/lib/feed-pipeline"
+import { extractLeadingImage } from "@/utils/extract-leading-image"
+import { stripHtml } from "@/utils/strip-html"
 
 interface FeedDataResult {
   articles: NormalizedArticle[]
@@ -24,6 +26,29 @@ let feedCache: FeedCache | null = null
 
 export function clearFeedCache(): void {
   feedCache = null
+}
+
+function ensureProcessed(articles: NormalizedArticle[]): NormalizedArticle[] {
+  return articles.map((article) => {
+    if (article.processed === true) {
+      return article
+    }
+    // Legacy entries (pre-flag) were already processed by the main thread when
+    // they were written. Trust them and only stamp the flag — re-running
+    // stripHtml on already-decoded text could corrupt descriptions containing
+    // literal `<...>` characters.
+    if (article.processed === undefined) {
+      return { ...article, processed: true }
+    }
+    const { imageUrl: inlineImage, html: cleanedHtml } =
+      extractLeadingImage(article.description)
+    return {
+      ...article,
+      description: stripHtml(cleanedHtml),
+      imageUrl: article.imageUrl ?? inlineImage,
+      processed: true,
+    }
+  })
 }
 
 function deduplicateArticles(articles: NormalizedArticle[]): NormalizedArticle[] {
@@ -118,7 +143,7 @@ export function useFeedData(
       cachedArticles: NormalizedArticle[],
     ) => {
       const now = new Date()
-      const merged = mergeAndDeduplicate(result.articles, cachedArticles)
+      const merged = mergeAndDeduplicate(result.articles, ensureProcessed(cachedArticles))
 
       const hasCachedData = cachedArticles.length > 0
       const visibleErrors = hasCachedData ? [] : result.errors
@@ -177,7 +202,8 @@ export function useFeedData(
       if (cancelled) return
 
       if (cachedArticles.length > 0) {
-        const sorted = sortChronologically(cachedArticles)
+        const processed = ensureProcessed(cachedArticles)
+        const sorted = sortChronologically(processed)
         const deduplicated = deduplicateArticles(sorted)
         feedCache = {
           articles: deduplicated,
