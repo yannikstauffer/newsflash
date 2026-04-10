@@ -4,9 +4,6 @@ import { describe, expect, it, vi } from "vitest"
 import { FeedPage } from "./feed-page"
 
 vi.mock("../hooks/use-feed-page")
-vi.mock("@/components/install-banner", () => ({
-  InstallBanner: () => null,
-}))
 vi.mock("./filter-bar", () => ({
   FilterBar: () => <div data-testid="filter-bar" />,
 }))
