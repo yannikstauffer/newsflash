@@ -241,7 +241,7 @@ function UnauthenticatedView() {
               className="min-h-11 w-full rounded-md border border-border bg-background px-3 py-2 text-sm tracking-widest text-foreground placeholder:text-muted-foreground focus:outline-2 focus:outline-offset-2 focus:outline-ring"
               inputMode="numeric"
               autoComplete="one-time-code"
-              pattern="\d{6}"
+              pattern="[0-9]{6}"
               maxLength={6}
               aria-label={t("sync.codeLabel")}
               required
