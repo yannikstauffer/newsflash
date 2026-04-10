@@ -14,6 +14,10 @@ export function extractLeadingImage(html: string): ExtractLeadingImageResult {
     return { imageUrl: undefined, html }
   }
 
+  if (typeof DOMParser === "undefined") {
+    return { imageUrl: undefined, html }
+  }
+
   const document_ = new DOMParser().parseFromString(html, "text/html")
   const body = document_.body
 

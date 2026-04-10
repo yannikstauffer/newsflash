@@ -1,3 +1,4 @@
+import { Download, Share } from "lucide-react"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
@@ -13,6 +14,8 @@ import { Switch } from "@/components/ui/switch"
 import { useArticleState } from "@/features/article-actions/hooks/use-article-state"
 import { connectors } from "@/features/connectors/registry"
 import { SyncSettings } from "@/features/sync/components/sync-settings"
+import { useInstallPrompt } from "@/hooks/use-install-prompt"
+import { useIsStandalone } from "@/hooks/use-is-standalone"
 import { useThemePreference } from "@/hooks/use-theme-preference"
 
 const THEME_OPTIONS: Array<{ readonly value: ThemePreference; readonly label: string }> = [
@@ -61,6 +64,8 @@ export default function FeedConfigPage() {
   const { isFilterEnabled, toggleFilter } = useFilterPreferences()
   const { removeHiddenBySource, removeReadListBySource } = useArticleState()
   const { theme, setTheme } = useThemePreference()
+  const isStandalone = useIsStandalone()
+  const { canInstall, isIosSafari, triggerInstall } = useInstallPrompt()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
   const currentLocale = i18n.language.startsWith("de") ? "de" : "en"
@@ -309,6 +314,30 @@ export default function FeedConfigPage() {
           })}
         </div>
       </section>
+
+      {!isStandalone && (canInstall || isIosSafari) && (
+        <section className="space-y-3 rounded-lg border border-border p-6">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">
+              {t("install.settingsHeading")}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {t("install.settingsDescription")}
+            </p>
+          </div>
+          {canInstall ? (
+            <Button onClick={triggerInstall}>
+              <Download className="size-4" aria-hidden="true" />
+              {t("install.settingsInstallButton")}
+            </Button>
+          ) : (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Share className="size-4 shrink-0" aria-hidden="true" />
+              {t("install.settingsIosInstructions")}
+            </p>
+          )}
+        </section>
+      )}
     </div>
   )
 }

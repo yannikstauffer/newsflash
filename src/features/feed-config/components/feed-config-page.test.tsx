@@ -47,6 +47,25 @@ vi.mock("@/hooks/use-theme-preference", () => ({
   }),
 }))
 
+const mockIsStandalone = vi.fn(() => false)
+const mockCanInstall = vi.fn(() => false)
+const mockIsIosSafari = vi.fn(() => false)
+const mockTriggerInstall = vi.fn()
+
+vi.mock("@/hooks/use-is-standalone", () => ({
+  useIsStandalone: () => mockIsStandalone(),
+}))
+
+vi.mock("@/hooks/use-install-prompt", () => ({
+  useInstallPrompt: () => ({
+    canInstall: mockCanInstall(),
+    isIosSafari: mockIsIosSafari(),
+    isDismissed: false,
+    triggerInstall: mockTriggerInstall,
+    dismiss: vi.fn(),
+  }),
+}))
+
 vi.mock("@/features/connectors/registry", () => ({
   connectors: [
     {
@@ -98,6 +117,10 @@ describe("FeedConfigPage", () => {
     mockDisableAll.mockClear()
     mockSetTheme.mockClear()
     mockThemeState.theme = "system"
+    mockIsStandalone.mockReturnValue(false)
+    mockCanInstall.mockReturnValue(false)
+    mockIsIosSafari.mockReturnValue(false)
+    mockTriggerInstall.mockClear()
   })
 
   describe("grouped feeds", () => {
@@ -273,6 +296,51 @@ describe("FeedConfigPage", () => {
       expect(screen.getByText("Choose the language for the app.")).toBeInTheDocument()
       expect(screen.getByText("Select a theme for the app.")).toBeInTheDocument()
       expect(screen.getByText("Enable or disable news sources to customize your feed.")).toBeInTheDocument()
+    })
+  })
+
+  describe("install app section", () => {
+    it("shows install option when not standalone and canInstall is true", () => {
+      mockCanInstall.mockReturnValue(true)
+      render(<FeedConfigPage />)
+
+      expect(screen.getByText("Install App")).toBeInTheDocument()
+      expect(screen.getByText("Install Newsflash")).toBeInTheDocument()
+    })
+
+    it("shows iOS instructions when not standalone and isIosSafari is true", () => {
+      mockIsIosSafari.mockReturnValue(true)
+      render(<FeedConfigPage />)
+
+      expect(screen.getByText("Install App")).toBeInTheDocument()
+      expect(
+        screen.getByText('To install: Tap the Share button in Safari, then "Add to Home Screen".'),
+      ).toBeInTheDocument()
+    })
+
+    it("hides install option when standalone", () => {
+      mockIsStandalone.mockReturnValue(true)
+      mockCanInstall.mockReturnValue(true)
+      render(<FeedConfigPage />)
+
+      expect(screen.queryByText("Install App")).not.toBeInTheDocument()
+    })
+
+    it("hides install option when neither canInstall nor isIosSafari", () => {
+      mockCanInstall.mockReturnValue(false)
+      mockIsIosSafari.mockReturnValue(false)
+      render(<FeedConfigPage />)
+
+      expect(screen.queryByText("Install App")).not.toBeInTheDocument()
+    })
+
+    it("triggers install prompt on click", () => {
+      mockCanInstall.mockReturnValue(true)
+      render(<FeedConfigPage />)
+
+      fireEvent.click(screen.getByText("Install Newsflash"))
+
+      expect(mockTriggerInstall).toHaveBeenCalled()
     })
   })
 
