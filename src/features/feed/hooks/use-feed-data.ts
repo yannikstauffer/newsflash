@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
-import { feedProxyPath } from "@/config/feeds"
-import { fetchFeed } from "@/features/connectors/fetch-feed"
 import { connectors } from "@/features/connectors/registry"
 import * as articleCache from "@/lib/article-cache"
+import { fetchAndParseAllFeeds } from "@/lib/feed-pipeline"
+import { extractLeadingImage } from "@/utils/extract-leading-image"
+import { stripHtml } from "@/utils/strip-html"
 
 interface FeedDataResult {
   articles: NormalizedArticle[]
@@ -25,6 +26,29 @@ let feedCache: FeedCache | null = null
 
 export function clearFeedCache(): void {
   feedCache = null
+}
+
+function ensureProcessed(articles: NormalizedArticle[]): NormalizedArticle[] {
+  return articles.map((article) => {
+    if (article.processed === true) {
+      return article
+    }
+    // Legacy entries (pre-flag) were already processed by the main thread when
+    // they were written. Trust them and only stamp the flag — re-running
+    // stripHtml on already-decoded text could corrupt descriptions containing
+    // literal `<...>` characters.
+    if (article.processed === undefined) {
+      return { ...article, processed: true }
+    }
+    const { imageUrl: inlineImage, html: cleanedHtml } =
+      extractLeadingImage(article.description)
+    return {
+      ...article,
+      description: stripHtml(cleanedHtml),
+      imageUrl: article.imageUrl ?? inlineImage,
+      processed: true,
+    }
+  })
 }
 
 function deduplicateArticles(articles: NormalizedArticle[]): NormalizedArticle[] {
@@ -47,33 +71,25 @@ function sortChronologically(articles: NormalizedArticle[]): NormalizedArticle[]
   )
 }
 
+function getEnabledFeedIds(
+  isFeedEnabled: (feedId: string) => boolean,
+): string[] {
+  return connectors.flatMap((connector) =>
+    connector.feeds
+      .filter((feed) => isFeedEnabled(feed.id))
+      .map((feed) => feed.id),
+  )
+}
+
 async function fetchAllFeeds(
   isFeedEnabled: (feedId: string) => boolean,
 ): Promise<{ articles: NormalizedArticle[]; errors: string[] }> {
-  const fetchErrors: string[] = []
-
-  const feedPromises = connectors.flatMap((connector) =>
-    connector.feeds
-      .filter((feed) => isFeedEnabled(feed.id))
-      .map(async (feed): Promise<NormalizedArticle[]> => {
-        try {
-          const xml = await fetchFeed(feedProxyPath(feed.id))
-          return connector.parse(xml)
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Unknown error"
-          fetchErrors.push(`${connector.name} (${feed.name}): ${message}`)
-          return []
-        }
-      }),
-  )
-
-  const results = await Promise.all(feedPromises)
-  const allArticles = results.flat()
-  const sorted = sortChronologically(allArticles)
+  const feedIds = getEnabledFeedIds(isFeedEnabled)
+  const result = await fetchAndParseAllFeeds(feedIds)
+  const sorted = sortChronologically(result.articles)
   const deduplicated = deduplicateArticles(sorted)
 
-  return { articles: deduplicated, errors: fetchErrors }
+  return { articles: deduplicated, errors: result.errors }
 }
 
 function getFullyEnabledSources(
@@ -127,15 +143,28 @@ export function useFeedData(
       cachedArticles: NormalizedArticle[],
     ) => {
       const now = new Date()
-      const merged = mergeAndDeduplicate(result.articles, cachedArticles)
+      const merged = mergeAndDeduplicate(result.articles, ensureProcessed(cachedArticles))
+
+      const hasCachedData = cachedArticles.length > 0
+      const visibleErrors = hasCachedData ? [] : result.errors
+      const fetchSucceeded = result.articles.length > 0 || result.errors.length === 0
+
+      if (hasCachedData && result.errors.length > 0) {
+        for (const error of result.errors) {
+          console.error("[feed] suppressed fetch error (cached data available):", error)
+        }
+      }
+
+      const updatedRefreshedAt = fetchSucceeded ? now : feedCache?.lastRefreshedAt ?? null
+
       feedCache = {
         articles: merged,
-        errors: result.errors,
-        lastRefreshedAt: now,
+        errors: visibleErrors,
+        lastRefreshedAt: updatedRefreshedAt,
       }
       setArticles(merged)
-      setErrors(result.errors)
-      setLastRefreshedAt(now)
+      setErrors(visibleErrors)
+      setLastRefreshedAt(updatedRefreshedAt)
       setLoading(false)
       if (result.articles.length > 0) {
         articleCache.upsertMany(result.articles).catch(() => {})
@@ -173,7 +202,8 @@ export function useFeedData(
       if (cancelled) return
 
       if (cachedArticles.length > 0) {
-        const sorted = sortChronologically(cachedArticles)
+        const processed = ensureProcessed(cachedArticles)
+        const sorted = sortChronologically(processed)
         const deduplicated = deduplicateArticles(sorted)
         feedCache = {
           articles: deduplicated,
