@@ -7,10 +7,12 @@ import type { ReactNode } from "react"
 
 import { ErrorBoundary } from "@/components/error-boundary"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { OfflineBanner } from "@/components/offline-banner"
 import { Toaster } from "@/components/ui/sonner"
 import { useArticleState } from "@/features/article-actions"
 import { SyncNavIcon } from "@/features/sync/components/sync-nav-icon"
 import { SyncProvider } from "@/features/sync/sync-context"
+import { usePeriodicSync } from "@/hooks/use-periodic-sync"
 import { useThemePreference } from "@/hooks/use-theme-preference"
 
 interface NavItem {
@@ -32,6 +34,7 @@ function formatBadgeCount(count: number): string {
 export function AppLayout() {
   const { t } = useTranslation()
   useThemePreference()
+  usePeriodicSync()
   const { readListIds } = useArticleState()
   const readListCount = readListIds.length
 
@@ -85,6 +88,8 @@ export function AppLayout() {
             })}
           </div>
         </nav>
+
+        <OfflineBanner />
 
         <main id="main-content" className="flex-1 p-3 pb-16 sm:pb-0 md:p-6">
           <ErrorBoundary>

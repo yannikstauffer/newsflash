@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react"
-import { useMemo } from "react"
+import { useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 
 import { ArticleCard } from "./article-card"
 
@@ -37,8 +38,13 @@ export function FeedList({
   const { visibleItems, sentinelRef } = useLazyList(articles)
   const hiddenSet = useMemo(() => new Set(hiddenIds), [hiddenIds])
 
+  const handleOffline = useCallback(() => {
+    toast(t("offline.pullToRefresh"))
+  }, [t])
+
   const { containerRef, pullOffset, isPulling } = usePullToRefresh({
     onRefresh: onRefresh ?? (() => {}),
+    onOffline: handleOffline,
     isRefreshing: loading,
   })
 
