@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { stripHtml } from "./strip-html"
 
@@ -44,5 +44,27 @@ describe("stripHtml", () => {
     const html =
       '<a href="https://example.com"><img hspace="5" border="0" align="left" alt="Chip">Some description text</a>'
     expect(stripHtml(html)).toBe("Some description text")
+  })
+
+  describe("without DOMParser (service worker context)", () => {
+    const originalDOMParser = globalThis.DOMParser
+
+    afterEach(() => {
+      globalThis.DOMParser = originalDOMParser
+    })
+
+    it("returns raw HTML when DOMParser is unavailable", () => {
+      vi.stubGlobal("DOMParser", undefined)
+
+      expect(stripHtml("<p>Hello &amp; world</p>")).toBe(
+        "<p>Hello &amp; world</p>",
+      )
+    })
+
+    it("returns empty string for empty input without DOMParser", () => {
+      vi.stubGlobal("DOMParser", undefined)
+
+      expect(stripHtml("")).toBe("")
+    })
   })
 })
