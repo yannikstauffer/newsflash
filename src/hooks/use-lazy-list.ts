@@ -15,9 +15,18 @@ export function useLazyList<T>(
   }>({ items, visibleCount: batchSize })
   const observerRef = useRef<IntersectionObserver | undefined>(undefined)
 
-  // Reset visible count when items reference changes (setState during render pattern)
+  // Update state when items reference changes (setState during render pattern)
   if (state.items !== items) {
-    setState({ items, visibleCount: batchSize })
+    const previousLength = state.items.length
+    const newLength = items.length
+    const shouldPreserve = previousLength > 0 && newLength >= previousLength
+
+    setState({
+      items,
+      visibleCount: shouldPreserve
+        ? Math.min(state.visibleCount, newLength)
+        : batchSize,
+    })
   }
 
   const visibleCount = state.visibleCount

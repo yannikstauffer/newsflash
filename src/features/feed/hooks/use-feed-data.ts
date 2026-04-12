@@ -122,6 +122,14 @@ function mergeAndDeduplicate(
   return deduplicateArticles(sorted)
 }
 
+export function hasArticleListChanged(
+  previous: NormalizedArticle[],
+  next: NormalizedArticle[],
+): boolean {
+  if (previous.length !== next.length) return true
+  return previous.some((article, index) => article.id !== next[index].id)
+}
+
 export function useFeedData(
   isFeedEnabled: (feedId: string) => boolean,
 ): FeedDataResult {
@@ -145,6 +153,10 @@ export function useFeedData(
       }
     },
   )
+  const articlesRef = useRef(articles)
+  useEffect(() => {
+    articlesRef.current = articles
+  }, [articles])
   const shouldSkipInitialFetch = useRef(
     feedCache !== null && feedCache.lastRefreshedAt !== null,
   )
@@ -177,12 +189,16 @@ export function useFeedData(
         }
       }
 
+      const articlesChanged = hasArticleListChanged(articlesRef.current, merged)
+
       feedCache = {
-        articles: merged,
+        articles: articlesChanged ? merged : articlesRef.current,
         errors: visibleErrors,
         lastRefreshedAt: updatedRefreshedAt,
       }
-      setArticles(merged)
+      if (articlesChanged) {
+        setArticles(merged)
+      }
       setErrors(visibleErrors)
       setLastRefreshedAt(updatedRefreshedAt)
       setLoading(false)

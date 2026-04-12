@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { clearFeedCache, useFeedData } from "./use-feed-data"
+import { clearFeedCache, hasArticleListChanged, useFeedData } from "./use-feed-data"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
@@ -1229,5 +1229,160 @@ describe("useFeedData", () => {
       expect(stored).not.toBeNull()
       expect(new Date(stored!)).toBeInstanceOf(Date)
     })
+  })
+
+  describe("referential stability", () => {
+    it("does not update articles state when background refresh returns identical IDs", async () => {
+      const article1 = makeArticle({
+        id: "a1",
+        title: "Article 1",
+        link: "https://example.com/1",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+      })
+      const article2 = makeArticle({
+        id: "a2",
+        title: "Article 2",
+        link: "https://example.com/2",
+        publishedAt: new Date("2026-03-20T10:00:00Z"),
+      })
+      mockConnectors.push({
+        id: "test",
+        name: "Test",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [article1, article2]),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const firstArticles = result.current.articles
+
+      // Trigger a refresh that returns the same articles
+      mockConnectors[0].parse = vi.fn(() => [article1, article2])
+      await act(async () => {
+        await result.current.refresh()
+      })
+
+      // Same reference should be preserved
+      expect(result.current.articles).toBe(firstArticles)
+    })
+
+    it("updates articles state when background refresh returns new articles", async () => {
+      const article1 = makeArticle({
+        id: "a1",
+        title: "Article 1",
+        link: "https://example.com/1",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+      })
+      mockConnectors.push({
+        id: "test",
+        name: "Test",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [article1]),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const firstArticles = result.current.articles
+
+      // Refresh returns an additional article
+      const article2 = makeArticle({
+        id: "a2",
+        title: "Article 2",
+        link: "https://example.com/2",
+        publishedAt: new Date("2026-03-20T10:00:00Z"),
+      })
+      mockConnectors[0].parse = vi.fn(() => [article1, article2])
+      await act(async () => {
+        await result.current.refresh()
+      })
+
+      expect(result.current.articles).not.toBe(firstArticles)
+      expect(result.current.articles).toHaveLength(2)
+    })
+
+    it("updates articles state when background refresh returns reordered articles", async () => {
+      const article1 = makeArticle({
+        id: "a1",
+        title: "Article 1",
+        link: "https://example.com/1",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+      })
+      const article2 = makeArticle({
+        id: "a2",
+        title: "Article 2",
+        link: "https://example.com/2",
+        publishedAt: new Date("2026-03-20T10:00:00Z"),
+      })
+      mockConnectors.push({
+        id: "test",
+        name: "Test",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [article1, article2]),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const firstArticles = result.current.articles
+
+      // Refresh returns same articles but with swapped timestamps (different order)
+      const reorderedArticle1 = makeArticle({
+        id: "a1",
+        title: "Article 1",
+        link: "https://example.com/1",
+        publishedAt: new Date("2026-03-20T08:00:00Z"),
+      })
+      const reorderedArticle2 = makeArticle({
+        id: "a2",
+        title: "Article 2",
+        link: "https://example.com/2",
+        publishedAt: new Date("2026-03-20T14:00:00Z"),
+      })
+      mockConnectors[0].parse = vi.fn(() => [reorderedArticle1, reorderedArticle2])
+      await act(async () => {
+        await result.current.refresh()
+      })
+
+      // Order changed: a2 now comes before a1 due to timestamp
+      expect(result.current.articles).not.toBe(firstArticles)
+    })
+  })
+})
+
+describe("hasArticleListChanged", () => {
+  it("returns false for identical ID sequences", () => {
+    const a = [makeArticle({ id: "1" }), makeArticle({ id: "2" })]
+    const b = [makeArticle({ id: "1" }), makeArticle({ id: "2" })]
+    expect(hasArticleListChanged(a, b)).toBe(false)
+  })
+
+  it("returns true for different lengths", () => {
+    const a = [makeArticle({ id: "1" })]
+    const b = [makeArticle({ id: "1" }), makeArticle({ id: "2" })]
+    expect(hasArticleListChanged(a, b)).toBe(true)
+  })
+
+  it("returns true for different IDs", () => {
+    const a = [makeArticle({ id: "1" }), makeArticle({ id: "2" })]
+    const b = [makeArticle({ id: "1" }), makeArticle({ id: "3" })]
+    expect(hasArticleListChanged(a, b)).toBe(true)
+  })
+
+  it("returns true for reordered IDs", () => {
+    const a = [makeArticle({ id: "1" }), makeArticle({ id: "2" })]
+    const b = [makeArticle({ id: "2" }), makeArticle({ id: "1" })]
+    expect(hasArticleListChanged(a, b)).toBe(true)
+  })
+
+  it("returns false for two empty arrays", () => {
+    expect(hasArticleListChanged([], [])).toBe(false)
   })
 })

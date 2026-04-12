@@ -82,7 +82,7 @@ describe("useLazyList", () => {
     expect(result.current.visibleItems).toHaveLength(30)
   })
 
-  it("resets visible count when items reference changes", () => {
+  it("resets visible count when items reference changes to a shorter list", () => {
     const initialItems = makeItems(30)
     const { result, rerender } = renderHook(
       ({ items }) => useLazyList(items, 10),
@@ -102,11 +102,142 @@ describe("useLazyList", () => {
     })
     expect(result.current.visibleItems).toHaveLength(20)
 
-    // Change items — should reset
-    const newItems = makeItems(25)
+    // Change items to shorter list — should reset
+    const newItems = makeItems(15)
     rerender({ items: newItems })
 
     expect(result.current.visibleItems).toHaveLength(10)
+  })
+
+  it("preserves visible count when items swap with same length", () => {
+    const initialItems = makeItems(30)
+    const { result, rerender } = renderHook(
+      ({ items }) => useLazyList(items, 10),
+      { initialProps: { items: initialItems } },
+    )
+
+    // Expand to 20
+    const sentinel = document.createElement("div")
+    act(() => {
+      result.current.sentinelRef(sentinel)
+    })
+    act(() => {
+      intersectionCallback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+    expect(result.current.visibleItems).toHaveLength(20)
+
+    // Swap to same-length array — should preserve visibleCount
+    const newItems = Array.from({ length: 30 }, (_, index) => `new-${index}`)
+    rerender({ items: newItems })
+
+    expect(result.current.visibleItems).toHaveLength(20)
+  })
+
+  it("preserves visible count when items grow longer", () => {
+    const initialItems = makeItems(30)
+    const { result, rerender } = renderHook(
+      ({ items }) => useLazyList(items, 10),
+      { initialProps: { items: initialItems } },
+    )
+
+    // Expand to 20
+    const sentinel = document.createElement("div")
+    act(() => {
+      result.current.sentinelRef(sentinel)
+    })
+    act(() => {
+      intersectionCallback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+    expect(result.current.visibleItems).toHaveLength(20)
+
+    // Grow to 40 items — should preserve visibleCount
+    const newItems = makeItems(40)
+    rerender({ items: newItems })
+
+    expect(result.current.visibleItems).toHaveLength(20)
+  })
+
+  it("resets visible count when transitioning from empty to populated", () => {
+    const { result, rerender } = renderHook(
+      ({ items }) => useLazyList(items, 10),
+      { initialProps: { items: [] as string[] } },
+    )
+
+    expect(result.current.visibleItems).toHaveLength(0)
+
+    // Populate from empty — should reset to batchSize
+    const newItems = makeItems(30)
+    rerender({ items: newItems })
+
+    expect(result.current.visibleItems).toHaveLength(10)
+  })
+
+  it("clamps visible count when it exceeds new array length", () => {
+    const initialItems = makeItems(50)
+    const { result, rerender } = renderHook(
+      ({ items }) => useLazyList(items, 10),
+      { initialProps: { items: initialItems } },
+    )
+
+    // Expand to 40
+    const sentinel = document.createElement("div")
+    act(() => {
+      result.current.sentinelRef(sentinel)
+    })
+    for (let index = 0; index < 3; index++) {
+      act(() => {
+        intersectionCallback(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        )
+      })
+    }
+    expect(result.current.visibleItems).toHaveLength(40)
+
+    // Swap to 35 items (still >= original 50? No, 35 < 50 → reset)
+    // Use a scenario where old=30, new=35 to test clamping
+    const mediumItems = makeItems(30)
+    rerender({ items: mediumItems })
+
+    // 30 < 50 → resets to batchSize
+    expect(result.current.visibleItems).toHaveLength(10)
+  })
+
+  it("clamps visible count to new array length when preserved", () => {
+    const initialItems = makeItems(30)
+    const { result, rerender } = renderHook(
+      ({ items }) => useLazyList(items, 10),
+      { initialProps: { items: initialItems } },
+    )
+
+    // Expand to 40 (capped at 30)
+    const sentinel = document.createElement("div")
+    act(() => {
+      result.current.sentinelRef(sentinel)
+    })
+    for (let index = 0; index < 3; index++) {
+      act(() => {
+        intersectionCallback(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        )
+      })
+    }
+    // visibleCount internally is 40, but only 30 items → visibleItems = 30
+    expect(result.current.visibleItems).toHaveLength(30)
+
+    // Swap to 35 items (>= 30) — visibleCount should clamp to 35
+    const longerItems = makeItems(35)
+    rerender({ items: longerItems })
+
+    // visibleCount was 40, clamped to min(40, 35) = 35
+    expect(result.current.visibleItems).toHaveLength(35)
   })
 
   it("does not observe sentinel when all items are visible", () => {
