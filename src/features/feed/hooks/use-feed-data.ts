@@ -22,6 +22,8 @@ interface FeedCache {
   lastRefreshedAt: Date | null
 }
 
+const LS_LAST_REFRESHED_KEY = "newsflash:last-refreshed-at"
+
 let feedCache: FeedCache | null = null
 
 export function clearFeedCache(): void {
@@ -131,7 +133,17 @@ export function useFeedData(
     () => feedCache?.errors ?? [],
   )
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(
-    () => feedCache?.lastRefreshedAt ?? null,
+    () => {
+      if (feedCache?.lastRefreshedAt) return feedCache.lastRefreshedAt
+      try {
+        const raw = localStorage.getItem(LS_LAST_REFRESHED_KEY)
+        if (!raw) return null
+        const date = new Date(raw)
+        return Number.isNaN(date.getTime()) ? null : date
+      } catch {
+        return null
+      }
+    },
   )
   const shouldSkipInitialFetch = useRef(
     feedCache !== null && feedCache.lastRefreshedAt !== null,
@@ -156,6 +168,14 @@ export function useFeedData(
       }
 
       const updatedRefreshedAt = fetchSucceeded ? now : feedCache?.lastRefreshedAt ?? null
+
+      if (updatedRefreshedAt) {
+        try {
+          localStorage.setItem(LS_LAST_REFRESHED_KEY, updatedRefreshedAt.toISOString())
+        } catch {
+          // localStorage unavailable — continue without persisting
+        }
+      }
 
       feedCache = {
         articles: merged,

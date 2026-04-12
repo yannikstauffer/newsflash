@@ -10,6 +10,13 @@ vi.mock("./filter-bar", () => ({
 vi.mock("./feed-list", () => ({
   FeedList: () => <div data-testid="feed-list" />,
 }))
+vi.mock("./feed-status-row", () => ({
+  FeedStatusRow: ({ lastRefreshedAt }: { lastRefreshedAt: Date | null }) => (
+    <p data-testid="feed-status-row">
+      {lastRefreshedAt ? `Refreshed ${lastRefreshedAt.toISOString()}` : ""}
+    </p>
+  ),
+}))
 
 const { useFeedPage } = await import("../hooks/use-feed-page") as {
   useFeedPage: ReturnType<typeof vi.fn>
@@ -45,30 +52,30 @@ const baseMockReturn = {
 }
 
 describe("FeedPage", () => {
-  it("renders refresh text between filter bar and feed list when lastRefreshedAt is set", () => {
+  it("renders FeedStatusRow between filter bar and feed list", () => {
     useFeedPage.mockReturnValue({
       ...baseMockReturn,
-      lastRefreshedAt: new Date(),
+      lastRefreshedAt: new Date("2026-04-09T10:00:00Z"),
     })
 
     render(<FeedPage />)
 
     const filterBar = screen.getByTestId("filter-bar")
-    const refreshText = screen.getByLabelText("Last refreshed")
+    const statusRow = screen.getByTestId("feed-status-row")
     const feedList = screen.getByTestId("feed-list")
 
-    expect(refreshText.textContent).toContain("Refreshed just now")
+    expect(statusRow.textContent).toContain("Refreshed")
 
-    // Verify ordering: filter bar -> refresh text -> feed list
+    // Verify ordering: filter bar -> status row -> feed list
     expect(
-      filterBar.compareDocumentPosition(refreshText) & Node.DOCUMENT_POSITION_FOLLOWING,
+      filterBar.compareDocumentPosition(statusRow) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
-      refreshText.compareDocumentPosition(feedList) & Node.DOCUMENT_POSITION_FOLLOWING,
+      statusRow.compareDocumentPosition(feedList) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 
-  it("does not render refresh text when lastRefreshedAt is null", () => {
+  it("renders FeedStatusRow even when lastRefreshedAt is null", () => {
     useFeedPage.mockReturnValue({
       ...baseMockReturn,
       lastRefreshedAt: null,
@@ -76,7 +83,7 @@ describe("FeedPage", () => {
 
     render(<FeedPage />)
 
-    expect(screen.queryByLabelText("Last refreshed")).toBeNull()
+    expect(screen.getByTestId("feed-status-row")).toBeDefined()
   })
 
   it("renders filter bar and feed list", () => {

@@ -7,6 +7,7 @@ const DB_VERSION = 1
 const STORE_NAME = "metadata"
 const LAST_SYNCED_KEY = "last-synced"
 const FEED_PREFS_KEY = "feed-preferences"
+const LS_LAST_SYNCED_KEY = "newsflash:last-synced-at"
 
 interface SyncMetadataDB {
   readonly metadata: {
@@ -36,7 +37,23 @@ function openDatabase(): Promise<IDBPDatabase<SyncMetadataDB> | undefined> {
   return databasePromise
 }
 
+export function getLastSyncedAtSync(): Date | null {
+  try {
+    const raw = localStorage.getItem(LS_LAST_SYNCED_KEY)
+    if (!raw) return null
+    const date = new Date(raw)
+    return Number.isNaN(date.getTime()) ? null : date
+  } catch {
+    return null
+  }
+}
+
 export async function setLastSyncedAt(timestamp: Date): Promise<void> {
+  try {
+    localStorage.setItem(LS_LAST_SYNCED_KEY, timestamp.toISOString())
+  } catch {
+    // localStorage unavailable — continue with IDB write
+  }
   const database = await openDatabase()
   if (!database) return
   await database.put(STORE_NAME, {

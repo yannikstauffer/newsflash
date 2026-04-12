@@ -59,6 +59,7 @@ describe("useFeedData", () => {
 
   beforeEach(() => {
     clearFeedCache()
+    localStorage.clear()
     mockConnectors.length = 0
     vi.clearAllMocks()
     mockGetAll.mockResolvedValue([])
@@ -67,6 +68,7 @@ describe("useFeedData", () => {
 
   afterEach(() => {
     clearFeedCache()
+    localStorage.clear()
   })
 
   it("fetches and merges articles from multiple feeds using Promise.all", async () => {
@@ -1172,6 +1174,60 @@ describe("useFeedData", () => {
 
       // Should be deduplicated to 1
       expect(result.current.articles).toHaveLength(1)
+    })
+  })
+
+  describe("lastRefreshedAt localStorage persistence", () => {
+    it("hydrates lastRefreshedAt from localStorage when feedCache is empty", () => {
+      const iso = "2026-04-09T10:00:00.000Z"
+      localStorage.setItem("newsflash:last-refreshed-at", iso)
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => []),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      expect(result.current.lastRefreshedAt).toEqual(new Date(iso))
+    })
+
+    it("returns null when localStorage has no persisted value", () => {
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => []),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      expect(result.current.lastRefreshedAt).toBeNull()
+    })
+
+    it("persists lastRefreshedAt to localStorage after successful fetch", async () => {
+      const article = makeArticle()
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [article]),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const stored = localStorage.getItem("newsflash:last-refreshed-at")
+      expect(stored).not.toBeNull()
+      expect(new Date(stored!)).toBeInstanceOf(Date)
     })
   })
 })
