@@ -40,7 +40,7 @@ export function AppLayout() {
 
   return (
     <SyncProvider>
-      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col">
+      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col pt-[env(safe-area-inset-top)]">
         {/* noinspection HtmlUnknownAnchorTarget - resolves to <main id="main-content"> below */}
         <a
           href="#main-content"
