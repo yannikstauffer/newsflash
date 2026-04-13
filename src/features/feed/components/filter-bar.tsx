@@ -66,7 +66,7 @@ export function FilterBar({
   const showClearButton = searchQuery.length > 0
 
   return (
-    <div className="sticky top-0 z-10 flex flex-col gap-2 border-b border-border bg-background pb-2">
+    <div className="sticky top-0 z-10 -mx-3 -mt-3 flex flex-col gap-2 border-b border-border bg-background px-3 pb-2 pt-3 sm:top-[calc(theme(spacing.2)*2+48px+1px)] md:-mx-6 md:-mt-6 md:px-6 md:pb-2 md:pt-6">
       {/* Row 1: status, toggles, search */}
       <div className="flex items-center gap-2">
         {/* Mobile: expanded search replaces other controls */}
