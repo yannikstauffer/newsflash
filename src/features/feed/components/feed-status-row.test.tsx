@@ -92,4 +92,17 @@ describe("FeedStatusRow", () => {
 
     expect(row.textContent).toContain("Synced")
   })
+
+  it("handles IndexedDB read failure gracefully", async () => {
+    mockGetLastSyncedAtSync.mockReturnValue(null)
+    mockGetLastSyncedAt.mockRejectedValue(new Error("IDB unavailable"))
+
+    render(<FeedStatusRow lastRefreshedAt={new Date("2026-04-09T11:00:00Z")} />)
+
+    await act(async () => {})
+
+    const row = screen.getByLabelText("Feed status")
+    expect(row.textContent).not.toContain("Synced")
+    expect(row.textContent).toContain("Refreshed")
+  })
 })

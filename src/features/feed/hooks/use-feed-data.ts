@@ -199,6 +199,7 @@ export function useFeedData(
       }
       if (articlesChanged) {
         setArticles(merged)
+        articlesRef.current = merged
       }
       setErrors(visibleErrors)
       setLastRefreshedAt(updatedRefreshedAt)

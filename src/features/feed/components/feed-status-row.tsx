@@ -14,9 +14,22 @@ export function FeedStatusRow({ lastRefreshedAt }: FeedStatusRowProps) {
   )
 
   useEffect(() => {
-    getLastSyncedAt().then((date) => {
-      if (date) setLastSyncedAt(date)
-    })
+    let isActive = true
+
+    void (async () => {
+      try {
+        const date = await getLastSyncedAt()
+        if (isActive) {
+          setLastSyncedAt(date)
+        }
+      } catch {
+        // Ignore IndexedDB read failures and keep the current cached value.
+      }
+    })()
+
+    return () => {
+      isActive = false
+    }
   }, [lastRefreshedAt])
 
   const parts: string[] = []
