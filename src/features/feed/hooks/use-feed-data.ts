@@ -22,6 +22,8 @@ interface FeedCache {
   lastRefreshedAt: Date | null
 }
 
+const LS_LAST_REFRESHED_KEY = "newsflash:last-refreshed-at"
+
 let feedCache: FeedCache | null = null
 
 export function clearFeedCache(): void {
@@ -120,6 +122,14 @@ function mergeAndDeduplicate(
   return deduplicateArticles(sorted)
 }
 
+export function hasArticleListChanged(
+  previous: NormalizedArticle[],
+  next: NormalizedArticle[],
+): boolean {
+  if (previous.length !== next.length) return true
+  return previous.some((article, index) => article.id !== next[index].id)
+}
+
 export function useFeedData(
   isFeedEnabled: (feedId: string) => boolean,
 ): FeedDataResult {
@@ -131,8 +141,26 @@ export function useFeedData(
     () => feedCache?.errors ?? [],
   )
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(
-    () => feedCache?.lastRefreshedAt ?? null,
+    () => {
+      if (feedCache?.lastRefreshedAt) return feedCache.lastRefreshedAt
+      try {
+        const raw = localStorage.getItem(LS_LAST_REFRESHED_KEY)
+        if (!raw) return null
+        const date = new Date(raw)
+        return Number.isNaN(date.getTime()) ? null : date
+      } catch {
+        return null
+      }
+    },
   )
+  const articlesRef = useRef(articles)
+  useEffect(() => {
+    articlesRef.current = articles
+  }, [articles])
+  const lastRefreshedAtRef = useRef(lastRefreshedAt)
+  useEffect(() => {
+    lastRefreshedAtRef.current = lastRefreshedAt
+  }, [lastRefreshedAt])
   const shouldSkipInitialFetch = useRef(
     feedCache !== null && feedCache.lastRefreshedAt !== null,
   )
@@ -141,6 +169,7 @@ export function useFeedData(
     (
       result: { articles: NormalizedArticle[]; errors: string[] },
       cachedArticles: NormalizedArticle[],
+      forceUpdate = false,
     ) => {
       const now = new Date()
       const merged = mergeAndDeduplicate(result.articles, ensureProcessed(cachedArticles))
@@ -155,14 +184,29 @@ export function useFeedData(
         }
       }
 
-      const updatedRefreshedAt = fetchSucceeded ? now : feedCache?.lastRefreshedAt ?? null
+      const updatedRefreshedAt = fetchSucceeded
+        ? now
+        : feedCache?.lastRefreshedAt ?? lastRefreshedAtRef.current
+
+      if (updatedRefreshedAt) {
+        try {
+          localStorage.setItem(LS_LAST_REFRESHED_KEY, updatedRefreshedAt.toISOString())
+        } catch {
+          // localStorage unavailable — continue without persisting
+        }
+      }
+
+      const articlesChanged = forceUpdate || hasArticleListChanged(articlesRef.current, merged)
 
       feedCache = {
-        articles: merged,
+        articles: articlesChanged ? merged : articlesRef.current,
         errors: visibleErrors,
         lastRefreshedAt: updatedRefreshedAt,
       }
-      setArticles(merged)
+      if (articlesChanged) {
+        setArticles(merged)
+        articlesRef.current = merged
+      }
       setErrors(visibleErrors)
       setLastRefreshedAt(updatedRefreshedAt)
       setLoading(false)
@@ -182,7 +226,7 @@ export function useFeedData(
       fetchAllFeeds(isFeedEnabled),
       articleCache.getAll().catch(() => [] as NormalizedArticle[]),
     ])
-    applyFetchResult(result, filterByEnabledSources(cached, enabledSources))
+    applyFetchResult(result, filterByEnabledSources(cached, enabledSources), true)
   }, [isFeedEnabled, applyFetchResult])
 
   useEffect(() => {

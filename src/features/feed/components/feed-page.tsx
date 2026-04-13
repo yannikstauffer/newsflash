@@ -1,9 +1,7 @@
 import { FeedList } from "./feed-list"
+import { FeedStatusRow } from "./feed-status-row"
 import { FilterBar } from "./filter-bar"
 import { useFeedPage } from "../hooks/use-feed-page"
-import { formatRelativeTime } from "../utils/format-time"
-
-import { LastSyncedIndicator } from "@/components/last-synced-indicator"
 
 export function FeedPage() {
   const { filterBarProps, feedListProps, lastRefreshedAt } = useFeedPage()
@@ -12,13 +10,7 @@ export function FeedPage() {
     <div className="flex flex-col gap-4">
       <FilterBar {...filterBarProps} />
 
-      {lastRefreshedAt && (
-        <p className="text-center text-xs text-muted-foreground" aria-label="Last refreshed">
-          {`Refreshed ${formatRelativeTime(lastRefreshedAt)}`}
-        </p>
-      )}
-
-      <LastSyncedIndicator />
+      <FeedStatusRow lastRefreshedAt={lastRefreshedAt} />
 
       <FeedList
         articles={feedListProps.filteredArticles}
