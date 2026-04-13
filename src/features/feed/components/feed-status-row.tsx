@@ -1,13 +1,23 @@
+import { useEffect, useState } from "react"
+
 import { formatRelativeTime } from "../utils/format-time"
 
-import { getLastSyncedAtSync } from "@/lib/sync-metadata"
+import { getLastSyncedAt, getLastSyncedAtSync } from "@/lib/sync-metadata"
 
 interface FeedStatusRowProps {
   readonly lastRefreshedAt: Date | null
 }
 
 export function FeedStatusRow({ lastRefreshedAt }: FeedStatusRowProps) {
-  const lastSyncedAt = getLastSyncedAtSync()
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(
+    getLastSyncedAtSync,
+  )
+
+  useEffect(() => {
+    getLastSyncedAt().then((date) => {
+      if (date) setLastSyncedAt(date)
+    })
+  }, [lastRefreshedAt])
 
   const parts: string[] = []
   if (lastRefreshedAt) {

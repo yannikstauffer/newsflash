@@ -165,6 +165,7 @@ export function useFeedData(
     (
       result: { articles: NormalizedArticle[]; errors: string[] },
       cachedArticles: NormalizedArticle[],
+      forceUpdate = false,
     ) => {
       const now = new Date()
       const merged = mergeAndDeduplicate(result.articles, ensureProcessed(cachedArticles))
@@ -189,7 +190,7 @@ export function useFeedData(
         }
       }
 
-      const articlesChanged = hasArticleListChanged(articlesRef.current, merged)
+      const articlesChanged = forceUpdate || hasArticleListChanged(articlesRef.current, merged)
 
       feedCache = {
         articles: articlesChanged ? merged : articlesRef.current,
@@ -218,7 +219,7 @@ export function useFeedData(
       fetchAllFeeds(isFeedEnabled),
       articleCache.getAll().catch(() => [] as NormalizedArticle[]),
     ])
-    applyFetchResult(result, filterByEnabledSources(cached, enabledSources))
+    applyFetchResult(result, filterByEnabledSources(cached, enabledSources), true)
   }, [isFeedEnabled, applyFetchResult])
 
   useEffect(() => {

@@ -1232,19 +1232,24 @@ describe("useFeedData", () => {
   })
 
   describe("referential stability", () => {
-    it("does not update articles state when background refresh returns identical IDs", async () => {
+    it("preserves article reference when background refresh returns identical IDs", async () => {
       const article1 = makeArticle({
         id: "a1",
         title: "Article 1",
         link: "https://example.com/1",
         publishedAt: new Date("2026-03-20T12:00:00Z"),
+        source: "test",
       })
       const article2 = makeArticle({
         id: "a2",
         title: "Article 2",
         link: "https://example.com/2",
         publishedAt: new Date("2026-03-20T10:00:00Z"),
+        source: "test",
       })
+
+      // Seed cache so initial hydration populates articles
+      mockGetAll.mockResolvedValue([article1, article2])
       mockConnectors.push({
         id: "test",
         name: "Test",
@@ -1259,17 +1264,42 @@ describe("useFeedData", () => {
 
       const firstArticles = result.current.articles
 
-      // Trigger a refresh that returns the same articles
-      mockConnectors[0].parse = vi.fn(() => [article1, article2])
+      // The useEffect background fetch returned the same IDs — ref should be preserved
+      expect(result.current.articles).toBe(firstArticles)
+      expect(result.current.articles.length).toBeGreaterThan(0)
+    })
+
+    it("manual refresh always updates state even when IDs are identical", async () => {
+      const article1 = makeArticle({
+        id: "a1",
+        title: "Article 1",
+        link: "https://example.com/1",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+      })
+      mockConnectors.push({
+        id: "test",
+        name: "Test",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [article1]),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const firstArticles = result.current.articles
+
+      // Manual refresh with identical articles — should still update (new ref)
+      mockConnectors[0].parse = vi.fn(() => [article1])
       await act(async () => {
         await result.current.refresh()
       })
 
-      // Same reference should be preserved
-      expect(result.current.articles).toBe(firstArticles)
+      expect(result.current.articles).not.toBe(firstArticles)
     })
 
-    it("updates articles state when background refresh returns new articles", async () => {
+    it("updates articles state when refresh returns new articles", async () => {
       const article1 = makeArticle({
         id: "a1",
         title: "Article 1",
@@ -1306,7 +1336,7 @@ describe("useFeedData", () => {
       expect(result.current.articles).toHaveLength(2)
     })
 
-    it("updates articles state when background refresh returns reordered articles", async () => {
+    it("updates articles state when refresh returns reordered articles", async () => {
       const article1 = makeArticle({
         id: "a1",
         title: "Article 1",

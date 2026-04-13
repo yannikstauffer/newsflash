@@ -1,21 +1,24 @@
-import { render, screen } from "@testing-library/react"
+import { act, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { FeedStatusRow } from "./feed-status-row"
 
 vi.mock("@/lib/sync-metadata", () => ({
   getLastSyncedAtSync: vi.fn(),
+  getLastSyncedAt: vi.fn(),
 }))
 
-import { getLastSyncedAtSync } from "@/lib/sync-metadata"
+import { getLastSyncedAt, getLastSyncedAtSync } from "@/lib/sync-metadata"
 
 const mockGetLastSyncedAtSync = vi.mocked(getLastSyncedAtSync)
+const mockGetLastSyncedAt = vi.mocked(getLastSyncedAt)
 
 describe("FeedStatusRow", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-04-09T12:00:00Z"))
+    mockGetLastSyncedAt.mockResolvedValue(null)
   })
 
   afterEach(() => {
@@ -72,5 +75,21 @@ describe("FeedStatusRow", () => {
 
     const row = screen.getByLabelText("Feed status")
     expect(row.className).toContain("min-h-5")
+  })
+
+  it("falls back to IndexedDB when localStorage has no sync timestamp", async () => {
+    mockGetLastSyncedAtSync.mockReturnValue(null)
+    mockGetLastSyncedAt.mockResolvedValue(new Date("2026-04-09T09:00:00Z"))
+
+    render(<FeedStatusRow lastRefreshedAt={new Date("2026-04-09T11:00:00Z")} />)
+
+    // Initially no synced text (localStorage returned null)
+    const row = screen.getByLabelText("Feed status")
+    expect(row.textContent).not.toContain("Synced")
+
+    // After IDB resolves, synced text should appear
+    await act(async () => {})
+
+    expect(row.textContent).toContain("Synced")
   })
 })
