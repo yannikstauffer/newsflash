@@ -49,10 +49,12 @@ export function getLastSyncedAtSync(): Date | null {
 }
 
 export async function setLastSyncedAt(timestamp: Date): Promise<void> {
-  try {
-    localStorage.setItem(LS_LAST_SYNCED_KEY, timestamp.toISOString())
-  } catch {
-    // localStorage unavailable — continue with IDB write
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem(LS_LAST_SYNCED_KEY, timestamp.toISOString())
+    } catch {
+      // localStorage write failed — continue with IDB write
+    }
   }
   const database = await openDatabase()
   if (!database) return

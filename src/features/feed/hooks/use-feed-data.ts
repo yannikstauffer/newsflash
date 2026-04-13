@@ -157,6 +157,10 @@ export function useFeedData(
   useEffect(() => {
     articlesRef.current = articles
   }, [articles])
+  const lastRefreshedAtRef = useRef(lastRefreshedAt)
+  useEffect(() => {
+    lastRefreshedAtRef.current = lastRefreshedAt
+  }, [lastRefreshedAt])
   const shouldSkipInitialFetch = useRef(
     feedCache !== null && feedCache.lastRefreshedAt !== null,
   )
@@ -180,7 +184,9 @@ export function useFeedData(
         }
       }
 
-      const updatedRefreshedAt = fetchSucceeded ? now : feedCache?.lastRefreshedAt ?? null
+      const updatedRefreshedAt = fetchSucceeded
+        ? now
+        : feedCache?.lastRefreshedAt ?? lastRefreshedAtRef.current
 
       if (updatedRefreshedAt) {
         try {
