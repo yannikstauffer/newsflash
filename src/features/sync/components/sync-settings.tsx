@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { useSyncContext } from "../sync-context"
 import { getLastSyncedTimestamp } from "../sync-service"
 
+import { SettingsSection } from "@/components/settings-section"
 import { Button } from "@/components/ui/button"
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -51,18 +52,12 @@ function AuthenticatedView() {
   }
 
   return (
-    <section
-      className="space-y-3 rounded-lg border border-border p-6"
+    <SettingsSection
+      title={t("sync.heading")}
+      description={t("sync.signedInAs", { email: userEmail })}
       aria-label={t("sync.heading")}
       data-testid="sync-settings"
     >
-      <div>
-        <h3 className="text-base font-semibold text-foreground">{t("sync.heading")}</h3>
-        <p className="text-sm text-muted-foreground">
-          {t("sync.signedInAs", { email: userEmail })}
-        </p>
-      </div>
-
       <p className="text-sm text-muted-foreground" data-testid="last-synced">
         {lastSyncedDisplay}
       </p>
@@ -88,7 +83,7 @@ function AuthenticatedView() {
           {t("sync.signOut")}
         </Button>
       </div>
-    </section>
+    </SettingsSection>
   )
 }
 
@@ -169,16 +164,12 @@ function UnauthenticatedView() {
   }, [])
 
   return (
-    <section
-      className="space-y-3 rounded-lg border border-border p-6"
+    <SettingsSection
+      title={t("sync.heading")}
+      description={t("sync.description")}
       aria-label={t("sync.heading")}
       data-testid="sync-settings"
     >
-      <div>
-        <h3 className="text-base font-semibold text-foreground">{t("sync.heading")}</h3>
-        <p className="text-sm text-muted-foreground">{t("sync.description")}</p>
-      </div>
-
       {step === "email" ? (
         <form
           onSubmit={handleEmailSubmit}
@@ -279,6 +270,6 @@ function UnauthenticatedView() {
           </div>
         </form>
       )}
-    </section>
+    </SettingsSection>
   )
 }

@@ -4,6 +4,8 @@ import { withTranslation } from "react-i18next"
 import type { ErrorInfo, ReactNode } from "react"
 import type { WithTranslation } from "react-i18next"
 
+import { Button } from "@/components/ui/button"
+
 interface ErrorBoundaryOwnProps {
   readonly children: ReactNode
 }
@@ -46,12 +48,9 @@ class ErrorBoundaryClass extends Component<
           <p className="text-sm text-muted-foreground">
             {t("error.message")}
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="min-h-[44px] rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
+          <Button onClick={() => window.location.reload()}>
             {t("error.reload")}
-          </button>
+          </Button>
         </div>
       )
     }
