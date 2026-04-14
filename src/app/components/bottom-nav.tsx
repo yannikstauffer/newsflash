@@ -53,7 +53,7 @@ export function BottomNav({ readListCount }: BottomNavProps) {
               aria-label={ariaLabel}
             >
               <span className="flex h-full w-full items-center justify-center gap-2 rounded-lg transition-colors [.active>&]:bg-primary/10">
-                <span className="relative">
+                <span className="relative" aria-hidden="true">
                   <Icon className="size-4" />
                   {isReadList && readListCount > 0 && (
                     <span
