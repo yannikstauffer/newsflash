@@ -2,6 +2,7 @@ import { Bookmark, EyeOff } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 interface ArticleActionButtonsProps {
   readonly onHide: () => void
@@ -27,7 +28,6 @@ export function ArticleActionButtons({
           onHide()
         }}
         aria-label={t("actions.hideArticle")}
-        className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
       >
         <EyeOff className="size-3.5" />
       </Button>
@@ -40,11 +40,8 @@ export function ArticleActionButtons({
           onSave()
         }}
         aria-label={isSaved ? t("actions.removeFromReadList") : t("actions.saveToReadList")}
-        className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
       >
-        <Bookmark
-          className={`size-3.5 ${isSaved ? "fill-current" : ""}`}
-        />
+        <Bookmark className={cn("size-3.5", isSaved && "fill-current")} />
       </Button>
     </div>
   )
