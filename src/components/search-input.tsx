@@ -1,6 +1,8 @@
 import { Search, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
+import type { KeyboardEvent } from "react"
+
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -9,8 +11,9 @@ interface SearchInputProps {
   readonly onChange: (value: string) => void
   readonly placeholder?: string
   readonly maxLength?: number
-  readonly "aria-label"?: string
+  readonly "aria-label": string
   readonly className?: string
+  readonly onMobileOpenChange?: (open: boolean) => void
 }
 
 export function SearchInput({
@@ -20,6 +23,7 @@ export function SearchInput({
   maxLength = 200,
   "aria-label": ariaLabel,
   className,
+  onMobileOpenChange,
 }: SearchInputProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const mobileInputRef = useRef<HTMLInputElement>(null)
@@ -30,17 +34,22 @@ export function SearchInput({
     }
   }, [mobileOpen])
 
+  function setMobileOpenAndNotify(open: boolean) {
+    setMobileOpen(open)
+    onMobileOpenChange?.(open)
+  }
+
   function handleMobileClear() {
     if (value) {
       onChange("")
     } else {
-      setMobileOpen(false)
+      setMobileOpenAndNotify(false)
     }
   }
 
-  function handleMobileKeyDown(event: React.KeyboardEvent) {
+  function handleMobileKeyDown(event: KeyboardEvent) {
     if (event.key === "Escape") {
-      setMobileOpen(false)
+      setMobileOpenAndNotify(false)
     }
   }
 
@@ -75,7 +84,7 @@ export function SearchInput({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setMobileOpen(true)}
+          onClick={() => setMobileOpenAndNotify(true)}
           aria-label="Open search"
           className={cn(
             "rounded-full max-md:px-3 md:hidden",

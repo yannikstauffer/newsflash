@@ -88,6 +88,23 @@ describe("SegmentedControl", () => {
     expect(onChange).toHaveBeenCalledWith("c")
   })
 
+  it("moves focus to the newly selected option on ArrowRight", () => {
+    const onChange = vi.fn()
+    render(
+      <SegmentedControl
+        value="a"
+        onChange={onChange}
+        options={OPTIONS}
+        aria-label="Test"
+      />,
+    )
+
+    const a = screen.getByRole("radio", { name: "A" })
+    a.focus()
+    fireEvent.keyDown(a, { key: "ArrowRight" })
+    expect(document.activeElement).toBe(screen.getByRole("radio", { name: "B" }))
+  })
+
   it("jumps to first with Home and last with End", () => {
     const onChange = vi.fn()
     render(

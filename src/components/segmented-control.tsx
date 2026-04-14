@@ -1,5 +1,7 @@
 import { useRef } from "react"
 
+import type { KeyboardEvent } from "react"
+
 import { cn } from "@/lib/utils"
 
 interface SegmentedControlOption<T extends string> {
@@ -30,7 +32,7 @@ export function SegmentedControl<T extends string>({
     onChange(nextValue)
   }
 
-  function handleKeyDown(event: React.KeyboardEvent) {
+  function handleKeyDown(event: KeyboardEvent) {
     const currentIndex = options.findIndex((option) => option.value === value)
     if (currentIndex < 0) return
 

@@ -12,7 +12,8 @@ interface SearchInputProps {
   readonly onChange: (value: string) => void
   readonly placeholder?: string
   readonly maxLength?: number
-  readonly "aria-label"?: string
+  readonly "aria-label": string
+  readonly onMobileOpenChange?: (open: boolean) => void
 }
 ```
 
@@ -37,7 +38,7 @@ Two states:
 - Full-width input replaces the button
 - Auto-focuses the input
 - Clear button (right): clears value if non-empty, collapses if empty
-- Escape key: collapses (and clears value)
+- Escape key: collapses (value is preserved)
 
 ### Internal state
 
