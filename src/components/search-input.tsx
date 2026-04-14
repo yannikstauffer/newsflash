@@ -83,11 +83,11 @@ export function SearchInput({
       ) : (
         <Button
           variant="outline"
-          size="sm"
+          size="icon-sm"
           onClick={() => setMobileOpenAndNotify(true)}
           aria-label="Open search"
           className={cn(
-            "rounded-full max-md:px-3 md:hidden",
+            "rounded-full md:hidden",
             hasValue && "bg-accent text-accent-foreground",
           )}
         >

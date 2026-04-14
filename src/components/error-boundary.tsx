@@ -48,7 +48,10 @@ class ErrorBoundaryClass extends Component<
           <p className="text-sm text-muted-foreground">
             {t("error.message")}
           </p>
-          <Button onClick={() => window.location.reload()}>
+          <Button
+            className="min-h-[44px] md:min-h-0"
+            onClick={() => window.location.reload()}
+          >
             {t("error.reload")}
           </Button>
         </div>
