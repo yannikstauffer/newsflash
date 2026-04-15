@@ -1,5 +1,5 @@
 import { Popover } from "@base-ui/react/popover"
-import { useLocation, useNavigate } from "@tanstack/react-router"
+import { Link, useLocation } from "@tanstack/react-router"
 import { Check, Loader2, MoreVertical, Settings, TrendingUp } from "lucide-react"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -42,17 +42,11 @@ function OverflowButtonIcon({ className }: OverflowButtonIconProps) {
 
 export function OverflowSheet() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const location = useLocation()
   const [open, setOpen] = useState(false)
 
   const isInsightsActive = location.pathname === "/insights"
   const isSettingsActive = location.pathname === "/settings"
-
-  function handleNavigate(to: string) {
-    setOpen(false)
-    navigate({ to })
-  }
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -78,8 +72,8 @@ export function OverflowSheet() {
             )}
             data-testid="overflow-popup"
           >
-            <button
-              type="button"
+            <Link
+              to="/insights"
               className={cn(
                 "flex w-full items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
                 "hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
@@ -89,14 +83,14 @@ export function OverflowSheet() {
               )}
               aria-current={isInsightsActive ? "page" : undefined}
               data-testid="overflow-insights-item"
-              onClick={() => handleNavigate("/insights")}
+              onClick={() => setOpen(false)}
             >
               <TrendingUp className="size-4 shrink-0" aria-hidden="true" />
               {t("nav.insights")}
-            </button>
+            </Link>
 
-            <button
-              type="button"
+            <Link
+              to="/settings"
               className={cn(
                 "flex w-full items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
                 "hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
@@ -106,11 +100,11 @@ export function OverflowSheet() {
               )}
               aria-current={isSettingsActive ? "page" : undefined}
               data-testid="overflow-settings-item"
-              onClick={() => handleNavigate("/settings")}
+              onClick={() => setOpen(false)}
             >
               <Settings className="size-4 shrink-0" aria-hidden="true" />
               {t("nav.settings")}
-            </button>
+            </Link>
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

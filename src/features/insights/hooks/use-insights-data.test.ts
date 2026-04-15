@@ -74,19 +74,26 @@ function makeDayStats(
   return { sources, filters }
 }
 
+// Freeze time so todayKey() and getWindowDates() inside the hook always agree,
+// even when tests run close to midnight.
+const FROZEN_DATE = new Date("2026-04-15T12:00:00Z")
+
 function todayKey(offsetDays = 0): string {
-  const d = new Date()
+  const d = new Date(FROZEN_DATE)
   d.setDate(d.getDate() - offsetDays)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
 beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(FROZEN_DATE)
   localStorage.clear()
   mockIsFilterEnabled = () => false
   mockReadListArticles = []
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   localStorage.clear()
   vi.restoreAllMocks()
 })
