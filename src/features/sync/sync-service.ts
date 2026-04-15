@@ -61,7 +61,11 @@ export function readStatsSnapshot(): StatsStore | null {
     const raw = globalThis.localStorage.getItem(STATS_SNAPSHOT_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as StatsStore
-    return parsed.version === 1 ? parsed : null
+    return parsed.version === 1 &&
+      typeof parsed.days === "object" &&
+      parsed.days !== null
+      ? parsed
+      : null
   } catch {
     return null
   }

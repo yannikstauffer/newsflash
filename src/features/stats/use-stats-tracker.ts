@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react"
 
 import {
+  batchIncrementStats,
   incrementFilterStat,
   incrementSourceStat,
 } from "./stats-store"
@@ -58,20 +59,26 @@ export function useStatsTracker(): UseStatsTrackerResult {
         }
       }
 
+      // Accumulate counts in-memory, then flush in a single localStorage read+write
+      const sourceCounts: Record<string, Partial<Record<"appeared", number>>> = {}
+      const filterCounts: Record<string, Partial<Record<"appeared", number>>> = {}
+
       for (const article of articles) {
         if (seenArticleIds.current.has(article.id)) continue
         seenArticleIds.current.add(article.id)
 
-        incrementSourceStat(article.source, "appeared")
+        sourceCounts[article.source] = { appeared: (sourceCounts[article.source]?.appeared ?? 0) + 1 }
 
         // Track filter appeared only for disabled filters (user sees matching articles)
         for (const filter of allFilters) {
           // eslint-disable-next-line unicorn/prefer-regexp-test -- ArticleFilter.match()
           if (!isFilterEnabled(filter.filterId, filter.enabledByDefault) && filter.match(article)) {
-            incrementFilterStat(filter.filterId, "appeared")
+            filterCounts[filter.filterId] = { appeared: (filterCounts[filter.filterId]?.appeared ?? 0) + 1 }
           }
         }
       }
+
+      batchIncrementStats(sourceCounts, filterCounts)
     },
     [],
   )

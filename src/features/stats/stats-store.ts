@@ -47,6 +47,10 @@ function evictOldDays(days: Record<string, DayStats>): Record<string, DayStats> 
   return evicted
 }
 
+function isValidDaysRecord(value: unknown): value is Record<string, DayStats> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
 /**
  * Parses and validates an unknown value as a StatsStore.
  * Returns null if the value is missing or structurally invalid so callers can
@@ -57,7 +61,7 @@ export function parseStatsStore(data: unknown): StatsStore | null {
     typeof data === "object" &&
     data !== null &&
     (data as StatsStore).version === 1 &&
-    typeof (data as StatsStore).days === "object"
+    isValidDaysRecord((data as StatsStore).days)
   ) {
     return data as StatsStore
   }
@@ -69,7 +73,7 @@ export function readStats(): StatsStore {
     const raw = globalThis.localStorage.getItem(STATS_KEY)
     if (!raw) return { version: 1, days: {} }
     const parsed = JSON.parse(raw) as StatsStore
-    if (parsed.version !== 1 || typeof parsed.days !== "object") {
+    if (parsed.version !== 1 || !isValidDaysRecord(parsed.days)) {
       return { version: 1, days: {} }
     }
     return parsed
@@ -106,20 +110,23 @@ function ensureFilterBucket(day: DayStats, filterId: string): void {
   }
 }
 
-export function incrementSourceStat(
-  sourceId: string,
-  counter: StatCounter,
-  date?: Date,
-): void {
-  const store = readStats()
-  const key = todayIso(date)
+function getOrCreateDay(store: StatsStore, key: string): DayStats {
   // eslint-disable-next-line security/detect-object-injection -- key is YYYY-MM-DD from our own code
   if (!store.days[key]) {
     // eslint-disable-next-line security/detect-object-injection
     store.days[key] = { sources: {}, filters: {} }
   }
   // eslint-disable-next-line security/detect-object-injection
-  const day = store.days[key]
+  return store.days[key]
+}
+
+export function incrementSourceStat(
+  sourceId: string,
+  counter: StatCounter,
+  date?: Date,
+): void {
+  const store = readStats()
+  const day = getOrCreateDay(store, todayIso(date))
   ensureSourceBucket(day, sourceId)
   // eslint-disable-next-line security/detect-object-injection
   day.sources[sourceId][counter]++
@@ -132,16 +139,47 @@ export function incrementFilterStat(
   date?: Date,
 ): void {
   const store = readStats()
-  const key = todayIso(date)
-  // eslint-disable-next-line security/detect-object-injection -- key is YYYY-MM-DD from our own code
-  if (!store.days[key]) {
-    // eslint-disable-next-line security/detect-object-injection
-    store.days[key] = { sources: {}, filters: {} }
-  }
-  // eslint-disable-next-line security/detect-object-injection
-  const day = store.days[key]
+  const day = getOrCreateDay(store, todayIso(date))
   ensureFilterBucket(day, filterId)
   // eslint-disable-next-line security/detect-object-injection
   day.filters[filterId][counter]++
+  writeStats(store)
+}
+
+/**
+ * Applies multiple stat increments in a single localStorage read+write.
+ * Maps sourceId/filterId → counter → amount to add.
+ * More efficient than individual incrementSourceStat/incrementFilterStat calls
+ * when tracking a batch of articles at once.
+ */
+export function batchIncrementStats(
+  sourceCounts: Record<string, Partial<Record<StatCounter, number>>>,
+  filterCounts: Record<string, Partial<Record<StatCounter, number>>>,
+  date?: Date,
+): void {
+  if (Object.keys(sourceCounts).length === 0 && Object.keys(filterCounts).length === 0) return
+  const store = readStats()
+  const day = getOrCreateDay(store, todayIso(date))
+
+  for (const [sourceId, counts] of Object.entries(sourceCounts)) {
+    ensureSourceBucket(day, sourceId)
+    for (const [counter, amount] of Object.entries(counts) as Array<[StatCounter, number]>) {
+      if (amount > 0) {
+        // eslint-disable-next-line security/detect-object-injection
+        day.sources[sourceId][counter] += amount
+      }
+    }
+  }
+
+  for (const [filterId, counts] of Object.entries(filterCounts)) {
+    ensureFilterBucket(day, filterId)
+    for (const [counter, amount] of Object.entries(counts) as Array<[StatCounter, number]>) {
+      if (amount > 0) {
+        // eslint-disable-next-line security/detect-object-injection
+        day.filters[filterId][counter] += amount
+      }
+    }
+  }
+
   writeStats(store)
 }
