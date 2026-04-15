@@ -1,10 +1,12 @@
 import type { Page } from "@playwright/test"
 
 /**
- * Navigates to the Settings page.
- * Settings was moved from a direct nav link to the overflow sheet (More menu),
- * so we navigate directly via URL for reliability in non-navigation tests.
- * The overflow sheet navigation itself is tested in navigation.spec.ts.
+ * Navigates to the Settings page via direct URL.
+ * Settings was moved from a direct nav link to the overflow sheet (More menu).
+ * Direct URL navigation is used here for reliability — @base-ui/react marks
+ * #root as inert when the popover opens, which interferes with Playwright's
+ * actionability checks. The overflow sheet navigation is exercised separately
+ * in navigation.spec.ts using force-click.
  */
 export async function navigateToSettings(page: Page): Promise<void> {
   await page.goto("/settings")

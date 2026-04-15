@@ -90,10 +90,11 @@ export function useInsightsData(): {
       const hasEnoughData = appeared >= MIN_APPEARED_THRESHOLD
       const recommendDisable = hasEnoughData && hideRate > HIDE_RATE_THRESHOLD
 
-      // Zero-engagement detection: ≥7 stored days exist and appeared === 0 in all of them
-      const storedDays = Object.keys(store.days)
-      const noRecentArticles =
-        storedDays.length >= NO_ARTICLES_MIN_DAYS && appeared === 0
+      // Zero-engagement detection: ≥7 days within the window have data, but appeared === 0.
+      // Checking window days (not total stored days) ensures old data outside the window
+      // doesn't trigger this flag when the source has genuinely been inactive recently.
+      const windowDaysWithData = [...windowDates].filter((d) => store.days[d] !== undefined).length
+      const noRecentArticles = windowDaysWithData >= NO_ARTICLES_MIN_DAYS && appeared === 0
 
       sources.push({
         sourceId: connector.id,

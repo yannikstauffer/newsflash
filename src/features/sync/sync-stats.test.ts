@@ -255,14 +255,14 @@ describe("performSync stats additive merge", () => {
 
     await performSync(client, "user-1")
 
-    const statsUpdate = updateMock.mock.calls.find(
-      (call: Array<{ data: StatsStore }>) => {
-        const d = call[0]?.data as StatsStore | undefined
-        return d?.version === 1
-      },
+    // Delta is empty (snapshot === local) → short-circuit: no write to Supabase,
+    // just pull remote into local. Verify no unnecessary network write happened.
+    expect(updateMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ version: 1 }) }),
     )
-    // merged = remote(5) + delta(0) = 5
-    expect(statsUpdate?.[0]?.data?.days["2026-04-14"]?.sources["heise"]?.appeared).toBe(5)
+    // Local stats should equal remote (5 appeared, not double-counted as 10)
+    const localAfter = JSON.parse(localStorage.getItem("newsflash:stats") ?? "null") as StatsStore
+    expect(localAfter.days["2026-04-14"]?.sources["heise"]?.appeared).toBe(5)
   })
 
   it("snapshot is saved after successful sync", async () => {

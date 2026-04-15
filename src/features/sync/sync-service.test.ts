@@ -48,7 +48,11 @@ describe("performSync", () => {
 
     await performSync(client, "user-1")
 
-    expect(upsertMock).toHaveBeenCalledTimes(SYNCED_KEYS.length)
+    // stats key is skipped on first login when delta is empty (no local stats to push)
+    const nonStatsUpserts = upsertMock.mock.calls.filter(
+      (call: Array<{ key: string }>) => call[0]?.key !== "stats",
+    )
+    expect(nonStatsUpserts).toHaveLength(SYNCED_KEYS.length - 1)
     expect(upsertMock).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: "user-1",
@@ -111,17 +115,11 @@ describe("performSync", () => {
 
     await performSync(client, "user-1")
 
-    // update should not have been called for "hidden" since timestamps are equal
-    // (remote is equal, so we "pull" which just overwrites with same data)
-    // The stats key always uses additive merge — it calls update with the merged value
-    expect(updateMock).not.toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.arrayContaining(["same-article"]) }),
-    )
-    // upsert should not have been called for any non-stats key
-    const nonStatsUpserts = upsertMock.mock.calls.filter(
-      (call: Array<{ key: string }>) => call[0]?.key !== "stats",
-    )
-    expect(nonStatsUpserts).toHaveLength(0)
+    // When timestamps are equal, no key should be pushed — not even stats (delta is empty
+    // since snapshot matches local after the previous sync).
+    // Verify: update was never called, upsert was never called.
+    expect(updateMock).not.toHaveBeenCalled()
+    expect(upsertMock).not.toHaveBeenCalled()
   })
 
   it("updates last-synced timestamp after successful sync", async () => {

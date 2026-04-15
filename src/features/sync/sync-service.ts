@@ -200,6 +200,17 @@ export async function performSync(supabase: SupabaseClient, userId: string): Pro
       const snapshot = readStatsSnapshot()
       const delta = computeStatsDelta(current, snapshot)
       const remoteStats = remoteRow ? (remoteRow.data as StatsStore) : null
+      const isDeltaEmpty = Object.keys(delta.days).length === 0
+
+      if (isDeltaEmpty) {
+        // No local changes since last sync — just pull remote (or keep local if no remote row)
+        const resolved = remoteStats ?? current
+        writeStats(resolved)
+        writeStatsSnapshot(resolved)
+        dispatchSyncEvent(storageKey)
+        continue
+      }
+
       const merged = mergeStats(remoteStats, delta)
       const now = new Date().toISOString()
 

@@ -38,8 +38,19 @@ vi.mock("@/features/feed-config/hooks/use-feed-preferences", () => ({
   useFeedPreferences: () => ({ isFeedEnabled: () => true }),
 }))
 
+// Default article-actions mock — readListArticles can be overridden per test
+let mockReadListArticles: Array<{
+  id: string
+  title: string
+  description: string
+  link: string
+  publishedAt: Date
+  source: string
+  language: string
+}> = []
+
 vi.mock("@/features/article-actions", () => ({
-  useArticleState: () => ({ readListArticles: [] }),
+  useArticleState: () => ({ readListArticles: mockReadListArticles }),
 }))
 
 // Default filter pref mock — can be overridden per test
@@ -72,6 +83,7 @@ function todayKey(offsetDays = 0): string {
 beforeEach(() => {
   localStorage.clear()
   mockIsFilterEnabled = () => false
+  mockReadListArticles = []
 })
 
 afterEach(() => {
@@ -311,29 +323,46 @@ describe("useInsightsData — filter recommendations", () => {
 describe("useInsightsData — filter disable recommendation", () => {
   it("recommendDisable=true for enabled filter with matching read-list articles", () => {
     mockIsFilterEnabled = () => true // filter is enabled
-
-    vi.mock("@/features/article-actions", () => ({
-      useArticleState: () => ({
-        readListArticles: [
-          {
-            id: "heise:plus-1",
-            title: "heise+ | Premium Content",
-            description: "",
-            link: "https://example.com",
-            publishedAt: new Date(),
-            source: "heise",
-            language: "de",
-          },
-        ],
-      }),
-    }))
+    mockReadListArticles = [
+      {
+        id: "heise:plus-1",
+        title: "heise+ | Premium Content",
+        description: "",
+        link: "https://example.com",
+        publishedAt: new Date(),
+        source: "heise",
+        language: "de",
+      },
+    ]
 
     writeStats({ version: 1, days: {} })
-    // Can't easily re-mock in same test; this is covered by the logic test below
+    const { result } = renderHook(() => useInsightsData())
+    const filter = result.current.filters.find((f) => f.filterId === "heise-plus")
+    expect(filter?.recommendDisable).toBe(true)
   })
 
   it("recommendDisable=false when filter is not enabled", () => {
     mockIsFilterEnabled = () => false // filter disabled
+
+    writeStats({ version: 1, days: {} })
+    const { result } = renderHook(() => useInsightsData())
+    const filter = result.current.filters.find((f) => f.filterId === "heise-plus")
+    expect(filter?.recommendDisable).toBe(false)
+  })
+
+  it("recommendDisable=false when filter is enabled but no read-list matches", () => {
+    mockIsFilterEnabled = () => true // filter is enabled
+    mockReadListArticles = [
+      {
+        id: "heise:regular-1",
+        title: "Regular Article",
+        description: "",
+        link: "https://example.com",
+        publishedAt: new Date(),
+        source: "heise",
+        language: "de",
+      },
+    ]
 
     writeStats({ version: 1, days: {} })
     const { result } = renderHook(() => useInsightsData())
