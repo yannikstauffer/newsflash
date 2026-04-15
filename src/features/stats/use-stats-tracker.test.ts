@@ -1,10 +1,24 @@
 import { renderHook } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { readStats } from "./stats-store"
 import { useStatsTracker } from "./use-stats-tracker"
 
 import type { Connector, NormalizedArticle } from "@/features/connectors/types"
+
+// Freeze time so the day key computed in tests always matches the key used by the code
+// under test, even when tests run close to midnight.
+const FROZEN_DATE = new Date("2026-04-15T12:00:00Z")
+const TODAY_KEY = "2026-04-15"
+
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(FROZEN_DATE)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 function makeArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedArticle {
   return {
@@ -50,8 +64,7 @@ describe("useStatsTracker — trackAppeared", () => {
 
     result.current.trackAppeared([article], [], () => true)
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     expect(readStats().days[key]?.sources["heise"]?.appeared).toBe(1)
   })
 
@@ -62,8 +75,7 @@ describe("useStatsTracker — trackAppeared", () => {
     result.current.trackAppeared([article], [], () => true)
     result.current.trackAppeared([article], [], () => true)
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     expect(readStats().days[key]?.sources["heise"]?.appeared).toBe(1)
   })
 
@@ -75,8 +87,7 @@ describe("useStatsTracker — trackAppeared", () => {
     first.current.trackAppeared([article], [], () => true)
     second.current.trackAppeared([article], [], () => true)
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     // Two independent hook instances each track the article once
     expect(readStats().days[key]?.sources["heise"]?.appeared).toBe(2)
   })
@@ -89,8 +100,7 @@ describe("useStatsTracker — trackAppeared", () => {
 
     result.current.trackAppeared([a1, a2, a3], [], () => true)
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     const day = readStats().days[key]
     expect(day?.sources["heise"]?.appeared).toBe(2)
     expect(day?.sources["srf"]?.appeared).toBe(1)
@@ -103,8 +113,7 @@ describe("useStatsTracker — trackAppeared", () => {
     // heise-plus filter is disabled (isFilterEnabled returns false)
     result.current.trackAppeared([article], [heiseConnector], () => false)
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     expect(readStats().days[key]?.filters["heise-plus"]?.appeared).toBe(1)
   })
 
@@ -115,8 +124,7 @@ describe("useStatsTracker — trackAppeared", () => {
     // Filter is enabled (isFilterEnabled returns true) — article wouldn't be shown, but we track it
     result.current.trackAppeared([article], [heiseConnector], () => true)
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     expect(readStats().days[key]?.filters["heise-plus"]?.appeared).toBeUndefined()
   })
 
@@ -126,8 +134,7 @@ describe("useStatsTracker — trackAppeared", () => {
 
     result.current.trackAppeared([article], [heiseConnector], () => false)
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     expect(readStats().days[key]?.filters["heise-plus"]?.appeared).toBeUndefined()
   })
 })
@@ -147,8 +154,7 @@ describe("useStatsTracker — trackHidden", () => {
 
     result.current.trackHidden(article, [])
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     expect(readStats().days[key]?.sources["heise"]?.hidden).toBe(1)
   })
 
@@ -160,8 +166,7 @@ describe("useStatsTracker — trackHidden", () => {
       { filterId: "heise-plus", match: heisePlusFilter.match },
     ])
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     expect(readStats().days[key]?.filters["heise-plus"]?.hidden).toBe(1)
   })
 
@@ -173,8 +178,7 @@ describe("useStatsTracker — trackHidden", () => {
       { filterId: "heise-plus", match: heisePlusFilter.match },
     ])
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     expect(readStats().days[key]?.filters?.["heise-plus"]?.hidden).toBeUndefined()
   })
 
@@ -184,8 +188,7 @@ describe("useStatsTracker — trackHidden", () => {
 
     result.current.trackHidden(article, [])
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     const source = readStats().days[key]?.sources["heise"]
     expect(source?.hidden).toBe(1)
     expect(source?.appeared).toBe(0)
@@ -207,8 +210,7 @@ describe("useStatsTracker — trackSaved", () => {
 
     result.current.trackSaved(article, [])
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     expect(readStats().days[key]?.sources["srf"]?.saved).toBe(1)
   })
 
@@ -220,8 +222,7 @@ describe("useStatsTracker — trackSaved", () => {
       { filterId: "heise-plus", match: heisePlusFilter.match },
     ])
 
-    const today = new Date()
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    const key = TODAY_KEY
     expect(readStats().days[key]?.filters["heise-plus"]?.saved).toBe(1)
   })
 })

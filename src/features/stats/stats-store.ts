@@ -47,6 +47,23 @@ function evictOldDays(days: Record<string, DayStats>): Record<string, DayStats> 
   return evicted
 }
 
+/**
+ * Parses and validates an unknown value as a StatsStore.
+ * Returns null if the value is missing or structurally invalid so callers can
+ * treat bad remote data as "no remote" rather than crashing.
+ */
+export function parseStatsStore(data: unknown): StatsStore | null {
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    (data as StatsStore).version === 1 &&
+    typeof (data as StatsStore).days === "object"
+  ) {
+    return data as StatsStore
+  }
+  return null
+}
+
 export function readStats(): StatsStore {
   try {
     const raw = globalThis.localStorage.getItem(STATS_KEY)

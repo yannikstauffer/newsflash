@@ -195,29 +195,36 @@ export async function performSync(supabase: SupabaseClient, userId: string): Pro
 
     if (additiveMerge) {
       // Additive merge path for stats key
-      const { readStats, writeStats } = await import("@/features/stats/stats-store")
+      const { readStats, writeStats, parseStatsStore } = await import("@/features/stats/stats-store")
       const current = readStats()
       const snapshot = readStatsSnapshot()
       const delta = computeStatsDelta(current, snapshot)
-      const remoteStats = remoteRow ? (remoteRow.data as StatsStore) : null
+      // Validate remote data — treat malformed payloads as null (no remote)
+      const remoteStats = remoteRow ? parseStatsStore(remoteRow.data) : null
       const isDeltaEmpty = Object.keys(delta.days).length === 0
 
       if (isDeltaEmpty) {
         // No local changes since last sync — just pull remote (or keep local if no remote row)
         const resolved = remoteStats ?? current
+        // writeStats applies 90-day eviction; read back the evicted version for the snapshot
         writeStats(resolved)
-        writeStatsSnapshot(resolved)
+        const evictedResolved = readStats()
+        writeStatsSnapshot(evictedResolved)
         dispatchSyncEvent(storageKey)
         continue
       }
 
       const merged = mergeStats(remoteStats, delta)
+      // Write locally first so writeStats applies the 90-day eviction, then push the
+      // evicted version to Supabase to prevent the remote row from growing without bound.
+      writeStats(merged)
+      const evicted = readStats()
       const now = new Date().toISOString()
 
       if (remoteRow) {
         const { error: updateError } = await supabase
           .from("user_settings")
-          .update({ data: merged, updated_at: now })
+          .update({ data: evicted, updated_at: now })
           .match({ user_id: userId, key: remoteKey })
         if (updateError) {
           throw new Error(`Failed to update ${remoteKey}: ${updateError.message}`)
@@ -225,15 +232,13 @@ export async function performSync(supabase: SupabaseClient, userId: string): Pro
       } else {
         const { error: upsertError } = await supabase
           .from("user_settings")
-          .upsert({ user_id: userId, key: remoteKey, data: merged, updated_at: now })
+          .upsert({ user_id: userId, key: remoteKey, data: evicted, updated_at: now })
         if (upsertError) {
           throw new Error(`Failed to push ${remoteKey}: ${upsertError.message}`)
         }
       }
 
-      // Write merged back to local and save snapshot
-      writeStats(merged)
-      writeStatsSnapshot(merged)
+      writeStatsSnapshot(evicted)
       dispatchSyncEvent(storageKey)
       continue
     }

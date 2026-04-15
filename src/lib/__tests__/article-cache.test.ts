@@ -216,12 +216,22 @@ describe("article-cache", () => {
     })
 
     it("should include boundary values", async () => {
-      // Use a date 2 days ago — safely within the 14-day retention window
+      // Use a date 2 days ago — safely within the 14-day retention window.
+      // Use UTC throughout to avoid local-time/toISOString() off-by-one near midnight.
       const twoDaysAgo = new Date()
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
-      const dateString = twoDaysAgo.toISOString().slice(0, 10)
-      const start = new Date(dateString + "T00:00:00Z")
-      const end = new Date(dateString + "T23:59:59Z")
+      twoDaysAgo.setUTCDate(twoDaysAgo.getUTCDate() - 2)
+      const start = new Date(Date.UTC(
+        twoDaysAgo.getUTCFullYear(),
+        twoDaysAgo.getUTCMonth(),
+        twoDaysAgo.getUTCDate(),
+        0, 0, 0, 0,
+      ))
+      const end = new Date(Date.UTC(
+        twoDaysAgo.getUTCFullYear(),
+        twoDaysAgo.getUTCMonth(),
+        twoDaysAgo.getUTCDate(),
+        23, 59, 59, 999,
+      ))
 
       await upsertMany([
         makeArticle({ id: "art-1", publishedAt: start }),
