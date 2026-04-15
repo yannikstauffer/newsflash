@@ -22,13 +22,13 @@ Review and resolve PR comments systematically — fix what impacts functionality
    Also fetch inline review comments:
 
    ```bash
-   gh api repos/{owner}/{repo}/pulls/<number>/comments --jq '.[] | {path, line, body, user: .user.login}'
+   gh api repos/:owner/:repo/pulls/<number>/comments --jq '.[] | {path, line, body, user: .user.login}'
    ```
 
    And top-level review bodies:
 
    ```bash
-   gh api repos/{owner}/{repo}/pulls/<number>/reviews --jq '.[] | select(.body != "") | {body, state, user: .user.login}'
+   gh api repos/:owner/:repo/pulls/<number>/reviews --jq '.[] | select(.body != "") | {body, state, user: .user.login}'
    ```
 
 2. **Read the referenced files**
