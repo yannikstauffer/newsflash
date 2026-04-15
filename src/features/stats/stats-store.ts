@@ -47,25 +47,47 @@ function evictOldDays(days: Record<string, DayStats>): Record<string, DayStats> 
   return evicted
 }
 
-function isValidDaysRecord(value: unknown): value is Record<string, DayStats> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
+/**
+ * Filters a raw days object down to entries that have the required
+ * `{ sources: object, filters: object }` shape. Invalid entries are dropped
+ * rather than rejecting the whole store, so one malformed remote bucket
+ * doesn't wipe all legitimate local data.
+ */
+function sanitizeDaysRecord(value: unknown): Record<string, DayStats> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return {}
+  const result: Record<string, DayStats> = {}
+  for (const [date, day] of Object.entries(value as Record<string, unknown>)) {
+    if (
+      typeof day === "object" &&
+      day !== null &&
+      typeof (day as DayStats).sources === "object" &&
+      (day as DayStats).sources !== null &&
+      typeof (day as DayStats).filters === "object" &&
+      (day as DayStats).filters !== null
+    ) {
+      // eslint-disable-next-line security/detect-object-injection -- date comes from parsed data being normalized into a plain record
+      result[date] = day as DayStats
+    }
+  }
+  return result
 }
 
 /**
  * Parses and validates an unknown value as a StatsStore.
  * Returns null if the value is missing or structurally invalid so callers can
  * treat bad remote data as "no remote" rather than crashing.
+ * Individual day entries with an invalid shape are dropped rather than
+ * causing the entire store to be rejected.
  */
 export function parseStatsStore(data: unknown): StatsStore | null {
   if (
-    typeof data === "object" &&
-    data !== null &&
-    (data as StatsStore).version === 1 &&
-    isValidDaysRecord((data as StatsStore).days)
+    typeof data !== "object" ||
+    data === null ||
+    (data as StatsStore).version !== 1
   ) {
-    return data as StatsStore
+    return null
   }
-  return null
+  return { version: 1, days: sanitizeDaysRecord((data as StatsStore).days) }
 }
 
 export function readStats(): StatsStore {
@@ -73,10 +95,10 @@ export function readStats(): StatsStore {
     const raw = globalThis.localStorage.getItem(STATS_KEY)
     if (!raw) return { version: 1, days: {} }
     const parsed = JSON.parse(raw) as StatsStore
-    if (parsed.version !== 1 || !isValidDaysRecord(parsed.days)) {
+    if (parsed.version !== 1) {
       return { version: 1, days: {} }
     }
-    return parsed
+    return { version: 1, days: sanitizeDaysRecord(parsed.days) }
   } catch {
     return { version: 1, days: {} }
   }
