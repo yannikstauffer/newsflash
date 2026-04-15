@@ -1,6 +1,7 @@
 import type { DayStats, StatsStore } from "@/features/stats/stats-store"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+import { parseStatsStore } from "@/features/stats/stats-store"
 import { dispatchSyncEvent } from "@/hooks/use-local-storage"
 
 export interface SyncedKeyConfig {
@@ -60,12 +61,9 @@ export function readStatsSnapshot(): StatsStore | null {
   try {
     const raw = globalThis.localStorage.getItem(STATS_SNAPSHOT_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as StatsStore
-    return parsed.version === 1 &&
-      typeof parsed.days === "object" &&
-      parsed.days !== null
-      ? parsed
-      : null
+    // parseStatsStore sanitizes day bucket shapes (sources/filters present and non-null)
+    // so computeStatsDelta can safely index into snapshotDay.sources/filters
+    return parseStatsStore(JSON.parse(raw))
   } catch {
     return null
   }
@@ -119,7 +117,7 @@ export function computeStatsDelta(current: StatsStore, snapshot: StatsStore | nu
         // eslint-disable-next-line security/detect-object-injection
         currentDay.sources[sourceId],
         // eslint-disable-next-line security/detect-object-injection
-        snapshotDay?.sources[sourceId],
+        snapshotDay?.sources?.[sourceId],
       )
       if (d.appeared > 0 || d.hidden > 0 || d.saved > 0) {
         // eslint-disable-next-line security/detect-object-injection
@@ -136,7 +134,7 @@ export function computeStatsDelta(current: StatsStore, snapshot: StatsStore | nu
         // eslint-disable-next-line security/detect-object-injection
         currentDay.filters[filterId],
         // eslint-disable-next-line security/detect-object-injection
-        snapshotDay?.filters[filterId],
+        snapshotDay?.filters?.[filterId],
       )
       if (d.appeared > 0 || d.hidden > 0 || d.saved > 0) {
         // eslint-disable-next-line security/detect-object-injection
