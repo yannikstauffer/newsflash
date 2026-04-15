@@ -74,9 +74,7 @@ test("overflow trigger is visible and not spinning when unauthenticated", async 
   const overflowTrigger = page.getByTestId("overflow-trigger")
   await expect(overflowTrigger).toBeVisible()
 
-  const svg = overflowTrigger.locator("svg")
-  await expect(svg.first()).toBeVisible()
-  await expect(svg.first()).not.toHaveClass(/animate-spin/)
+  await expect(overflowTrigger.locator(".animate-spin")).not.toBeAttached()
 })
 
 test("OTP sign-in flow advances to the code step and handles invalid codes", async ({ page }) => {
