@@ -12,7 +12,7 @@ import { BottomNav } from "./bottom-nav"
 
 import { SyncProvider } from "@/features/sync/sync-context"
 
-function renderWithRouter(count: number) {
+function renderWithRouter(count: number, initialPath = "/") {
   const rootRoute = createRootRoute({
     component: () => (
       <SyncProvider>
@@ -25,8 +25,18 @@ function renderWithRouter(count: number) {
     path: "/",
     component: () => <div />,
   })
-  const routeTree = rootRoute.addChildren([indexRoute])
-  const history = createMemoryHistory({ initialEntries: ["/"] })
+  const insightsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/insights",
+    component: () => <div />,
+  })
+  const settingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/settings",
+    component: () => <div />,
+  })
+  const routeTree = rootRoute.addChildren([indexRoute, insightsRoute, settingsRoute])
+  const history = createMemoryHistory({ initialEntries: [initialPath] })
   const testRouter = createRouter({ routeTree, history })
   return render(<RouterProvider router={testRouter} />)
 }
@@ -56,5 +66,27 @@ describe("BottomNav", () => {
   it("shows 99+ badge when count exceeds 99", async () => {
     renderWithRouter(150)
     expect((await screen.findByTestId("read-list-badge")).textContent).toBe("99+")
+  })
+
+  it("does NOT render a direct link to /settings", async () => {
+    renderWithRouter(0)
+    await screen.findByRole("navigation")
+    const links = screen.queryAllByRole("link")
+    const settingsLink = links.find((l) => l.getAttribute("href") === "/settings")
+    expect(settingsLink).toBeUndefined()
+  })
+
+  it("renders the overflow trigger button instead of a settings link", async () => {
+    renderWithRouter(0)
+    expect(await screen.findByTestId("overflow-trigger")).toBeInTheDocument()
+  })
+
+  it("renders Feed and Read List nav links", async () => {
+    renderWithRouter(0)
+    await screen.findByRole("navigation")
+    const links = screen.getAllByRole("link")
+    const hrefs = links.map((l) => l.getAttribute("href"))
+    expect(hrefs).toContain("/")
+    expect(hrefs).toContain("/read-list")
   })
 })

@@ -106,14 +106,22 @@ describe("performSync", () => {
       { key: "readlist", data: [], updated_at: timestamp },
       { key: "feedprefs", data: {}, updated_at: timestamp },
       { key: "filterprefs", data: {}, updated_at: timestamp },
+      { key: "stats", data: { version: 1, days: {} }, updated_at: timestamp },
     ])
 
     await performSync(client, "user-1")
 
     // update should not have been called for "hidden" since timestamps are equal
     // (remote is equal, so we "pull" which just overwrites with same data)
-    expect(updateMock).not.toHaveBeenCalled()
-    expect(upsertMock).not.toHaveBeenCalled()
+    // The stats key always uses additive merge — it calls update with the merged value
+    expect(updateMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.arrayContaining(["same-article"]) }),
+    )
+    // upsert should not have been called for any non-stats key
+    const nonStatsUpserts = upsertMock.mock.calls.filter(
+      (call: Array<{ key: string }>) => call[0]?.key !== "stats",
+    )
+    expect(nonStatsUpserts).toHaveLength(0)
   })
 
   it("updates last-synced timestamp after successful sync", async () => {
@@ -219,7 +227,7 @@ describe("performSync event dispatch", () => {
     expect(events).not.toContain("newsflash:hidden")
   })
 
-  it("does not dispatch sync event on first login (upsert path)", async () => {
+  it("does not dispatch sync event on first login (upsert path) for non-stats keys", async () => {
     localStorage.setItem("newsflash:hidden", JSON.stringify(["article-1"]))
     localStorage.setItem("newsflash:hidden:updated_at", "2025-01-01T00:00:00.000Z")
 
@@ -235,7 +243,12 @@ describe("performSync event dispatch", () => {
 
     window.removeEventListener(LOCAL_STORAGE_SYNC_EVENT, listener)
 
-    expect(events).toEqual([])
+    // hidden/readlist/feedprefs/filterprefs should NOT dispatch events on first login (upsert path)
+    // stats always dispatches via the additive merge path
+    expect(events).not.toContain("newsflash:hidden")
+    expect(events).not.toContain("newsflash:readlist")
+    expect(events).not.toContain("newsflash:feed-prefs")
+    expect(events).not.toContain("newsflash:filter-prefs")
   })
 })
 

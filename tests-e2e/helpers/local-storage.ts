@@ -1,6 +1,16 @@
 import type { Page } from "@playwright/test"
 
 /**
+ * Navigates to the Settings page.
+ * Settings was moved from a direct nav link to the overflow sheet (More menu),
+ * so we navigate directly via URL for reliability in non-navigation tests.
+ * The overflow sheet navigation itself is tested in navigation.spec.ts.
+ */
+export async function navigateToSettings(page: Page): Promise<void> {
+  await page.goto("/settings")
+}
+
+/**
  * Clears all localStorage to ensure deterministic test state.
  */
 export async function clearLocalStorage(page: Page): Promise<void> {

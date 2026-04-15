@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test } from "@playwright/test"
 
-import { clearLocalStorage } from "./helpers/local-storage"
+import { clearLocalStorage, navigateToSettings } from "./helpers/local-storage"
 import { ALL_CONNECTOR_FIXTURES, setupMocks } from "./helpers/mock-feeds"
 
 import type { Page } from "@playwright/test"
@@ -45,8 +45,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test("unauthenticated user sees auth form on settings page, no sync controls", async ({ page }) => {
-  const nav = page.locator("nav")
-  await nav.getByRole("link", { name: /settings/i }).click()
+  await navigateToSettings(page)
 
   const syncSection = page.getByTestId("sync-settings")
   await expect(syncSection).toBeVisible()
@@ -59,8 +58,7 @@ test("unauthenticated user sees auth form on settings page, no sync controls", a
 })
 
 test("settings page displays sync section structure", async ({ page }) => {
-  const nav = page.locator("nav")
-  await nav.getByRole("link", { name: /settings/i }).click()
+  await navigateToSettings(page)
 
   await expect(page.getByRole("heading", { name: /cross-device sync/i })).toBeVisible()
   await expect(page.getByText(/sync your hidden articles/i)).toBeVisible()
@@ -72,20 +70,19 @@ test("settings page displays sync section structure", async ({ page }) => {
   await expect(page.getByTestId("send-code-button")).toBeVisible()
 })
 
-test("settings nav icon is a cog when unauthenticated", async ({ page }) => {
-  const nav = page.locator("nav")
-  const settingsLink = nav.getByRole("link", { name: /settings/i })
+test("overflow trigger is visible and not spinning when unauthenticated", async ({ page }) => {
+  const overflowTrigger = page.getByTestId("overflow-trigger")
+  await expect(overflowTrigger).toBeVisible()
 
-  const svg = settingsLink.locator("svg")
+  const svg = overflowTrigger.locator("svg")
   await expect(svg.first()).toBeVisible()
-
   await expect(svg.first()).not.toHaveClass(/animate-spin/)
 })
 
 test("OTP sign-in flow advances to the code step and handles invalid codes", async ({ page }) => {
   await mockSupabaseAuth(page, { verifyOk: false })
 
-  await page.locator("nav").getByRole("link", { name: /settings/i }).click()
+  await navigateToSettings(page)
 
   await page.getByTestId("sync-email-input").fill("test@example.com")
   await page.getByTestId("send-code-button").click()

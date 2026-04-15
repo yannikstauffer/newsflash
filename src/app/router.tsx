@@ -51,6 +51,14 @@ const settingsRoute = createRoute({
   ),
 })
 
+const insightsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/insights",
+  component: lazyRouteComponent(
+    () => import("@/features/insights/components/insights-page"),
+  ),
+})
+
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "$",
@@ -61,6 +69,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   readListRoute,
   settingsRoute,
+  insightsRoute,
   notFoundRoute,
 ])
 

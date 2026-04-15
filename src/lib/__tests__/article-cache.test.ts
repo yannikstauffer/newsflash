@@ -223,8 +223,12 @@ describe("article-cache", () => {
     })
 
     it("should include boundary values", async () => {
-      const start = new Date("2026-04-01T00:00:00Z")
-      const end = new Date("2026-04-01T23:59:59Z")
+      // Use a date 2 days ago — safely within the 14-day retention window
+      const twoDaysAgo = new Date()
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+      const dateString = twoDaysAgo.toISOString().slice(0, 10)
+      const start = new Date(dateString + "T00:00:00Z")
+      const end = new Date(dateString + "T23:59:59Z")
 
       await upsertMany([
         makeArticle({ id: "art-1", publishedAt: start }),

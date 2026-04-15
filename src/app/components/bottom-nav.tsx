@@ -2,9 +2,9 @@ import { Link } from "@tanstack/react-router"
 import { Bookmark, Newspaper } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
-import type { ReactNode } from "react"
+import { OverflowSheet } from "./overflow-sheet"
 
-import { SyncNavIcon } from "@/features/sync/components/sync-nav-icon"
+import type { ReactNode } from "react"
 
 interface NavItem {
   readonly to: string
@@ -15,7 +15,6 @@ interface NavItem {
 const NAV_ITEMS: readonly NavItem[] = [
   { to: "/", labelKey: "nav.feed", icon: Newspaper },
   { to: "/read-list", labelKey: "nav.readList", icon: Bookmark },
-  { to: "/settings", labelKey: "nav.settings", icon: SyncNavIcon },
 ]
 
 function formatBadgeCount(count: number): string {
@@ -70,6 +69,8 @@ export function BottomNav({ readListCount }: BottomNavProps) {
             </Link>
           )
         })}
+
+        <OverflowSheet />
       </div>
     </nav>
   )

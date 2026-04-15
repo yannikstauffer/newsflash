@@ -21,6 +21,7 @@ const feedRoute = getRouteApi("/")
 import { connectors } from "@/features/connectors/registry"
 import { useFeedPreferences } from "@/features/feed-config/hooks/use-feed-preferences"
 import { useFilterPreferences } from "@/features/feed-config/hooks/use-filter-preferences"
+import { useStatsTracker } from "@/features/stats/use-stats-tracker"
 
 interface FilterBarProps {
   readonly showHidden: boolean
@@ -87,6 +88,7 @@ export function useFeedPage(): UseFeedPageResult {
     addToReadList,
     removeFromReadList,
   } = useArticleState()
+  const { trackAppeared, trackHidden, trackSaved } = useStatsTracker()
 
   const { date, view, q, hidden } = feedRoute.useSearch()
   const navigate = useNavigate({ from: "/" })
@@ -196,11 +198,29 @@ export function useFeedPage(): UseFeedPageResult {
     articlesRef.current = filteredArticles
   }, [filteredArticles])
 
+  // Compute disabled filters once (filters where user currently sees matching articles)
+  const disabledFilters = useMemo(() => {
+    return connectors.flatMap((connector) =>
+      (connector.filters ?? [])
+        .filter((f) => !isFilterEnabled(f.id, f.enabledByDefault))
+        .map((f) => ({ filterId: f.id, match: f.match })),
+    )
+  }, [isFilterEnabled])
+
+  // Track appeared articles when the visible list changes
+  useEffect(() => {
+    if (!loading && filteredArticles.length > 0) {
+      trackAppeared(filteredArticles, connectors, isFilterEnabled)
+    }
+  }, [filteredArticles, loading, trackAppeared, isFilterEnabled])
+
   const handleKeyboardHide = useCallback(
     (articleId: string) => {
+      const article = articlesRef.current.find((a) => a.id === articleId)
       hideArticle(articleId)
+      if (article) trackHidden(article, disabledFilters)
     },
-    [hideArticle],
+    [hideArticle, trackHidden, disabledFilters],
   )
 
   const handleKeyboardSave = useCallback(
@@ -212,10 +232,11 @@ export function useFeedPage(): UseFeedPageResult {
       } else {
         addToReadList(article)
         hideArticle(articleId)
+        trackSaved(article, disabledFilters)
         swipeableCardReferences.current.get(articleId)?.triggerRemoval()
       }
     },
-    [isInReadList, removeFromReadList, addToReadList, hideArticle],
+    [isInReadList, removeFromReadList, addToReadList, hideArticle, trackSaved, disabledFilters],
   )
 
   const getFocusedArticleId = useCallback(
@@ -261,13 +282,17 @@ export function useFeedPage(): UseFeedPageResult {
         })
       }
       return createElement(ArticleActionButtons, {
-        onHide: () => hideArticle(article.id),
+        onHide: () => {
+          hideArticle(article.id)
+          trackHidden(article, disabledFilters)
+        },
         onSave: () => {
           if (isInReadList(article.id)) {
             removeFromReadList(article.id)
           } else {
             addToReadList(article)
             hideArticle(article.id)
+            trackSaved(article, disabledFilters)
             swipeableCardReferences.current.get(article.id)?.triggerRemoval()
           }
         },
@@ -277,6 +302,7 @@ export function useFeedPage(): UseFeedPageResult {
     [
       showHidden, isHidden, unhideArticle, hideArticle,
       isInReadList, removeFromReadList, addToReadList,
+      trackHidden, trackSaved, disabledFilters,
     ],
   )
 
@@ -305,7 +331,10 @@ export function useFeedPage(): UseFeedPageResult {
               { className: "text-amber-700 dark:text-amber-400", "aria-hidden": "true" },
               createElement(EyeOff, { className: "size-5" }),
             ),
-            onAction: () => hideArticle(article.id),
+            onAction: () => {
+              hideArticle(article.id)
+              trackHidden(article, disabledFilters)
+            },
           },
           swipeLeft: {
             bgClassName: "bg-blue-100 dark:bg-blue-900/30",
@@ -320,6 +349,7 @@ export function useFeedPage(): UseFeedPageResult {
               } else {
                 addToReadList(article)
                 hideArticle(article.id)
+                trackSaved(article, disabledFilters)
               }
             },
           },
@@ -327,7 +357,10 @@ export function useFeedPage(): UseFeedPageResult {
         hoverDiv,
       )
     },
-    [hideArticle, isInReadList, removeFromReadList, addToReadList, createInteractionRef],
+    [
+      hideArticle, isInReadList, removeFromReadList, addToReadList,
+      createInteractionRef, trackHidden, trackSaved, disabledFilters,
+    ],
   )
 
   const handleToggleShowHidden = useCallback(() => {

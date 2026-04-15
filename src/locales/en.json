@@ -3,6 +3,9 @@
     "feed": "Feed",
     "readList": "Read List",
     "settings": "Settings",
+    "insights": "Insights",
+    "overflow": "More",
+    "overflowOpen": "Open navigation menu",
     "skipToContent": "Skip to content",
     "mainNavigation": "Main navigation",
     "readListCount": "{{label}} ({{count}} saved)"
@@ -96,6 +99,23 @@
   "offline": {
     "banner": "You're offline — showing cached content",
     "pullToRefresh": "You're offline"
+  },
+  "insights": {
+    "heading": "Insights",
+    "sourcesSection": "Sources",
+    "filtersSection": "Filters",
+    "emptyTitle": "No data yet",
+    "emptyDescription": "Stats will appear after you use the app for a few days.",
+    "notEnoughData": "Not enough data yet",
+    "noRecentArticles": "No recent articles",
+    "noMatchingArticles": "No matching articles recently",
+    "considerDisabling": "Consider disabling",
+    "considerEnabling": "Consider enabling",
+    "appeared": "Appeared",
+    "hidden": "Hidden",
+    "saved": "Saved",
+    "matched": "Matched",
+    "hideRate": "Hide rate"
   },
   "error": {
     "heading": "Something went wrong",
