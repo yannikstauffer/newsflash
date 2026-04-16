@@ -9,6 +9,9 @@ import { useFilterPreferences } from "../hooks/use-filter-preferences"
 import type { FeedConfig } from "@/features/connectors/types"
 import type { ThemePreference } from "@/hooks/use-theme-preference"
 
+import { SegmentedControl } from "@/components/segmented-control"
+import { SettingRow } from "@/components/setting-row"
+import { SettingsSection } from "@/components/settings-section"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { useArticleState } from "@/features/article-actions/hooks/use-article-state"
@@ -18,13 +21,13 @@ import { useInstallPrompt } from "@/hooks/use-install-prompt"
 import { useIsStandalone } from "@/hooks/use-is-standalone"
 import { useThemePreference } from "@/hooks/use-theme-preference"
 
-const THEME_OPTIONS: Array<{ readonly value: ThemePreference; readonly label: string }> = [
+const THEME_OPTIONS: ReadonlyArray<{ readonly value: ThemePreference; readonly label: string }> = [
   { value: "system", label: "System" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
 ]
 
-const LOCALE_OPTIONS: Array<{ readonly value: string; readonly label: string }> = [
+const LOCALE_OPTIONS: ReadonlyArray<{ readonly value: "de" | "en"; readonly label: string }> = [
   { value: "de", label: "Deutsch" },
   { value: "en", label: "English" },
 ]
@@ -68,13 +71,13 @@ export default function FeedConfigPage() {
   const { canInstall, isIosSafari, triggerInstall } = useInstallPrompt()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
-  const currentLocale = i18n.language.startsWith("de") ? "de" : "en"
+  const currentLocale: "de" | "en" = i18n.language.startsWith("de") ? "de" : "en"
 
   const allFeedIds = connectors.flatMap((connector) =>
     connector.feeds.map((feed) => feed.id),
   )
 
-  function handleLocaleChange(locale: string) {
+  function handleLocaleChange(locale: "de" | "en") {
     i18n.changeLanguage(locale)
   }
 
@@ -133,73 +136,37 @@ export default function FeedConfigPage() {
       <h2 className="text-xl font-bold text-foreground">{t("settings.heading")}</h2>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="space-y-3 rounded-lg border border-border p-6">
-          <div>
-            <h3 className="text-base font-semibold text-foreground">{t("settings.language")}</h3>
-            <p className="text-sm text-muted-foreground">{t("settings.languageDescription")}</p>
-          </div>
-          <div
-            className="inline-flex rounded-lg border border-border"
-            role="radiogroup"
+        <SettingsSection
+          title={t("settings.language")}
+          description={t("settings.languageDescription")}
+        >
+          <SegmentedControl
+            value={currentLocale}
+            onChange={handleLocaleChange}
+            options={LOCALE_OPTIONS}
             aria-label={t("settings.languagePreference")}
-          >
-            {LOCALE_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={currentLocale === option.value}
-                onClick={() => handleLocaleChange(option.value)}
-                className={`min-h-[44px] px-4 text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg md:min-h-0 md:py-2 ${
-                  currentLocale === option.value
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </section>
+          />
+        </SettingsSection>
 
-        <section className="space-y-3 rounded-lg border border-border p-6">
-          <div>
-            <h3 className="text-base font-semibold text-foreground">{t("settings.appearance")}</h3>
-            <p className="text-sm text-muted-foreground">{t("settings.appearanceDescription")}</p>
-          </div>
-          <div
-            className="inline-flex rounded-lg border border-border"
-            role="radiogroup"
+        <SettingsSection
+          title={t("settings.appearance")}
+          description={t("settings.appearanceDescription")}
+        >
+          <SegmentedControl
+            value={theme}
+            onChange={setTheme}
+            options={THEME_OPTIONS}
             aria-label={t("settings.appearance")}
-          >
-            {THEME_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={theme === option.value}
-                onClick={() => setTheme(option.value)}
-                className={`min-h-[44px] px-4 text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg md:min-h-0 md:py-2 ${
-                  theme === option.value
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </section>
+          />
+        </SettingsSection>
       </div>
 
       <SyncSettings />
 
-      <section className="space-y-3 rounded-lg border border-border p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-semibold text-foreground">{t("settings.sources")}</h3>
-            <p className="text-sm text-muted-foreground">{t("settings.sourcesDescription")}</p>
-          </div>
+      <SettingsSection
+        title={t("settings.sources")}
+        description={t("settings.sourcesDescription")}
+        headerAction={
           <div className="flex gap-1">
             <Button variant="ghost" size="sm" onClick={handleEnableAll}>
               {t("settings.enableAll")}
@@ -208,7 +175,8 @@ export default function FeedConfigPage() {
               {t("settings.disableAll")}
             </Button>
           </div>
-        </div>
+        }
+      >
         <div className="divide-y divide-border rounded-lg border border-border">
           {connectors.map((connector) => {
             const allEnabled = connector.feeds.every((feed) =>
@@ -270,19 +238,12 @@ export default function FeedConfigPage() {
                 {ungrouped.length > 0 && connector.feeds.length > 1 && (
                   <div className="ml-6 mt-2 space-y-1">
                     {ungrouped.map((feed) => (
-                      <div
+                      <SettingRow
                         key={feed.id}
-                        className="flex min-h-[44px] items-center justify-between md:min-h-0"
-                      >
-                        <span className="text-sm text-foreground">
-                          {feed.name}
-                        </span>
-                        <Switch
-                          checked={isFeedEnabled(feed.id)}
-                          onCheckedChange={() => toggleFeed(feed.id)}
-                          aria-label={feed.name}
-                        />
-                      </div>
+                        label={feed.name}
+                        checked={isFeedEnabled(feed.id)}
+                        onCheckedChange={() => toggleFeed(feed.id)}
+                      />
                     ))}
                   </div>
                 )}
@@ -293,19 +254,14 @@ export default function FeedConfigPage() {
                       {t("settings.filters")}
                     </span>
                     {connector.filters.map((filter) => (
-                      <div
+                      <SettingRow
                         key={filter.id}
-                        className="flex min-h-[44px] items-center justify-between md:min-h-0"
-                      >
-                        <span className="text-sm text-foreground">
-                          {filter.label}
-                        </span>
-                        <Switch
-                          checked={isFilterEnabled(filter.id, filter.enabledByDefault)}
-                          onCheckedChange={() => toggleFilter(filter.id, filter.enabledByDefault)}
-                          aria-label={filter.label}
-                        />
-                      </div>
+                        label={filter.label}
+                        checked={isFilterEnabled(filter.id, filter.enabledByDefault)}
+                        onCheckedChange={() =>
+                          toggleFilter(filter.id, filter.enabledByDefault)
+                        }
+                      />
                     ))}
                   </div>
                 )}
@@ -313,18 +269,13 @@ export default function FeedConfigPage() {
             )
           })}
         </div>
-      </section>
+      </SettingsSection>
 
       {!isStandalone && (canInstall || isIosSafari) && (
-        <section className="space-y-3 rounded-lg border border-border p-6">
-          <div>
-            <h3 className="text-base font-semibold text-foreground">
-              {t("install.settingsHeading")}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {t("install.settingsDescription")}
-            </p>
-          </div>
+        <SettingsSection
+          title={t("install.settingsHeading")}
+          description={t("install.settingsDescription")}
+        >
           {canInstall ? (
             <Button onClick={triggerInstall}>
               <Download className="size-4" aria-hidden="true" />
@@ -336,7 +287,7 @@ export default function FeedConfigPage() {
               {t("install.settingsIosInstructions")}
             </p>
           )}
-        </section>
+        </SettingsSection>
       )}
     </div>
   )

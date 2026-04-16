@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react"
+import { Loader2, RefreshCw } from "lucide-react"
 import { useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -21,6 +21,8 @@ interface FeedListProps {
   readonly renderWrapper?: (article: NormalizedArticle, children: ReactNode) => ReactNode
   readonly emptyMessage?: string
   readonly onRefresh?: () => void
+  readonly pendingCount?: number
+  readonly onAcceptPending?: () => void
 }
 
 export function FeedList({
@@ -33,6 +35,8 @@ export function FeedList({
   renderWrapper,
   emptyMessage,
   onRefresh,
+  pendingCount = 0,
+  onAcceptPending,
 }: FeedListProps) {
   const { t } = useTranslation()
   const { visibleItems, sentinelRef } = useLazyList(articles)
@@ -100,6 +104,17 @@ export function FeedList({
           <p className="py-12 text-center text-muted-foreground">
             {emptyMessage ?? t("feed.empty")}
           </p>
+        )}
+
+        {pendingCount > 0 && onAcceptPending && (
+          <button
+            type="button"
+            onClick={onAcceptPending}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <RefreshCw className="size-3.5" aria-hidden="true" />
+            {t("feed.showNewerArticles", { count: pendingCount })}
+          </button>
         )}
 
         {visibleItems.map((article) => {

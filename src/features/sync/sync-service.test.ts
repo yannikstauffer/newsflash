@@ -48,7 +48,11 @@ describe("performSync", () => {
 
     await performSync(client, "user-1")
 
-    expect(upsertMock).toHaveBeenCalledTimes(SYNCED_KEYS.length)
+    // stats key is skipped on first login when delta is empty (no local stats to push)
+    const nonStatsUpserts = upsertMock.mock.calls.filter(
+      (call: Array<{ key: string }>) => call[0]?.key !== "stats",
+    )
+    expect(nonStatsUpserts).toHaveLength(SYNCED_KEYS.length - 1)
     expect(upsertMock).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: "user-1",
@@ -106,12 +110,14 @@ describe("performSync", () => {
       { key: "readlist", data: [], updated_at: timestamp },
       { key: "feedprefs", data: {}, updated_at: timestamp },
       { key: "filterprefs", data: {}, updated_at: timestamp },
+      { key: "stats", data: { version: 1, days: {} }, updated_at: timestamp },
     ])
 
     await performSync(client, "user-1")
 
-    // update should not have been called for "hidden" since timestamps are equal
-    // (remote is equal, so we "pull" which just overwrites with same data)
+    // When timestamps are equal, no key should be pushed — not even stats (delta is empty
+    // since snapshot matches local after the previous sync).
+    // Verify: update was never called, upsert was never called.
     expect(updateMock).not.toHaveBeenCalled()
     expect(upsertMock).not.toHaveBeenCalled()
   })
@@ -219,7 +225,7 @@ describe("performSync event dispatch", () => {
     expect(events).not.toContain("newsflash:hidden")
   })
 
-  it("does not dispatch sync event on first login (upsert path)", async () => {
+  it("does not dispatch sync event on first login (upsert path) for non-stats keys", async () => {
     localStorage.setItem("newsflash:hidden", JSON.stringify(["article-1"]))
     localStorage.setItem("newsflash:hidden:updated_at", "2025-01-01T00:00:00.000Z")
 
@@ -235,7 +241,12 @@ describe("performSync event dispatch", () => {
 
     window.removeEventListener(LOCAL_STORAGE_SYNC_EVENT, listener)
 
-    expect(events).toEqual([])
+    // hidden/readlist/feedprefs/filterprefs should NOT dispatch events on first login (upsert path)
+    // stats always dispatches via the additive merge path
+    expect(events).not.toContain("newsflash:hidden")
+    expect(events).not.toContain("newsflash:readlist")
+    expect(events).not.toContain("newsflash:feed-prefs")
+    expect(events).not.toContain("newsflash:filter-prefs")
   })
 })
 

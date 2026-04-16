@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { clearFeedCache, useFeedData } from "./use-feed-data"
+import { clearFeedCache, hasArticleListChanged, useFeedData } from "./use-feed-data"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
@@ -59,6 +59,7 @@ describe("useFeedData", () => {
 
   beforeEach(() => {
     clearFeedCache()
+    localStorage.clear()
     mockConnectors.length = 0
     vi.clearAllMocks()
     mockGetAll.mockResolvedValue([])
@@ -67,6 +68,7 @@ describe("useFeedData", () => {
 
   afterEach(() => {
     clearFeedCache()
+    localStorage.clear()
   })
 
   it("fetches and merges articles from multiple feeds using Promise.all", async () => {
@@ -1173,5 +1175,434 @@ describe("useFeedData", () => {
       // Should be deduplicated to 1
       expect(result.current.articles).toHaveLength(1)
     })
+  })
+
+  describe("lastRefreshedAt localStorage persistence", () => {
+    it("hydrates lastRefreshedAt from localStorage when feedCache is empty", () => {
+      const iso = "2026-04-09T10:00:00.000Z"
+      localStorage.setItem("newsflash:last-refreshed-at", iso)
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => []),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      expect(result.current.lastRefreshedAt).toEqual(new Date(iso))
+    })
+
+    it("returns null when localStorage has no persisted value", () => {
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => []),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+
+      expect(result.current.lastRefreshedAt).toBeNull()
+    })
+
+    it("persists lastRefreshedAt to localStorage after successful fetch", async () => {
+      const article = makeArticle()
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [article]),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const stored = localStorage.getItem("newsflash:last-refreshed-at")
+      expect(stored).not.toBeNull()
+      expect(new Date(stored!)).toBeInstanceOf(Date)
+    })
+  })
+
+  describe("pending articles buffer", () => {
+    it("subsequent background refresh defers new articles", async () => {
+      const existing = makeArticle({
+        id: "a1",
+        title: "Existing",
+        link: "https://example.com/a1",
+        source: "c1",
+      })
+      const fresh = makeArticle({
+        id: "net-1",
+        title: "Fresh",
+        link: "https://example.com/fresh",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+        source: "c1",
+      })
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [existing]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      expect(result.current.articles).toHaveLength(1)
+      expect(result.current.pendingCount).toBe(0)
+
+      mockConnectors[0].parse = vi.fn(() => [existing, fresh])
+
+      await act(async () => {
+        await result.current.refresh({ forceUpdate: false })
+      })
+
+      expect(result.current.articles).toHaveLength(1)
+      expect(result.current.articles[0].id).toBe("a1")
+      expect(result.current.pendingCount).toBe(1)
+    })
+
+    it("acceptPending merges pending articles into displayed and clears the buffer", async () => {
+      const existing = makeArticle({
+        id: "a1",
+        title: "Existing",
+        link: "https://example.com/a1",
+        source: "c1",
+      })
+      const fresh = makeArticle({
+        id: "net-1",
+        title: "Fresh",
+        link: "https://example.com/fresh",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+        source: "c1",
+      })
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [existing]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      mockConnectors[0].parse = vi.fn(() => [existing, fresh])
+
+      await act(async () => {
+        await result.current.refresh({ forceUpdate: false })
+      })
+
+      expect(result.current.pendingCount).toBe(1)
+
+      act(() => {
+        result.current.acceptPending()
+      })
+
+      expect(result.current.pendingCount).toBe(0)
+      expect(result.current.articles).toHaveLength(2)
+      expect(result.current.articles.some((a) => a.id === "net-1")).toBe(true)
+    })
+
+    it("manual refresh (forceUpdate) bypasses the buffer and clears pending", async () => {
+      const existing = makeArticle({
+        id: "a1",
+        title: "Existing",
+        link: "https://example.com/a1",
+        source: "c1",
+      })
+      const fresh = makeArticle({
+        id: "net-1",
+        title: "Fresh",
+        link: "https://example.com/fresh",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+        source: "c1",
+      })
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [existing]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      mockConnectors[0].parse = vi.fn(() => [existing, fresh])
+
+      await act(async () => {
+        await result.current.refresh({ forceUpdate: false })
+      })
+
+      expect(result.current.pendingCount).toBe(1)
+
+      await act(async () => {
+        await result.current.refresh()
+      })
+
+      expect(result.current.pendingCount).toBe(0)
+      expect(result.current.articles).toHaveLength(2)
+    })
+
+    it("initial load with empty displayed list populates articles directly", async () => {
+      const fresh = makeArticle({ id: "net-1", title: "Fresh" })
+
+      mockGetAll.mockResolvedValue([])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [fresh]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      expect(result.current.articles).toHaveLength(1)
+      expect(result.current.articles[0].id).toBe("net-1")
+      expect(result.current.pendingCount).toBe(0)
+    })
+
+    it("initial cache-to-network transition merges directly without deferring", async () => {
+      const cached = makeArticle({
+        id: "c1",
+        title: "Cached",
+        link: "https://example.com/c",
+        source: "c1",
+      })
+      const fresh = makeArticle({
+        id: "net-1",
+        title: "Fresh",
+        link: "https://example.com/fresh",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+        source: "c1",
+      })
+
+      mockGetAll.mockResolvedValue([cached])
+
+      mockConnectors.push({
+        id: "c1",
+        name: "Connector 1",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [cached, fresh]),
+      })
+
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      expect(result.current.articles).toHaveLength(2)
+      expect(result.current.pendingCount).toBe(0)
+    })
+  })
+
+  describe("referential stability", () => {
+    it("preserves article reference when background refresh returns identical IDs", async () => {
+      const article1 = makeArticle({
+        id: "a1",
+        title: "Article 1",
+        link: "https://example.com/1",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+        source: "test",
+      })
+      const article2 = makeArticle({
+        id: "a2",
+        title: "Article 2",
+        link: "https://example.com/2",
+        publishedAt: new Date("2026-03-20T10:00:00Z"),
+        source: "test",
+      })
+
+      // Seed cache so initial hydration populates articles
+      mockGetAll.mockResolvedValue([article1, article2])
+      mockConnectors.push({
+        id: "test",
+        name: "Test",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [article1, article2]),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const firstArticles = result.current.articles
+
+      // The useEffect background fetch returned the same IDs — ref should be preserved
+      expect(result.current.articles).toBe(firstArticles)
+      expect(result.current.articles.length).toBeGreaterThan(0)
+    })
+
+    it("manual refresh always updates state even when IDs are identical", async () => {
+      const article1 = makeArticle({
+        id: "a1",
+        title: "Article 1",
+        link: "https://example.com/1",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+      })
+      mockConnectors.push({
+        id: "test",
+        name: "Test",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [article1]),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const firstArticles = result.current.articles
+
+      // Manual refresh with identical articles — should still update (new ref)
+      mockConnectors[0].parse = vi.fn(() => [article1])
+      await act(async () => {
+        await result.current.refresh()
+      })
+
+      expect(result.current.articles).not.toBe(firstArticles)
+    })
+
+    it("updates articles state when refresh returns new articles", async () => {
+      const article1 = makeArticle({
+        id: "a1",
+        title: "Article 1",
+        link: "https://example.com/1",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+      })
+      mockConnectors.push({
+        id: "test",
+        name: "Test",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [article1]),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const firstArticles = result.current.articles
+
+      // Refresh returns an additional article
+      const article2 = makeArticle({
+        id: "a2",
+        title: "Article 2",
+        link: "https://example.com/2",
+        publishedAt: new Date("2026-03-20T10:00:00Z"),
+      })
+      mockConnectors[0].parse = vi.fn(() => [article1, article2])
+      await act(async () => {
+        await result.current.refresh()
+      })
+
+      expect(result.current.articles).not.toBe(firstArticles)
+      expect(result.current.articles).toHaveLength(2)
+    })
+
+    it("updates articles state when refresh returns reordered articles", async () => {
+      const article1 = makeArticle({
+        id: "a1",
+        title: "Article 1",
+        link: "https://example.com/1",
+        publishedAt: new Date("2026-03-20T12:00:00Z"),
+      })
+      const article2 = makeArticle({
+        id: "a2",
+        title: "Article 2",
+        link: "https://example.com/2",
+        publishedAt: new Date("2026-03-20T10:00:00Z"),
+      })
+      mockConnectors.push({
+        id: "test",
+        name: "Test",
+        language: "en",
+        feeds: [{ id: "f1", name: "Feed 1" }],
+        parse: vi.fn(() => [article1, article2]),
+      })
+      mockFetchFeed.mockResolvedValue("<xml/>")
+
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
+      await act(async () => {})
+
+      const firstArticles = result.current.articles
+
+      // Refresh returns same articles but with swapped timestamps (different order)
+      const reorderedArticle1 = makeArticle({
+        id: "a1",
+        title: "Article 1",
+        link: "https://example.com/1",
+        publishedAt: new Date("2026-03-20T08:00:00Z"),
+      })
+      const reorderedArticle2 = makeArticle({
+        id: "a2",
+        title: "Article 2",
+        link: "https://example.com/2",
+        publishedAt: new Date("2026-03-20T14:00:00Z"),
+      })
+      mockConnectors[0].parse = vi.fn(() => [reorderedArticle1, reorderedArticle2])
+      await act(async () => {
+        await result.current.refresh()
+      })
+
+      // Order changed: a2 now comes before a1 due to timestamp
+      expect(result.current.articles).not.toBe(firstArticles)
+    })
+  })
+})
+
+describe("hasArticleListChanged", () => {
+  it("returns false for identical ID sequences", () => {
+    const a = [makeArticle({ id: "1" }), makeArticle({ id: "2" })]
+    const b = [makeArticle({ id: "1" }), makeArticle({ id: "2" })]
+    expect(hasArticleListChanged(a, b)).toBe(false)
+  })
+
+  it("returns true for different lengths", () => {
+    const a = [makeArticle({ id: "1" })]
+    const b = [makeArticle({ id: "1" }), makeArticle({ id: "2" })]
+    expect(hasArticleListChanged(a, b)).toBe(true)
+  })
+
+  it("returns true for different IDs", () => {
+    const a = [makeArticle({ id: "1" }), makeArticle({ id: "2" })]
+    const b = [makeArticle({ id: "1" }), makeArticle({ id: "3" })]
+    expect(hasArticleListChanged(a, b)).toBe(true)
+  })
+
+  it("returns true for reordered IDs", () => {
+    const a = [makeArticle({ id: "1" }), makeArticle({ id: "2" })]
+    const b = [makeArticle({ id: "2" }), makeArticle({ id: "1" })]
+    expect(hasArticleListChanged(a, b)).toBe(true)
+  })
+
+  it("returns false for two empty arrays", () => {
+    expect(hasArticleListChanged([], [])).toBe(false)
   })
 })

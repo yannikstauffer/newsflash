@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next"
 
 import type { FeedConfig } from "@/features/connectors/types"
 
+import { SettingRow } from "@/components/setting-row"
 import { Switch } from "@/components/ui/switch"
+import { cn } from "@/lib/utils"
 
 interface FeedGroupProps {
   readonly connectorId: string // nosonar typescript:S6767
@@ -50,7 +52,10 @@ export function FeedGroup({
           className="flex min-h-11 flex-1 items-center gap-2 text-left md:min-h-0"
         >
           <svg
-            className={`size-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`}
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform",
+              isExpanded && "rotate-90",
+            )}
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -81,17 +86,12 @@ export function FeedGroup({
           className="ml-6 mt-1 space-y-1"
         >
           {feeds.map((feed) => (
-            <div
+            <SettingRow
               key={feed.id}
-              className="flex min-h-11 items-center justify-between md:min-h-0"
-            >
-              <span className="text-sm text-foreground">{feed.name}</span>
-              <Switch
-                checked={isFeedEnabled(feed.id)}
-                onCheckedChange={() => onToggleFeed(feed.id)}
-                aria-label={feed.name}
-              />
-            </div>
+              label={feed.name}
+              checked={isFeedEnabled(feed.id)}
+              onCheckedChange={() => onToggleFeed(feed.id)}
+            />
           ))}
         </div>
       )}
