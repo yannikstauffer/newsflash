@@ -96,13 +96,17 @@ describe("navigation link active state", () => {
     })
   })
 
-  it("sets aria-current=page on Settings link at /settings", async () => {
+  it("renders overflow trigger (Settings moved to overflow sheet) at /settings", async () => {
     renderWithRouter("/settings")
 
+    // Settings is no longer a direct nav link — it's accessible via the overflow sheet.
+    // Verify that the overflow trigger is present and there is no direct settings link.
     await waitFor(() => {
-      const settingsLink = screen.getByRole("link", { name: /settings/i })
-      expect(settingsLink).toHaveAttribute("aria-current", "page")
+      expect(screen.getByTestId("overflow-trigger")).toBeInTheDocument()
     })
+    const links = screen.queryAllByRole("link")
+    const settingsLink = links.find((l) => l.getAttribute("href") === "/settings")
+    expect(settingsLink).toBeUndefined()
   })
 
   it("does not set aria-current on inactive links", async () => {

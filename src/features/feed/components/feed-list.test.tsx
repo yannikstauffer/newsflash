@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
 import { FeedList } from "./feed-list"
@@ -14,7 +14,12 @@ vi.mock("@/hooks/use-lazy-list", () => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, options?: Record<string, unknown>) => {
+      if (options && typeof options.count === "number") {
+        return `${key}:${options.count}`
+      }
+      return key
+    },
   }),
 }))
 
@@ -82,6 +87,35 @@ describe("FeedList", () => {
     const spacer = screen.getByTestId("pull-to-refresh-spinner")
     expect(spacer.querySelector(".animate-spin")).not.toBeNull()
     expect(spacer.getAttribute("aria-hidden")).toBe("false")
+  })
+
+  describe("pending articles button", () => {
+    it("does not render the button when pendingCount is 0", () => {
+      render(<FeedList {...defaultProps} pendingCount={0} onAcceptPending={vi.fn()} />)
+
+      expect(screen.queryByText(/feed\.showNewerArticles/)).toBeNull()
+    })
+
+    it("does not render the button when pendingCount is undefined", () => {
+      render(<FeedList {...defaultProps} />)
+
+      expect(screen.queryByText(/feed\.showNewerArticles/)).toBeNull()
+    })
+
+    it("renders the button with the pending count when pendingCount > 0", () => {
+      render(<FeedList {...defaultProps} pendingCount={5} onAcceptPending={vi.fn()} />)
+
+      expect(screen.getByRole("button", { name: /feed\.showNewerArticles:5/ })).toBeDefined()
+    })
+
+    it("invokes onAcceptPending when the button is clicked", () => {
+      const onAcceptPending = vi.fn()
+      render(<FeedList {...defaultProps} pendingCount={3} onAcceptPending={onAcceptPending} />)
+
+      fireEvent.click(screen.getByRole("button", { name: /feed\.showNewerArticles:3/ }))
+
+      expect(onAcceptPending).toHaveBeenCalledTimes(1)
+    })
   })
 
   it("shows spinner while refreshing with pull offset", () => {

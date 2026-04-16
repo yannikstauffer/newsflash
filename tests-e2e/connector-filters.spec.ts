@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-import { clearLocalStorage } from "./helpers/local-storage"
+import { clearLocalStorage, navigateToSettings } from "./helpers/local-storage"
 import { ALL_CONNECTOR_FIXTURES, setupMocks } from "./helpers/mock-feeds"
 
 test.beforeEach(async ({ page }) => {
@@ -11,8 +11,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test("filter toggles appear in settings for connectors with filters", async ({ page }) => {
-  const nav = page.locator("nav")
-  await nav.getByRole("link", { name: /settings/i }).click()
+  await navigateToSettings(page)
 
   // Heise should have filter checkboxes
   const heiseSection = page.locator("div.p-4", { hasText: "Heise" })
@@ -40,8 +39,8 @@ test("disabling SRF sport filter hides sport articles from feed", async ({ page 
   ).toBeVisible()
 
   // Disable sport filter via settings
-  const nav = page.locator("nav")
-  await nav.getByRole("link", { name: /settings/i }).click()
+  const nav = page.locator("nav[aria-label='Main navigation']")
+  await navigateToSettings(page)
   const srfSection = page.locator("div.p-4", { hasText: "SRF" })
   await srfSection.getByRole("switch", { name: "Sport", exact: true }).click()
 
@@ -72,8 +71,8 @@ test("toggling a filter excludes matching articles", async ({ page }) => {
   ).not.toBeVisible()
 
   // Disable heise-Angebot filter via settings
-  const nav = page.locator("nav")
-  await nav.getByRole("link", { name: /settings/i }).click()
+  const nav = page.locator("nav[aria-label='Main navigation']")
+  await navigateToSettings(page)
   const heiseSection = page.locator("div.p-4", { hasText: "Heise" })
   await heiseSection.getByLabel("heise-Angebot (Werbung)").uncheck()
 
@@ -85,7 +84,7 @@ test("toggling a filter excludes matching articles", async ({ page }) => {
   ).not.toBeVisible()
 
   // Enable heise+ filter via settings
-  await nav.getByRole("link", { name: /settings/i }).click()
+  await navigateToSettings(page)
   await heiseSection.getByLabel("heise+ (Bezahlinhalte)").check()
 
   // Go to feed — heise+ article should now be visible

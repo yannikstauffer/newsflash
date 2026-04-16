@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-import { clearLocalStorage } from "./helpers/local-storage"
+import { clearLocalStorage, navigateToSettings } from "./helpers/local-storage"
 import { ALL_CONNECTOR_FIXTURES, setupMocks } from "./helpers/mock-feeds"
 
 test.beforeEach(async ({ page }) => {
@@ -11,8 +11,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test("language: switch between German and English", async ({ page }) => {
-  const nav = page.locator("nav")
-  await nav.getByRole("link", { name: /settings/i }).click()
+  await navigateToSettings(page)
 
   const languageGroup = page.locator("[role='radiogroup']").first()
 
@@ -26,8 +25,7 @@ test("language: switch between German and English", async ({ page }) => {
 })
 
 test("language preference persists across page reload", async ({ page }) => {
-  const nav = page.locator("nav")
-  await nav.getByRole("link", { name: /settings/i }).click()
+  await navigateToSettings(page)
 
   const languageGroup = page.locator("[role='radiogroup']").first()
   await languageGroup.getByRole("radio", { name: "Deutsch" }).click()
@@ -38,8 +36,7 @@ test("language preference persists across page reload", async ({ page }) => {
 })
 
 test("theme: toggle between dark and light", async ({ page }) => {
-  const nav = page.locator("nav")
-  await nav.getByRole("link", { name: /settings/i }).click()
+  await navigateToSettings(page)
 
   const themeGroup = page.locator("[role='radiogroup'][aria-label]").nth(1)
 
@@ -53,7 +50,7 @@ test("theme: toggle between dark and light", async ({ page }) => {
 })
 
 test("source: disable and re-enable removes and restores articles", async ({ page }) => {
-  const nav = page.locator("nav")
+  const nav = page.locator("nav[aria-label='Main navigation']")
 
   // Confirm Digitec articles exist
   await page.getByRole("button", { name: /all articles/i }).click()
@@ -62,7 +59,7 @@ test("source: disable and re-enable removes and restores articles", async ({ pag
   ).toBeVisible()
 
   // Disable Digitec
-  await nav.getByRole("link", { name: /settings/i }).click()
+  await navigateToSettings(page)
   await page.getByRole("switch", { name: "Digitec" }).click()
 
   // Go to feed — Digitec gone
@@ -72,7 +69,7 @@ test("source: disable and re-enable removes and restores articles", async ({ pag
   ).not.toBeVisible()
 
   // Re-enable Digitec
-  await nav.getByRole("link", { name: /settings/i }).click()
+  await navigateToSettings(page)
   await page.getByRole("switch", { name: "Digitec" }).click()
 
   // Go to feed and reload
