@@ -21,7 +21,7 @@
     "@fontsource-variable/geist": "^5.2.8",
     "@supabase/supabase-js": "^2.101.1",
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/react-router": "^1.168.10",
+    "@tanstack/react-router": "^1.168.19",
     "@use-gesture/react": "^10.3.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
