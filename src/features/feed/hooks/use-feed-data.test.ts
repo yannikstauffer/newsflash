@@ -1257,20 +1257,17 @@ describe("useFeedData", () => {
 
       mockFetchFeed.mockResolvedValue("<xml/>")
 
-      const isFeedEnabled1 = vi.fn(() => true)
-      const { result, rerender } = renderHook(
-        ({ fn }: { fn: (feedId: string) => boolean }) => useFeedData(fn),
-        { initialProps: { fn: isFeedEnabled1 } },
-      )
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
       await act(async () => {})
 
       expect(result.current.articles).toHaveLength(1)
       expect(result.current.pendingCount).toBe(0)
 
       mockConnectors[0].parse = vi.fn(() => [existing, fresh])
-      const isFeedEnabled2 = vi.fn(() => true)
-      rerender({ fn: isFeedEnabled2 })
-      await act(async () => {})
+
+      await act(async () => {
+        await result.current.refresh({ forceUpdate: false })
+      })
 
       expect(result.current.articles).toHaveLength(1)
       expect(result.current.articles[0].id).toBe("a1")
@@ -1302,17 +1299,14 @@ describe("useFeedData", () => {
 
       mockFetchFeed.mockResolvedValue("<xml/>")
 
-      const isFeedEnabled1 = vi.fn(() => true)
-      const { result, rerender } = renderHook(
-        ({ fn }: { fn: (feedId: string) => boolean }) => useFeedData(fn),
-        { initialProps: { fn: isFeedEnabled1 } },
-      )
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
       await act(async () => {})
 
       mockConnectors[0].parse = vi.fn(() => [existing, fresh])
-      const isFeedEnabled2 = vi.fn(() => true)
-      rerender({ fn: isFeedEnabled2 })
-      await act(async () => {})
+
+      await act(async () => {
+        await result.current.refresh({ forceUpdate: false })
+      })
 
       expect(result.current.pendingCount).toBe(1)
 
@@ -1350,17 +1344,14 @@ describe("useFeedData", () => {
 
       mockFetchFeed.mockResolvedValue("<xml/>")
 
-      const isFeedEnabled1 = vi.fn(() => true)
-      const { result, rerender } = renderHook(
-        ({ fn }: { fn: (feedId: string) => boolean }) => useFeedData(fn),
-        { initialProps: { fn: isFeedEnabled1 } },
-      )
+      const { result } = renderHook(() => useFeedData(isFeedEnabled))
       await act(async () => {})
 
       mockConnectors[0].parse = vi.fn(() => [existing, fresh])
-      const isFeedEnabled2 = vi.fn(() => true)
-      rerender({ fn: isFeedEnabled2 })
-      await act(async () => {})
+
+      await act(async () => {
+        await result.current.refresh({ forceUpdate: false })
+      })
 
       expect(result.current.pendingCount).toBe(1)
 

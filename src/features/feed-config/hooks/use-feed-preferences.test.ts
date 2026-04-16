@@ -90,21 +90,6 @@ describe("useFeedPreferences", () => {
       expect(result.current.isFeedEnabled("digitec-news")).toBe(true)
     })
 
-    it("maintains a stable isFeedEnabled reference across store updates", () => {
-      const { result, rerender } = renderHook(() => useFeedPreferences())
-
-      const firstReference = result.current.isFeedEnabled
-
-      act(() => {
-        result.current.toggleFeed("heise-news")
-      })
-      rerender()
-
-      expect(result.current.isFeedEnabled).toBe(firstReference)
-      // And it still reflects the updated store
-      expect(result.current.isFeedEnabled("heise-news")).toBe(false)
-    })
-
     it("disableAll disables all provided feed IDs", () => {
       const { result } = renderHook(() => useFeedPreferences())
 

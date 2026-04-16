@@ -13,7 +13,7 @@ interface FeedDataResult {
   loading: boolean
   errors: string[]
   lastRefreshedAt: Date | null
-  refresh: () => Promise<void>
+  refresh: (options?: { forceUpdate?: boolean }) => Promise<void>
   pendingCount: number
   acceptPending: () => void
 }
@@ -168,6 +168,10 @@ export function useFeedData(
   useEffect(() => {
     lastRefreshedAtRef.current = lastRefreshedAt
   }, [lastRefreshedAt])
+  const isFeedEnabledRef = useRef(isFeedEnabled)
+  useEffect(() => {
+    isFeedEnabledRef.current = isFeedEnabled
+  }, [isFeedEnabled])
   const shouldSkipInitialFetch = useRef(
     feedCache !== null && feedCache.lastRefreshedAt !== null,
   )
@@ -265,17 +269,19 @@ export function useFeedData(
     pendingArticlesRef.current = []
   }, [])
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { forceUpdate?: boolean }) => {
+    const force = options?.forceUpdate ?? true
     setLoading(true)
     setErrors([])
-    const enabledSources = getFullyEnabledSources(isFeedEnabled)
+    const currentIsFeedEnabled = isFeedEnabledRef.current
+    const enabledSources = getFullyEnabledSources(currentIsFeedEnabled)
     await articleCache.evict().catch(() => {})
     const [result, cached] = await Promise.all([
-      fetchAllFeeds(isFeedEnabled),
+      fetchAllFeeds(currentIsFeedEnabled),
       articleCache.getAll().catch(() => [] as NormalizedArticle[]),
     ])
-    applyFetchResult(result, filterByEnabledSources(cached, enabledSources), true)
-  }, [isFeedEnabled, applyFetchResult])
+    applyFetchResult(result, filterByEnabledSources(cached, enabledSources), force)
+  }, [applyFetchResult])
 
   useEffect(() => {
     if (shouldSkipInitialFetch.current) {
@@ -285,8 +291,9 @@ export function useFeedData(
     let cancelled = false
 
     async function load(): Promise<void> {
+      const currentIsFeedEnabled = isFeedEnabledRef.current
       // L2: evict stale entries then read from IndexedDB
-      const enabledSources = getFullyEnabledSources(isFeedEnabled)
+      const enabledSources = getFullyEnabledSources(currentIsFeedEnabled)
       await articleCache.evict().catch(() => {})
       const allCached = await articleCache.getAll().catch(() => [] as NormalizedArticle[])
       const cachedArticles = filterByEnabledSources(allCached, enabledSources)
@@ -310,7 +317,7 @@ export function useFeedData(
       }
 
       // L3: always fetch from network in background
-      const result = await fetchAllFeeds(isFeedEnabled)
+      const result = await fetchAllFeeds(currentIsFeedEnabled)
       if (!cancelled) {
         applyFetchResult(result, cachedArticles)
       }
@@ -321,7 +328,8 @@ export function useFeedData(
     return () => {
       cancelled = true
     }
-  }, [isFeedEnabled, applyFetchResult])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- isFeedEnabled is read from isFeedEnabledRef to prevent sync-triggered re-fetches
+  }, [applyFetchResult])
 
   return {
     articles,
