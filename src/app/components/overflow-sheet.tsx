@@ -19,7 +19,7 @@ function OverflowButtonIcon({ className }: OverflowButtonIconProps) {
 
   return (
     <span className="relative inline-flex items-center justify-center">
-      <MoreHorizontal className={className} aria-hidden="true"/>
+      <MoreHorizontal className={className} aria-hidden="true" />
       {showSyncing && (
         <span
           className="absolute -right-1 -top-1 flex size-3 items-center justify-center rounded-full bg-background"
