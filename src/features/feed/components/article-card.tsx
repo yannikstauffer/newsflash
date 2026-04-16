@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { articleCardVariants } from "./card-variants"
 import { formatAbsoluteTime, formatShortTime } from "../utils/format-time"
@@ -13,6 +14,7 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
+  const { i18n } = useTranslation()
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
 
   const handleImageError = useCallback(() => {
@@ -46,10 +48,10 @@ export function ArticleCard({ article, dimmed, actions }: ArticleCardProps) {
           <span aria-hidden="true">&middot;</span>
           <time dateTime={article.publishedAt.toISOString()}>
             <span className="hidden md:inline">
-              {formatAbsoluteTime(article.publishedAt)}
+              {formatAbsoluteTime(article.publishedAt, i18n.language)}
             </span>
             <span className="md:hidden">
-              {formatShortTime(article.publishedAt)}
+              {formatShortTime(article.publishedAt, i18n.language)}
             </span>
           </time>
           {article.category && (

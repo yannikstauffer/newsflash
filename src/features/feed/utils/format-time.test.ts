@@ -55,7 +55,7 @@ describe("formatRelativeTime", () => {
       {
         name: "just now for less than 60 seconds",
         date: new Date("2026-03-20T11:59:30Z"),
-        expected: "just now",
+        expected: "now",
       },
       {
         name: "1 minute ago",
@@ -87,7 +87,7 @@ describe("formatRelativeTime", () => {
       {
         name: "just now",
         date: new Date("2026-03-20T11:59:30Z"),
-        expected: "just now",
+        expected: "jetzt",
       },
       {
         name: "1 minute ago",
