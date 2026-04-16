@@ -113,7 +113,7 @@ export function FilterBar({
             variant="ghost"
             size="icon-sm"
             onClick={onPrev}
-            aria-label="Previous day"
+            aria-label={t("feed.previousDay")}
           >
             <ChevronLeft className="size-4" />
           </Button>
@@ -127,7 +127,7 @@ export function FilterBar({
             size="icon-sm"
             onClick={onNext}
             disabled={isToday}
-            aria-label="Next day"
+            aria-label={t("feed.nextDay")}
           >
             <ChevronRight className="size-4" />
           </Button>
