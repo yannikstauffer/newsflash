@@ -34,7 +34,8 @@
     "hideAllDescription": "This will hide {{count}} articles. You can show them again using Show Hidden.",
     "hideAllToast": "{{count}} articles hidden",
     "cancel": "Cancel",
-    "undo": "Undo"
+    "undo": "Undo",
+    "showNewerArticles": "Show {{count}} newer articles"
   },
   "settings": {
     "heading": "Settings",

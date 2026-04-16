@@ -51,6 +51,8 @@ interface FeedListProps {
   ) => ReactNode
   readonly emptyMessage: string | undefined
   readonly onRefresh: () => void
+  readonly pendingCount: number
+  readonly onAcceptPending: () => void
 }
 
 interface UseFeedPageResult {
@@ -78,7 +80,8 @@ function isDateToday(d: Date): boolean {
 export function useFeedPage(): UseFeedPageResult {
   const { isFeedEnabled } = useFeedPreferences()
   const { isFilterEnabled } = useFilterPreferences()
-  const { articles, loading, errors, lastRefreshedAt, refresh } = useFeedData(isFeedEnabled)
+  const { articles, loading, errors, lastRefreshedAt, refresh, pendingCount, acceptPending } =
+    useFeedData(isFeedEnabled)
   const {
     hiddenIds,
     isHidden,
@@ -406,9 +409,12 @@ export function useFeedPage(): UseFeedPageResult {
     renderWrapper: renderArticleWrapper,
     emptyMessage,
     onRefresh: refresh,
+    pendingCount,
+    onAcceptPending: acceptPending,
   }), [
     filteredArticles, loading, errors, hiddenIds,
     showHidden, renderActions, renderArticleWrapper, emptyMessage, refresh,
+    pendingCount, acceptPending,
   ])
 
   return { filterBarProps, feedListProps, lastRefreshedAt }

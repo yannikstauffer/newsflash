@@ -34,7 +34,8 @@
     "hideAllDescription": "{{count}} Artikel werden ausgeblendet. Du kannst sie mit «Ausgeblendet anzeigen» wieder einblenden.",
     "hideAllToast": "{{count}} Artikel ausgeblendet",
     "cancel": "Abbrechen",
-    "undo": "Rückgängig"
+    "undo": "Rückgängig",
+    "showNewerArticles": "{{count}} neuere Artikel anzeigen"
   },
   "settings": {
     "heading": "Einstellungen",

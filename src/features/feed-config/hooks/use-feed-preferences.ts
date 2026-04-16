@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef } from "react"
 
 import { useSyncedStorage } from "@/hooks/use-synced-storage"
 import { setFeedPreferences } from "@/lib/sync-metadata"
@@ -18,17 +18,19 @@ export function useFeedPreferences(): {
 
   const preferences: Record<string, boolean> = store
 
+  const storeRef = useRef(store)
+  useEffect(() => {
+    storeRef.current = store
+  }, [store])
+
   useEffect(() => {
     setFeedPreferences(store).catch(() => {})
   }, [store])
 
-  const isFeedEnabled = useCallback(
-    (feedId: string): boolean => {
-      // eslint-disable-next-line security/detect-object-injection -- feedId is from our connector registry
-      return store[feedId] !== false
-    },
-    [store],
-  )
+  const isFeedEnabled = useCallback((feedId: string): boolean => {
+    // eslint-disable-next-line security/detect-object-injection -- feedId is from our connector registry
+    return storeRef.current[feedId] !== false
+  }, [])
 
   const toggleFeed = useCallback(
     (feedId: string) => {
