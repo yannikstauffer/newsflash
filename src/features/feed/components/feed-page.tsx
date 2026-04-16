@@ -22,6 +22,8 @@ export function FeedPage() {
         renderWrapper={feedListProps.renderWrapper}
         emptyMessage={feedListProps.emptyMessage}
         onRefresh={feedListProps.onRefresh}
+        pendingCount={feedListProps.pendingCount}
+        onAcceptPending={feedListProps.onAcceptPending}
       />
     </div>
   )
