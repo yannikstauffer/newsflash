@@ -1,8 +1,9 @@
-import { ChevronLeft, ChevronRight, Eye, EyeOff, List, Search, X } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { ChevronLeft, ChevronRight, Eye, EyeOff, List } from "lucide-react"
+import { useState } from "react"
 
 import { formatDayLabel } from "../utils/format-day-label"
 
+import { SearchInput } from "@/components/search-input"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -35,124 +36,54 @@ export function FilterBar({
   articleCount,
   hiddenCount,
 }: FilterBarProps) {
-  const [searchOpen, setSearchOpen] = useState(false)
-  const searchInputRef = useRef<HTMLInputElement>(null)
-  const mobileSearchInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (searchOpen && mobileSearchInputRef.current) {
-      mobileSearchInputRef.current.focus()
-    }
-  }, [searchOpen])
-
-  const handleClearSearch = () => {
-    if (searchQuery) {
-      onSearchChange("")
-    } else {
-      setSearchOpen(false)
-    }
-  }
-
-  const handleMobileSearchKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape") {
-      setSearchOpen(false)
-    }
-  }
-
-  const handleDesktopClearSearch = () => {
-    onSearchChange("")
-  }
-
-  const showClearButton = searchQuery.length > 0
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
   return (
-    <div className="sticky top-0 z-10 flex flex-col gap-2 border-b border-border bg-background pb-2">
+    <div className="sticky top-0 z-10 -mx-3 -mt-3 flex flex-col gap-2 border-b border-border bg-background px-3 pb-2 pt-3 sm:top-[calc(theme(spacing.2)*2+48px+1px)] md:-mx-6 md:-mt-6 md:px-6 md:pb-2 md:pt-6">
       {/* Row 1: status, toggles, search */}
       <div className="flex items-center gap-2">
-        {/* Mobile: expanded search replaces other controls */}
-        {searchOpen ? (
-          <div className="relative flex-1 md:hidden">
-            <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              ref={mobileSearchInputRef}
-              type="search"
-              placeholder="Search articles..."
-              value={searchQuery}
-              maxLength={200}
-              onChange={(event) => onSearchChange(event.target.value)}
-              onKeyDown={handleMobileSearchKeyDown}
-              className="min-h-[44px] w-full rounded-full border border-border bg-background py-1.5 pl-9 pr-9 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              aria-label="Search articles"
-            />
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label={searchQuery ? "Clear search" : "Close search"}
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* Left section: article count */}
-            <div className="flex items-center gap-2 md:hidden">
-              <span className="text-xs text-muted-foreground" aria-label="Article count">
-                {showHidden
-                  ? `${articleCount} + ${hiddenCount} hidden`
-                  : `${articleCount} articles`}
-              </span>
-            </div>
+        {/* Left section: article count */}
+        <div className={cn("items-center gap-2 md:hidden", mobileSearchOpen ? "hidden" : "flex")}>
+          <span className="text-xs text-muted-foreground" aria-label="Article count">
+            {showHidden
+              ? `${articleCount} + ${hiddenCount} hidden`
+              : `${articleCount} articles`}
+          </span>
+        </div>
 
-            {/* Spacer to push toggle buttons and search icon to the right on mobile */}
-            <div className="flex-1 md:hidden" />
+        {/* Spacer to push toggle buttons and search icon to the right on mobile */}
+        {!mobileSearchOpen && <div className="flex-1 md:hidden" />}
 
-            {/* Toggle buttons */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant={allArticles ? "secondary" : "outline"}
-                size="sm"
-                onClick={onToggleAllArticles}
-                aria-pressed={allArticles}
-                aria-label="All articles"
-                className="h-8 min-h-[44px] min-w-[44px] rounded-full px-3 text-xs md:min-h-[28px] md:min-w-0"
-              >
-                <List className="size-3.5" />
-                <span className="hidden md:inline">{"All articles"}</span>
-              </Button>
+        {/* Toggle buttons */}
+        <div className={cn("items-center gap-2 md:flex", mobileSearchOpen ? "hidden" : "flex")}>
+          <Button
+            variant={allArticles ? "secondary" : "outline"}
+            size="sm"
+            onClick={onToggleAllArticles}
+            aria-pressed={allArticles}
+            aria-label="All articles"
+            className="rounded-full"
+          >
+            <List className="size-3.5" />
+            <span className="hidden md:inline">{"All articles"}</span>
+          </Button>
 
-              <Button
-                variant={showHidden ? "secondary" : "outline"}
-                size="sm"
-                onClick={onToggleShowHidden}
-                aria-pressed={showHidden}
-                aria-label="Hidden"
-                className="h-8 min-h-[44px] min-w-[44px] rounded-full px-3 text-xs md:min-h-[28px] md:min-w-0"
-              >
-                {showHidden ? (
-                  <Eye className="size-3.5" />
-                ) : (
-                  <EyeOff className="size-3.5" />
-                )}
-                <span className="hidden md:inline">{"Hidden"}</span>
-              </Button>
-            </div>
-
-            {/* Mobile search icon button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSearchOpen(true)}
-              aria-label="Open search"
-              className={cn(
-                "min-h-[44px] min-w-[44px] rounded-full max-md:px-3 md:hidden",
-                searchQuery && "bg-accent text-accent-foreground",
-              )}
-            >
-              <Search className="size-4" />
-            </Button>
-          </>
-        )}
+          <Button
+            variant={showHidden ? "secondary" : "outline"}
+            size="sm"
+            onClick={onToggleShowHidden}
+            aria-pressed={showHidden}
+            aria-label="Hidden"
+            className="rounded-full"
+          >
+            {showHidden ? (
+              <Eye className="size-3.5" />
+            ) : (
+              <EyeOff className="size-3.5" />
+            )}
+            <span className="hidden md:inline">{"Hidden"}</span>
+          </Button>
+        </div>
 
         {/* Desktop: left section with article count */}
         <div className="hidden items-center gap-2 md:flex md:order-first">
@@ -163,30 +94,13 @@ export function FilterBar({
           </span>
         </div>
 
-        {/* Desktop search (always visible) */}
-        <div className="relative hidden min-w-[120px] flex-1 md:flex">
-          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            ref={searchInputRef}
-            type="search"
-            placeholder="Search articles..."
-            value={searchQuery}
-            maxLength={200}
-            onChange={(event) => onSearchChange(event.target.value)}
-            className="w-full rounded-full border border-border bg-background py-1.5 pl-9 pr-9 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:min-h-[32px]"
-            aria-label="Search articles"
-          />
-          {showClearButton && (
-            <button
-              type="button"
-              onClick={handleDesktopClearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={onSearchChange}
+          placeholder="Search articles..."
+          aria-label="Search articles"
+          onMobileOpenChange={setMobileSearchOpen}
+        />
       </div>
 
       {/* Row 2: day navigation (centered) */}
@@ -197,7 +111,6 @@ export function FilterBar({
             size="icon-sm"
             onClick={onPrev}
             aria-label="Previous day"
-            className="min-h-[44px] min-w-[44px] md:min-h-[28px] md:min-w-[28px]"
           >
             <ChevronLeft className="size-4" />
           </Button>
@@ -212,7 +125,6 @@ export function FilterBar({
             onClick={onNext}
             disabled={isToday}
             aria-label="Next day"
-            className="min-h-[44px] min-w-[44px] md:min-h-[28px] md:min-w-[28px]"
           >
             <ChevronRight className="size-4" />
           </Button>
