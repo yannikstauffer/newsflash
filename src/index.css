@@ -153,7 +153,9 @@
   * {
     @apply border-border outline-ring/50;}
   body {
-    @apply bg-background text-foreground;}
+    @apply bg-background text-foreground;
+    min-width: 320px;}
   html {
     @apply font-sans;
+    min-width: 320px;
     overscroll-behavior-y: contain;}}

@@ -19,6 +19,7 @@
     "closeSearch": "Close search",
     "openSearch": "Open search",
     "refreshed": "Refreshed {{time}}",
+    "synced": "Synced {{time}}",
     "loading": "Loading feeds...",
     "loadingLabel": "Loading feeds",
     "empty": "No articles found. Try adjusting your filters.",

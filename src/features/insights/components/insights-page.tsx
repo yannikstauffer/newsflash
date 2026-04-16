@@ -82,7 +82,7 @@ function SourceInsightCard({ insight }: SourceInsightCardProps) {
       </div>
 
       {insight.hasEnoughData ? (
-        <dl className="flex gap-4 text-sm text-muted-foreground">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 md:grid-cols-4 text-sm text-muted-foreground">
           <div>
             <dt className="text-xs uppercase tracking-wide">{t("insights.appeared")}</dt>
             <dd className="font-medium text-foreground" data-testid="source-appeared">{insight.appeared}</dd>
@@ -143,7 +143,7 @@ function FilterInsightCard({ insight }: FilterInsightCardProps) {
       </div>
 
       {insight.appeared > 0 ? (
-        <dl className="flex gap-4 text-sm text-muted-foreground">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 md:grid-cols-3 text-sm text-muted-foreground">
           <div>
             <dt className="text-xs uppercase tracking-wide">{t("insights.matched")}</dt>
             <dd className="font-medium text-foreground" data-testid="filter-appeared">{insight.appeared}</dd>

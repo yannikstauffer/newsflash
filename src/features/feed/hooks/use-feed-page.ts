@@ -1,6 +1,7 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router"
 import { BookmarkPlus, EyeOff } from "lucide-react"
 import { createElement, useCallback, useEffect, useMemo, useRef } from "react"
+import { useTranslation } from "react-i18next"
 
 import { useFeedData } from "./use-feed-data"
 import { filterArticles } from "../utils/filter-articles"
@@ -17,11 +18,12 @@ import {
   useArticleKeyboardShortcuts,
   useArticleState,
 } from "@/features/article-actions"
-const feedRoute = getRouteApi("/")
 import { connectors } from "@/features/connectors/registry"
 import { useFeedPreferences } from "@/features/feed-config/hooks/use-feed-preferences"
 import { useFilterPreferences } from "@/features/feed-config/hooks/use-filter-preferences"
 import { useStatsTracker } from "@/features/stats/use-stats-tracker"
+
+const feedRoute = getRouteApi("/")
 
 interface FilterBarProps {
   readonly showHidden: boolean
@@ -78,6 +80,7 @@ function isDateToday(d: Date): boolean {
 }
 
 export function useFeedPage(): UseFeedPageResult {
+  const { t } = useTranslation()
   const { isFeedEnabled } = useFeedPreferences()
   const { isFilterEnabled } = useFilterPreferences()
   const { articles, loading, errors, lastRefreshedAt, refresh, pendingCount, acceptPending } =
@@ -396,7 +399,7 @@ export function useFeedPage(): UseFeedPageResult {
   ])
 
   const emptyMessage = !allArticles && !loading
-    ? "No articles for this day."
+    ? t("feed.emptyDay")
     : undefined
 
   const feedListProps: FeedListProps = useMemo(() => ({
