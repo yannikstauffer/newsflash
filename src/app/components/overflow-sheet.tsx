@@ -62,10 +62,10 @@ export function OverflowSheet() {
       </Popover.Trigger>
 
       <Popover.Portal>
-        <Popover.Positioner side="top" align="end" sideOffset={8}>
+        <Popover.Positioner side="top" align="end" sideOffset={8} className="z-50">
           <Popover.Popup
             className={cn(
-              "z-50 min-w-[160px] overflow-hidden rounded-xl border border-border bg-background shadow-lg",
+              "min-w-[160px] overflow-hidden rounded-xl border border-border bg-background shadow-lg",
               "transition-[opacity,transform] duration-100 ease-in",
               "data-open:opacity-100 data-open:scale-100",
               "data-closed:opacity-0 data-closed:scale-95",
