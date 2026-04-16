@@ -14,6 +14,12 @@ import {
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
+function daysAgo(days: number): Date {
+  const d = new Date()
+  d.setDate(d.getDate() - days)
+  return d
+}
+
 function makeArticle(
   overrides: Partial<NormalizedArticle> = {},
 ): NormalizedArticle {
@@ -22,7 +28,7 @@ function makeArticle(
     title: "Test Article",
     description: "A test description",
     link: "https://example.com/article",
-    publishedAt: new Date("2026-04-01T12:00:00Z"),
+    publishedAt: daysAgo(1), // yesterday — always within 14-day retention window
     source: "test-source",
     language: "en",
     ...overrides,
@@ -182,25 +188,14 @@ describe("article-cache", () => {
 
   describe("getByDateRange", () => {
     it("should return articles within the date range", async () => {
+      // Use relative dates to avoid eviction as real time passes
       await upsertMany([
-        makeArticle({
-          id: "art-1",
-          publishedAt: new Date("2026-04-01T12:00:00Z"),
-        }),
-        makeArticle({
-          id: "art-2",
-          publishedAt: new Date("2026-04-03T12:00:00Z"),
-        }),
-        makeArticle({
-          id: "art-3",
-          publishedAt: new Date("2026-04-05T12:00:00Z"),
-        }),
+        makeArticle({ id: "art-1", publishedAt: daysAgo(5) }),
+        makeArticle({ id: "art-2", publishedAt: daysAgo(3) }),
+        makeArticle({ id: "art-3", publishedAt: daysAgo(1) }),
       ])
 
-      const results = await getByDateRange(
-        new Date("2026-04-02T00:00:00Z"),
-        new Date("2026-04-04T00:00:00Z"),
-      )
+      const results = await getByDateRange(daysAgo(4), daysAgo(2))
 
       expect(results).toHaveLength(1)
       expect(results[0].id).toBe("art-2")
@@ -208,23 +203,35 @@ describe("article-cache", () => {
 
     it("should return empty array when no articles in range", async () => {
       await upsertMany([
-        makeArticle({
-          id: "art-1",
-          publishedAt: new Date("2026-04-01T12:00:00Z"),
-        }),
+        makeArticle({ id: "art-1", publishedAt: daysAgo(1) }),
       ])
 
-      const results = await getByDateRange(
-        new Date("2026-05-01T00:00:00Z"),
-        new Date("2026-05-31T00:00:00Z"),
-      )
+      // Query a range far in the future — should return nothing
+      const futureStart = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      const futureEnd = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
+
+      const results = await getByDateRange(futureStart, futureEnd)
 
       expect(results).toEqual([])
     })
 
     it("should include boundary values", async () => {
-      const start = new Date("2026-04-01T00:00:00Z")
-      const end = new Date("2026-04-01T23:59:59Z")
+      // Use a date 2 days ago — safely within the 14-day retention window.
+      // Use UTC throughout to avoid local-time/toISOString() off-by-one near midnight.
+      const twoDaysAgo = new Date()
+      twoDaysAgo.setUTCDate(twoDaysAgo.getUTCDate() - 2)
+      const start = new Date(Date.UTC(
+        twoDaysAgo.getUTCFullYear(),
+        twoDaysAgo.getUTCMonth(),
+        twoDaysAgo.getUTCDate(),
+        0, 0, 0, 0,
+      ))
+      const end = new Date(Date.UTC(
+        twoDaysAgo.getUTCFullYear(),
+        twoDaysAgo.getUTCMonth(),
+        twoDaysAgo.getUTCDate(),
+        23, 59, 59, 999,
+      ))
 
       await upsertMany([
         makeArticle({ id: "art-1", publishedAt: start }),

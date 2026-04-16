@@ -61,7 +61,7 @@ export default function ReadListPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 min-h-[44px] rounded-full px-3 text-xs md:min-h-[28px]"
+                className="rounded-full px-3 text-xs"
               />
             }
           >
@@ -107,7 +107,6 @@ export default function ReadListPage() {
                   removeFromReadList(article.id)
                 }}
                 aria-label={t("actions.removeFromReadList")}
-                className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
               >
                 <BookmarkMinus className="size-3.5" />
               </Button>

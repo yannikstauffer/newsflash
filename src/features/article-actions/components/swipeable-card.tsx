@@ -3,6 +3,8 @@ import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "
 
 import type { CSSProperties, ReactNode } from "react"
 
+import { cn } from "@/lib/utils"
+
 interface SwipeConfig {
   readonly bgClassName: string
   readonly icon: ReactNode
@@ -172,7 +174,13 @@ export const SwipeableCard = forwardRef<SwipeableCardHandle, SwipeableCardProps>
       >
         {showBackground && activeConfig && (
           <div
-            className={`absolute inset-0 flex items-center rounded-lg ${swipeDirection === "right" || removalDirection === "right" ? "justify-start pl-6" : "justify-end pr-6"} ${activeConfig.bgClassName}`}
+            className={cn(
+              "absolute inset-0 flex items-center rounded-lg",
+              swipeDirection === "right" || removalDirection === "right"
+                ? "justify-start pl-6"
+                : "justify-end pr-6",
+              activeConfig.bgClassName,
+            )}
             data-testid="swipe-background"
             aria-hidden="true"
           >
