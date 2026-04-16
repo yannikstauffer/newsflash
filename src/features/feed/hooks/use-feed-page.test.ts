@@ -600,7 +600,7 @@ describe("useFeedPage", () => {
 
       const { result } = renderHook(() => useFeedPage())
 
-      expect(result.current.feedListProps.emptyMessage).toBe("No articles for this day.")
+      expect(result.current.feedListProps.emptyMessage).toBe("feed.emptyDay")
     })
 
     it("is undefined when view=all", () => {

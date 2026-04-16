@@ -19,6 +19,7 @@
     "closeSearch": "Suche schliessen",
     "openSearch": "Suche öffnen",
     "refreshed": "Aktualisiert {{time}}",
+    "synced": "Synchronisiert {{time}}",
     "loading": "Feeds werden geladen...",
     "loadingLabel": "Feeds werden geladen",
     "empty": "Keine Artikel gefunden. Versuche, die Filter anzupassen.",
