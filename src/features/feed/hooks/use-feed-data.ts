@@ -13,7 +13,9 @@ interface FeedDataResult {
   loading: boolean
   errors: string[]
   lastRefreshedAt: Date | null
-  refresh: () => Promise<void>
+  refresh: (options?: { forceUpdate?: boolean }) => Promise<void>
+  pendingCount: number
+  acceptPending: () => void
 }
 
 interface FeedCache {
@@ -153,15 +155,27 @@ export function useFeedData(
       }
     },
   )
+  const [pendingArticles, setPendingArticles] = useState<NormalizedArticle[]>([])
   const articlesRef = useRef(articles)
   useEffect(() => {
     articlesRef.current = articles
   }, [articles])
+  const pendingArticlesRef = useRef(pendingArticles)
+  useEffect(() => {
+    pendingArticlesRef.current = pendingArticles
+  }, [pendingArticles])
   const lastRefreshedAtRef = useRef(lastRefreshedAt)
   useEffect(() => {
     lastRefreshedAtRef.current = lastRefreshedAt
   }, [lastRefreshedAt])
+  const isFeedEnabledRef = useRef(isFeedEnabled)
+  useEffect(() => {
+    isFeedEnabledRef.current = isFeedEnabled
+  }, [isFeedEnabled])
   const shouldSkipInitialFetch = useRef(
+    feedCache !== null && feedCache.lastRefreshedAt !== null,
+  )
+  const hasCompletedInitialLoad = useRef(
     feedCache !== null && feedCache.lastRefreshedAt !== null,
   )
 
@@ -196,16 +210,39 @@ export function useFeedData(
         }
       }
 
-      const articlesChanged = forceUpdate || hasArticleListChanged(articlesRef.current, merged)
-
-      feedCache = {
-        articles: articlesChanged ? merged : articlesRef.current,
-        errors: visibleErrors,
-        lastRefreshedAt: updatedRefreshedAt,
+      const defer =
+        articlesRef.current.length > 0 && !forceUpdate && hasCompletedInitialLoad.current
+      if (!hasCompletedInitialLoad.current) {
+        hasCompletedInitialLoad.current = true
       }
-      if (articlesChanged) {
-        setArticles(merged)
-        articlesRef.current = merged
+
+      if (defer) {
+        const displayedIds = new Set(articlesRef.current.map((a) => a.id))
+        const newOnes = merged.filter((article) => !displayedIds.has(article.id))
+
+        feedCache = {
+          articles: articlesRef.current,
+          errors: visibleErrors,
+          lastRefreshedAt: updatedRefreshedAt,
+        }
+        setPendingArticles(newOnes)
+        pendingArticlesRef.current = newOnes
+      } else {
+        const articlesChanged = forceUpdate || hasArticleListChanged(articlesRef.current, merged)
+
+        feedCache = {
+          articles: articlesChanged ? merged : articlesRef.current,
+          errors: visibleErrors,
+          lastRefreshedAt: updatedRefreshedAt,
+        }
+        if (articlesChanged) {
+          setArticles(merged)
+          articlesRef.current = merged
+        }
+        if (forceUpdate) {
+          setPendingArticles([])
+          pendingArticlesRef.current = []
+        }
       }
       setErrors(visibleErrors)
       setLastRefreshedAt(updatedRefreshedAt)
@@ -217,17 +254,34 @@ export function useFeedData(
     [],
   )
 
-  const refresh = useCallback(async () => {
+  const acceptPending = useCallback(() => {
+    const pending = pendingArticlesRef.current
+    if (pending.length === 0) return
+    const merged = mergeAndDeduplicate(pending, articlesRef.current)
+    feedCache = {
+      articles: merged,
+      errors: feedCache?.errors ?? [],
+      lastRefreshedAt: feedCache?.lastRefreshedAt ?? lastRefreshedAtRef.current,
+    }
+    setArticles(merged)
+    articlesRef.current = merged
+    setPendingArticles([])
+    pendingArticlesRef.current = []
+  }, [])
+
+  const refresh = useCallback(async (options?: { forceUpdate?: boolean }) => {
+    const force = options?.forceUpdate ?? true
     setLoading(true)
     setErrors([])
-    const enabledSources = getFullyEnabledSources(isFeedEnabled)
+    const currentIsFeedEnabled = isFeedEnabledRef.current
+    const enabledSources = getFullyEnabledSources(currentIsFeedEnabled)
     await articleCache.evict().catch(() => {})
     const [result, cached] = await Promise.all([
-      fetchAllFeeds(isFeedEnabled),
+      fetchAllFeeds(currentIsFeedEnabled),
       articleCache.getAll().catch(() => [] as NormalizedArticle[]),
     ])
-    applyFetchResult(result, filterByEnabledSources(cached, enabledSources), true)
-  }, [isFeedEnabled, applyFetchResult])
+    applyFetchResult(result, filterByEnabledSources(cached, enabledSources), force)
+  }, [applyFetchResult])
 
   useEffect(() => {
     if (shouldSkipInitialFetch.current) {
@@ -237,8 +291,9 @@ export function useFeedData(
     let cancelled = false
 
     async function load(): Promise<void> {
+      const currentIsFeedEnabled = isFeedEnabledRef.current
       // L2: evict stale entries then read from IndexedDB
-      const enabledSources = getFullyEnabledSources(isFeedEnabled)
+      const enabledSources = getFullyEnabledSources(currentIsFeedEnabled)
       await articleCache.evict().catch(() => {})
       const allCached = await articleCache.getAll().catch(() => [] as NormalizedArticle[])
       const cachedArticles = filterByEnabledSources(allCached, enabledSources)
@@ -255,13 +310,14 @@ export function useFeedData(
           lastRefreshedAt: null,
         }
         setArticles(deduplicated)
+        articlesRef.current = deduplicated
         setErrors([])
         setLastRefreshedAt(null)
         setLoading(false)
       }
 
       // L3: always fetch from network in background
-      const result = await fetchAllFeeds(isFeedEnabled)
+      const result = await fetchAllFeeds(currentIsFeedEnabled)
       if (!cancelled) {
         applyFetchResult(result, cachedArticles)
       }
@@ -272,7 +328,16 @@ export function useFeedData(
     return () => {
       cancelled = true
     }
-  }, [isFeedEnabled, applyFetchResult])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- isFeedEnabled is read from isFeedEnabledRef to prevent sync-triggered re-fetches
+  }, [applyFetchResult])
 
-  return { articles, loading, errors, lastRefreshedAt, refresh }
+  return {
+    articles,
+    loading,
+    errors,
+    lastRefreshedAt,
+    refresh,
+    pendingCount: pendingArticles.length,
+    acceptPending,
+  }
 }
