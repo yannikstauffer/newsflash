@@ -3,6 +3,9 @@
     "feed": "Feed",
     "readList": "Leseliste",
     "settings": "Einstellungen",
+    "insights": "Einblicke",
+    "overflow": "Mehr",
+    "overflowOpen": "Navigationsmenü öffnen",
     "skipToContent": "Zum Inhalt springen",
     "mainNavigation": "Hauptnavigation",
     "readListCount": "{{label}} ({{count}} gespeichert)"
@@ -31,7 +34,8 @@
     "hideAllDescription": "{{count}} Artikel werden ausgeblendet. Du kannst sie mit «Ausgeblendet anzeigen» wieder einblenden.",
     "hideAllToast": "{{count}} Artikel ausgeblendet",
     "cancel": "Abbrechen",
-    "undo": "Rückgängig"
+    "undo": "Rückgängig",
+    "showNewerArticles": "{{count}} neuere Artikel anzeigen"
   },
   "settings": {
     "heading": "Einstellungen",
@@ -96,6 +100,23 @@
   "offline": {
     "banner": "Du bist offline — es werden zwischengespeicherte Inhalte angezeigt",
     "pullToRefresh": "Du bist offline"
+  },
+  "insights": {
+    "heading": "Einblicke",
+    "sourcesSection": "Quellen",
+    "filtersSection": "Filter",
+    "emptyTitle": "Noch keine Daten",
+    "emptyDescription": "Statistiken erscheinen, nachdem du die App ein paar Tage genutzt hast.",
+    "notEnoughData": "Noch nicht genug Daten",
+    "noRecentArticles": "Keine aktuellen Artikel",
+    "noMatchingArticles": "Kürzlich keine passenden Artikel",
+    "considerDisabling": "Deaktivieren erwägen",
+    "considerEnabling": "Aktivieren erwägen",
+    "appeared": "Erschienen",
+    "hidden": "Ausgeblendet",
+    "saved": "Gespeichert",
+    "matched": "Übereinstimmend",
+    "hideRate": "Ausblendrate"
   },
   "error": {
     "heading": "Etwas ist schiefgelaufen",

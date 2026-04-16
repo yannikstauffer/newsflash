@@ -11,6 +11,8 @@ Review and resolve PR comments systematically — fix what impacts functionality
 
 **Input**: A PR number (e.g., `56`, `#56`). If omitted, ask the user.
 
+**State**: Skipped decisions are persisted in `.tmp/resolve-pr-comments-<number>-skipped.json` (list of comment IDs or fingerprints) so subsequent runs remember what was previously declined.
+
 **Steps**
 
 1. **Fetch PR comments**
@@ -22,13 +24,13 @@ Review and resolve PR comments systematically — fix what impacts functionality
    Also fetch inline review comments:
 
    ```bash
-   gh api repos/{owner}/{repo}/pulls/<number>/comments --jq '.[] | {path, line, body, user: .user.login}'
+   gh api repos/yannikstauffer/:repo/pulls/<number>/comments --jq '.[] | {path, line, body, user: .user.login}'
    ```
 
    And top-level review bodies:
 
    ```bash
-   gh api repos/{owner}/{repo}/pulls/<number>/reviews --jq '.[] | select(.body != "") | {body, state, user: .user.login}'
+   gh api repos/yannikstauffer/:repo/pulls/<number>/reviews --jq '.[] | select(.body != "") | {body, state, user: .user.login}'
    ```
 
 2. **Read the referenced files**
@@ -37,10 +39,14 @@ Review and resolve PR comments systematically — fix what impacts functionality
 
 3. **Categorize each comment**
 
-   Classify every comment into one of two categories:
+   Load previously skipped items from `.tmp/resolve-pr-comments-<number>-skipped.json` if it exists.
+
+   Classify every comment into one of four categories:
 
    - **Functional**: Impacts correctness, runtime behavior, security, accessibility, data integrity, or causes bugs/crashes. These MUST be fixed.
-   - **Non-functional**: Style preferences, naming opinions, structural suggestions, nice-to-haves, or debatable approaches that don't affect whether the app works properly.
+   - **Non-functional (simple)**: Small, unambiguous improvements — a rename, a one-liner rewrite, a missing type annotation. Fix these without asking.
+   - **Non-functional (complex)**: Structural suggestions, architectural trade-offs, debatable naming, or anything where multiple valid approaches exist. Present recommendations for these.
+   - **Already skipped**: Comment was explicitly declined in a previous run (matched by comment ID or body fingerprint). Do not re-present these.
 
 4. **Present the triage**
 
@@ -51,15 +57,39 @@ Review and resolve PR comments systematically — fix what impacts functionality
 
    ### Functional (will fix)
    - [ ] <file>:<line> — <summary of issue> (by @reviewer)
-   - [ ] ...
 
-   ### Non-functional (needs your input)
-   - <file>:<line> — <summary of suggestion> (by @reviewer)
-   - ...
+   ### Non-functional — fixing automatically (small/unambiguous)
+   - <file>:<line> — <summary> (by @reviewer)
+
+   ### Non-functional — needs your input (complex/trade-offs)
+   - <file>:<line> — <summary> (by @reviewer)
+
+   ### Already skipped (previous runs)
+   - <file>:<line> — <summary> (by @reviewer)
    ```
 
-   For non-functional items, briefly explain what the reviewer suggested and ask:
-   > How would you like to handle these? Fix all, skip all, or pick individually?
+   Omit the "Already skipped" section if empty.
+
+   For each complex non-functional item, present a recommendation block:
+
+   ```
+   #### Issue 1: <file>:<line> — <issue title> (by @reviewer)
+
+   <Brief explanation of what the reviewer suggested and why.>
+
+   **Option A — <name>**
+   - Pro: ...
+   - Con: ...
+
+   **Option B — <name>**
+   - Pro: ...
+   - Con: ...
+
+   **Recommendation: Option N** — <one sentence rationale>
+   ```
+
+   After presenting all recommendations, ask:
+   > Which options would you like to apply? (Accept recommendations / pick individually / skip all)
 
    **Wait for the user's response before proceeding.**
 
@@ -72,9 +102,11 @@ Review and resolve PR comments systematically — fix what impacts functionality
    - Mark the item complete
    - If a fix is unclear or has multiple valid approaches, pause and ask
 
-6. **Fix approved non-functional items**
+6. **Fix non-functional items**
 
-   Apply whatever the user approved from the non-functional list.
+   - Apply all simple non-functional fixes immediately (no approval needed).
+   - Apply whichever complex options the user approved.
+   - For any complex items the user skips, append their comment ID (or a body fingerprint if no ID is available) to `.tmp/resolve-pr-comments-<number>-skipped.json`. Create the file if it doesn't exist.
 
 7. **Run quality gates**
 
@@ -103,7 +135,7 @@ Review and resolve PR comments systematically — fix what impacts functionality
 
 **Guardrails**
 - Never dismiss a functional concern without fixing it
-- Never silently fix a non-functional item without user approval
+- Never silently fix a complex non-functional item without user approval
 - If a comment is ambiguous (could be functional or non-functional), err on the side of asking
 - Keep fixes minimal and scoped — don't refactor beyond what the comment asks for
 - If fixing one comment conflicts with another, flag the conflict and ask
