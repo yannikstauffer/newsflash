@@ -133,25 +133,23 @@ describe("useCounter", () => {
 
 ### Testing Components
 
-Use `@testing-library/react` with user-event for realistic interactions.
+Use `@testing-library/react` with `fireEvent` for interactions. **Do not use `@testing-library/user-event`** — it is not in `devDependencies` and cannot be reliably resolved by Vite in tests.
 
 ```typescript
-import { render, screen } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
 
 import { LoginForm } from "../login-form"
 
 describe("LoginForm", () => {
   it("should call onSubmit with email and password", async () => {
-    const user = userEvent.setup()
     const onSubmit = vi.fn()
 
     render(<LoginForm onSubmit={onSubmit} />)
 
-    await user.type(screen.getByLabelText("Email"), "user@example.com")
-    await user.type(screen.getByLabelText("Password"), "secret123")
-    await user.click(screen.getByRole("button", { name: "Sign in" }))
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "user@example.com" } })
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret123" } })
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }))
 
     expect(onSubmit).toHaveBeenCalledWith({
       email: "user@example.com",
@@ -160,12 +158,10 @@ describe("LoginForm", () => {
   })
 
   it("should show validation error for invalid email", async () => {
-    const user = userEvent.setup()
-
     render(<LoginForm onSubmit={vi.fn()} />)
 
-    await user.type(screen.getByLabelText("Email"), "not-an-email")
-    await user.click(screen.getByRole("button", { name: "Sign in" }))
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "not-an-email" } })
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }))
 
     expect(screen.getByRole("alert")).toHaveTextContent("valid email")
   })

@@ -2,6 +2,8 @@ import { Check, Loader2, Settings } from "lucide-react"
 
 import { useSyncContext } from "../sync-context"
 
+import { cn } from "@/lib/utils"
+
 interface SyncNavIconProps {
   readonly className?: string
 }
@@ -14,7 +16,7 @@ export function SyncNavIcon({ className }: SyncNavIconProps) {
   }
 
   if (syncStatus === "SYNCING") {
-    return <Loader2 className={`${className ?? ""} animate-spin`} aria-hidden="true" />
+    return <Loader2 className={cn(className, "animate-spin")} aria-hidden="true" />
   }
 
   if (syncStatus === "SUCCESS") {
