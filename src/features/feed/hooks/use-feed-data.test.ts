@@ -681,7 +681,7 @@ describe("useFeedData", () => {
     })
 
     it("upserts network results into IDB after fetch", async () => {
-      const networkArticle = makeArticle({ id: "net-1", title: "Network Article" })
+      const networkArticle = makeArticle({ id: "net-1", title: "Network Article", feedId: "f1" })
 
       mockConnectors.push({
         id: "c1",
@@ -799,7 +799,7 @@ describe("useFeedData", () => {
 
   describe("refresh with IDB", () => {
     it("upserts into IDB on manual refresh", async () => {
-      const networkArticle = makeArticle({ id: "net-1", title: "Refreshed Article" })
+      const networkArticle = makeArticle({ id: "net-1", title: "Refreshed Article", feedId: "f1" })
 
       mockConnectors.push({
         id: "c1",

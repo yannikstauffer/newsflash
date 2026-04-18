@@ -204,29 +204,31 @@ export function useFeedPage(): UseFeedPageResult {
     articlesRef.current = filteredArticles
   }, [filteredArticles])
 
-  // Compute disabled filters once (filters where user currently sees matching articles)
-  const disabledFilters = useMemo(() => {
+  // Compute enabled filters (categories the user currently sees matching articles from)
+  const enabledFilters = useMemo(() => {
     return connectors.flatMap((connector) =>
       (connector.filters ?? [])
-        .filter((f) => !isFilterEnabled(f.id, f.enabledByDefault))
+        .filter((f) => isFilterEnabled(f.id, f.enabledByDefault))
         .map((f) => ({ filterId: f.id, match: f.match })),
     )
   }, [isFilterEnabled])
 
-  // Track appeared articles when the visible list changes
+  // Track appeared articles when the visible list changes.
+  // Both filteredArticles (for feed + enabled-filter stats) and raw articles
+  // (for disabled-filter block counts) are passed to the tracker.
   useEffect(() => {
-    if (!loading && filteredArticles.length > 0) {
-      trackAppeared(filteredArticles, connectors, isFilterEnabled)
+    if (!loading) {
+      trackAppeared(filteredArticles, articles, connectors, isFilterEnabled)
     }
-  }, [filteredArticles, loading, trackAppeared, isFilterEnabled])
+  }, [filteredArticles, articles, loading, trackAppeared, isFilterEnabled])
 
   const handleKeyboardHide = useCallback(
     (articleId: string) => {
       const article = articlesRef.current.find((a) => a.id === articleId)
       hideArticle(articleId)
-      if (article) trackHidden(article, disabledFilters)
+      if (article) trackHidden(article, enabledFilters)
     },
-    [hideArticle, trackHidden, disabledFilters],
+    [hideArticle, trackHidden, enabledFilters],
   )
 
   const handleKeyboardSave = useCallback(
@@ -238,11 +240,11 @@ export function useFeedPage(): UseFeedPageResult {
       } else {
         addToReadList(article)
         hideArticle(articleId)
-        trackSaved(article, disabledFilters)
+        trackSaved(article, enabledFilters)
         swipeableCardReferences.current.get(articleId)?.triggerRemoval()
       }
     },
-    [isInReadList, removeFromReadList, addToReadList, hideArticle, trackSaved, disabledFilters],
+    [isInReadList, removeFromReadList, addToReadList, hideArticle, trackSaved, enabledFilters],
   )
 
   const getFocusedArticleId = useCallback(
@@ -290,7 +292,7 @@ export function useFeedPage(): UseFeedPageResult {
       return createElement(ArticleActionButtons, {
         onHide: () => {
           hideArticle(article.id)
-          trackHidden(article, disabledFilters)
+          trackHidden(article, enabledFilters)
         },
         onSave: () => {
           if (isInReadList(article.id)) {
@@ -298,7 +300,7 @@ export function useFeedPage(): UseFeedPageResult {
           } else {
             addToReadList(article)
             hideArticle(article.id)
-            trackSaved(article, disabledFilters)
+            trackSaved(article, enabledFilters)
             swipeableCardReferences.current.get(article.id)?.triggerRemoval()
           }
         },
@@ -308,7 +310,7 @@ export function useFeedPage(): UseFeedPageResult {
     [
       showHidden, isHidden, unhideArticle, hideArticle,
       isInReadList, removeFromReadList, addToReadList,
-      trackHidden, trackSaved, disabledFilters,
+      trackHidden, trackSaved, enabledFilters,
     ],
   )
 
@@ -339,7 +341,7 @@ export function useFeedPage(): UseFeedPageResult {
             ),
             onAction: () => {
               hideArticle(article.id)
-              trackHidden(article, disabledFilters)
+              trackHidden(article, enabledFilters)
             },
           },
           swipeLeft: {
@@ -355,7 +357,7 @@ export function useFeedPage(): UseFeedPageResult {
               } else {
                 addToReadList(article)
                 hideArticle(article.id)
-                trackSaved(article, disabledFilters)
+                trackSaved(article, enabledFilters)
               }
             },
           },
@@ -365,7 +367,7 @@ export function useFeedPage(): UseFeedPageResult {
     },
     [
       hideArticle, isInReadList, removeFromReadList, addToReadList,
-      createInteractionRef, trackHidden, trackSaved, disabledFilters,
+      createInteractionRef, trackHidden, trackSaved, enabledFilters,
     ],
   )
 

@@ -117,6 +117,7 @@
     "hidden": "Ausgeblendet",
     "saved": "Gespeichert",
     "matched": "Übereinstimmend",
+    "blocked": "Gefiltert",
     "hideRate": "Ausblendrate"
   },
   "error": {

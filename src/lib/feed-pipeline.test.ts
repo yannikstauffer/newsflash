@@ -73,7 +73,12 @@ describe("fetchAndParseAllFeeds", () => {
     const result = await fetchAndParseAllFeeds(["f1", "f2"])
 
     expect(result.articles).toHaveLength(2)
-    expect(result.articles).toEqual(expect.arrayContaining([article1, article2]))
+    expect(result.articles).toEqual(
+      expect.arrayContaining([
+        { ...article1, feedId: "f1" },
+        { ...article2, feedId: "f2" },
+      ]),
+    )
     expect(result.errors).toHaveLength(0)
     expect(mockFetchFeed).toHaveBeenCalledWith("/api/rss/f1")
     expect(mockFetchFeed).toHaveBeenCalledWith("/api/rss/f2")

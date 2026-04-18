@@ -27,6 +27,7 @@ export interface NormalizedArticle {
   link: string
   publishedAt: Date
   source: string
+  feedId?: string
   language: "de" | "en"
   imageUrl?: string
   category?: string

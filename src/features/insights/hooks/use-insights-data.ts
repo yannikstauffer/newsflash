@@ -11,8 +11,9 @@ const MIN_APPEARED_THRESHOLD = 5
 const HIDE_RATE_THRESHOLD = 0.5
 const NO_ARTICLES_MIN_DAYS = 7
 
-export interface SourceInsight {
-  readonly sourceId: string
+export interface FeedInsight {
+  readonly feedId: string
+  readonly feedName: string
   readonly sourceName: string
   readonly appeared: number
   readonly hidden: number
@@ -27,9 +28,12 @@ export interface FilterInsight {
   readonly filterId: string
   readonly filterLabel: string
   readonly sourceName: string
+  /** For enabled filters: articles shown from this category. For disabled filters: articles blocked. */
   readonly appeared: number
   readonly hidden: number
   readonly saved: number
+  readonly hideRate: number
+  readonly hasEnoughData: boolean
   readonly isEnabled: boolean
   readonly recommendEnable: boolean
   readonly recommendDisable: boolean
@@ -48,7 +52,7 @@ function getWindowDates(windowDays: number): Set<string> {
 }
 
 export function useInsightsData(): {
-  sources: SourceInsight[]
+  sources: FeedInsight[]
   filters: FilterInsight[]
   hasData: boolean
 } {
@@ -63,50 +67,50 @@ export function useInsightsData(): {
     // Check if there's any data at all
     const hasData = Object.keys(store.days).length > 0
 
-    // --- Sources ---
-    const sources: SourceInsight[] = []
+    // --- Feed insights (one card per enabled sub-feed) ---
+    const sources: FeedInsight[] = []
+
+    const windowDaysWithData = [...windowDates].filter((d) => store.days[d] !== undefined).length
 
     for (const connector of connectors) {
-      // Only show enabled sources
-      const isEnabled = connector.feeds.some((f) => isFeedEnabled(f.id))
-      if (!isEnabled) continue
+      for (const feed of connector.feeds) {
+        if (!isFeedEnabled(feed.id)) continue
 
-      // Aggregate counters over the 14-day window
-      let appeared = 0
-      let hidden = 0
-      let saved = 0
+        // Aggregate counters over the 14-day window keyed by feed ID
+        let appeared = 0
+        let hidden = 0
+        let saved = 0
 
-      for (const [date, day] of Object.entries(store.days)) {
-        if (!windowDates.has(date)) continue
-        const s = day.sources[connector.id]
-        if (s) {
-          appeared += s.appeared
-          hidden += s.hidden
-          saved += s.saved
+        for (const [date, day] of Object.entries(store.days)) {
+          if (!windowDates.has(date)) continue
+          const s = day.sources[feed.id]
+          if (s) {
+            appeared += s.appeared
+            hidden += s.hidden
+            saved += s.saved
+          }
         }
+
+        const hideRate = appeared > 0 ? hidden / appeared : 0
+        const hasEnoughData = appeared >= MIN_APPEARED_THRESHOLD
+        const recommendDisable = hasEnoughData && hideRate > HIDE_RATE_THRESHOLD
+
+        // Zero-engagement detection: ≥7 days within the window have data, but appeared === 0.
+        const noRecentArticles = windowDaysWithData >= NO_ARTICLES_MIN_DAYS && appeared === 0
+
+        sources.push({
+          feedId: feed.id,
+          feedName: feed.name,
+          sourceName: connector.name,
+          appeared,
+          hidden,
+          saved,
+          hideRate,
+          hasEnoughData,
+          recommendDisable,
+          noRecentArticles,
+        })
       }
-
-      const hideRate = appeared > 0 ? hidden / appeared : 0
-      const hasEnoughData = appeared >= MIN_APPEARED_THRESHOLD
-      const recommendDisable = hasEnoughData && hideRate > HIDE_RATE_THRESHOLD
-
-      // Zero-engagement detection: ≥7 days within the window have data, but appeared === 0.
-      // Checking window days (not total stored days) ensures old data outside the window
-      // doesn't trigger this flag when the source has genuinely been inactive recently.
-      const windowDaysWithData = [...windowDates].filter((d) => store.days[d] !== undefined).length
-      const noRecentArticles = windowDaysWithData >= NO_ARTICLES_MIN_DAYS && appeared === 0
-
-      sources.push({
-        sourceId: connector.id,
-        sourceName: connector.name,
-        appeared,
-        hidden,
-        saved,
-        hideRate,
-        hasEnoughData,
-        recommendDisable,
-        noRecentArticles,
-      })
     }
 
     // --- Filters ---
@@ -131,20 +135,16 @@ export function useInsightsData(): {
 
         const filterEnabled = isFilterEnabled(filter.id, filter.enabledByDefault)
 
-        // Filter enable recommendation:
-        // filter is disabled AND matched-appeared ≥ 5 AND matched-hidden/matched-appeared > 50%
         const hideRate = appeared > 0 ? hidden / appeared : 0
-        const recommendEnable =
-          !filterEnabled &&
-          appeared >= MIN_APPEARED_THRESHOLD &&
-          hideRate > HIDE_RATE_THRESHOLD
+        const hasEnoughData = appeared >= MIN_APPEARED_THRESHOLD
 
         // Filter disable recommendation:
-        // filter is enabled AND at least one read-list article matches this filter
-        const readListMatchCount = filterEnabled
-          ? readListArticles.filter((a) => filter.match(a)).length
-          : 0
-        const recommendDisable = filterEnabled && readListMatchCount > 0
+        // filter is enabled AND the user has been manually hiding a high share of matching articles
+        const recommendDisable = filterEnabled && hasEnoughData && hideRate > HIDE_RATE_THRESHOLD
+
+        // Filter enable recommendation:
+        // filter is disabled AND it is blocking many articles (appeared = blocked count)
+        const recommendEnable = !filterEnabled && hasEnoughData
 
         filters.push({
           filterId: filter.id,
@@ -153,6 +153,8 @@ export function useInsightsData(): {
           appeared,
           hidden,
           saved,
+          hideRate,
+          hasEnoughData,
           isEnabled: filterEnabled,
           recommendEnable,
           recommendDisable,

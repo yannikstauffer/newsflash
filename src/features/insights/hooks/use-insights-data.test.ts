@@ -122,7 +122,7 @@ describe("useInsightsData — source stats", () => {
     })
 
     const { result } = renderHook(() => useInsightsData())
-    const heise = result.current.sources.find((s) => s.sourceId === "heise")
+    const heise = result.current.sources.find((s) => s.feedId === "heise")
     expect(heise?.appeared).toBe(5)
     expect(heise?.hidden).toBe(3)
     expect(heise?.saved).toBe(1)
@@ -138,7 +138,7 @@ describe("useInsightsData — source stats", () => {
     })
 
     const { result } = renderHook(() => useInsightsData())
-    const heise = result.current.sources.find((s) => s.sourceId === "heise")
+    const heise = result.current.sources.find((s) => s.feedId === "heise")
     expect(heise?.appeared).toBe(3)
   })
 })
@@ -152,7 +152,7 @@ describe("useInsightsData — source recommendations", () => {
       },
     })
     const { result } = renderHook(() => useInsightsData())
-    const heise = result.current.sources.find((s) => s.sourceId === "heise")
+    const heise = result.current.sources.find((s) => s.feedId === "heise")
     expect(heise?.recommendDisable).toBe(true)
   })
 
@@ -164,7 +164,7 @@ describe("useInsightsData — source recommendations", () => {
       },
     })
     const { result } = renderHook(() => useInsightsData())
-    const heise = result.current.sources.find((s) => s.sourceId === "heise")
+    const heise = result.current.sources.find((s) => s.feedId === "heise")
     expect(heise?.recommendDisable).toBe(false)
   })
 
@@ -176,7 +176,7 @@ describe("useInsightsData — source recommendations", () => {
       },
     })
     const { result } = renderHook(() => useInsightsData())
-    const heise = result.current.sources.find((s) => s.sourceId === "heise")
+    const heise = result.current.sources.find((s) => s.feedId === "heise")
     expect(heise?.recommendDisable).toBe(false)
   })
 
@@ -188,7 +188,7 @@ describe("useInsightsData — source recommendations", () => {
       },
     })
     const { result } = renderHook(() => useInsightsData())
-    const heise = result.current.sources.find((s) => s.sourceId === "heise")
+    const heise = result.current.sources.find((s) => s.feedId === "heise")
     expect(heise?.recommendDisable).toBe(false)
   })
 
@@ -200,7 +200,7 @@ describe("useInsightsData — source recommendations", () => {
       },
     })
     const { result } = renderHook(() => useInsightsData())
-    const heise = result.current.sources.find((s) => s.sourceId === "heise")
+    const heise = result.current.sources.find((s) => s.feedId === "heise")
     expect(heise?.hasEnoughData).toBe(true)
   })
 
@@ -212,7 +212,7 @@ describe("useInsightsData — source recommendations", () => {
       },
     })
     const { result } = renderHook(() => useInsightsData())
-    const heise = result.current.sources.find((s) => s.sourceId === "heise")
+    const heise = result.current.sources.find((s) => s.feedId === "heise")
     expect(heise?.hasEnoughData).toBe(false)
   })
 })
@@ -227,7 +227,7 @@ describe("useInsightsData — noRecentArticles", () => {
     writeStats({ version: 1, days })
 
     const { result } = renderHook(() => useInsightsData())
-    const heise = result.current.sources.find((s) => s.sourceId === "heise")
+    const heise = result.current.sources.find((s) => s.feedId === "heise")
     expect(heise?.noRecentArticles).toBe(true)
   })
 
@@ -239,7 +239,7 @@ describe("useInsightsData — noRecentArticles", () => {
     writeStats({ version: 1, days })
 
     const { result } = renderHook(() => useInsightsData())
-    const heise = result.current.sources.find((s) => s.sourceId === "heise")
+    const heise = result.current.sources.find((s) => s.feedId === "heise")
     expect(heise?.noRecentArticles).toBe(false)
   })
 
@@ -252,20 +252,20 @@ describe("useInsightsData — noRecentArticles", () => {
     })
 
     const { result } = renderHook(() => useInsightsData())
-    const heise = result.current.sources.find((s) => s.sourceId === "heise")
+    const heise = result.current.sources.find((s) => s.feedId === "heise")
     expect(heise?.noRecentArticles).toBe(false)
   })
 })
 
-describe("useInsightsData — filter recommendations", () => {
-  it("recommendEnable=true for disabled filter with high hide rate and ≥5 appeared", () => {
+describe("useInsightsData — filter enable recommendation", () => {
+  it("recommendEnable=true for disabled filter with ≥5 appeared (blocked articles)", () => {
     mockIsFilterEnabled = () => false // filter is disabled
     writeStats({
       version: 1,
       days: {
         [todayKey()]: makeDayStats(
           {},
-          { "heise-plus": { appeared: 6, hidden: 4, saved: 0 } },
+          { "heise-plus": { appeared: 5, hidden: 0, saved: 0 } },
         ),
       },
     })
@@ -275,23 +275,6 @@ describe("useInsightsData — filter recommendations", () => {
     expect(filter?.recommendEnable).toBe(true)
   })
 
-  it("recommendEnable=false when hide rate is exactly 50% (not > 50%)", () => {
-    mockIsFilterEnabled = () => false
-    writeStats({
-      version: 1,
-      days: {
-        [todayKey()]: makeDayStats(
-          {},
-          { "heise-plus": { appeared: 10, hidden: 5, saved: 0 } },
-        ),
-      },
-    })
-
-    const { result } = renderHook(() => useInsightsData())
-    const filter = result.current.filters.find((f) => f.filterId === "heise-plus")
-    expect(filter?.recommendEnable).toBe(false)
-  })
-
   it("recommendEnable=false when appeared < 5 (below threshold)", () => {
     mockIsFilterEnabled = () => false
     writeStats({
@@ -299,7 +282,7 @@ describe("useInsightsData — filter recommendations", () => {
       days: {
         [todayKey()]: makeDayStats(
           {},
-          { "heise-plus": { appeared: 4, hidden: 3, saved: 0 } },
+          { "heise-plus": { appeared: 4, hidden: 0, saved: 0 } },
         ),
       },
     })
@@ -328,50 +311,69 @@ describe("useInsightsData — filter recommendations", () => {
 })
 
 describe("useInsightsData — filter disable recommendation", () => {
-  it("recommendDisable=true for enabled filter with matching read-list articles", () => {
+  it("recommendDisable=true for enabled filter with high hide rate and ≥5 appeared", () => {
     mockIsFilterEnabled = () => true // filter is enabled
-    mockReadListArticles = [
-      {
-        id: "heise:plus-1",
-        title: "heise+ | Premium Content",
-        description: "",
-        link: "https://example.com",
-        publishedAt: new Date(),
-        source: "heise",
-        language: "de",
+    writeStats({
+      version: 1,
+      days: {
+        [todayKey()]: makeDayStats(
+          {},
+          { "heise-plus": { appeared: 6, hidden: 4, saved: 0 } },
+        ),
       },
-    ]
+    })
 
-    writeStats({ version: 1, days: {} })
     const { result } = renderHook(() => useInsightsData())
     const filter = result.current.filters.find((f) => f.filterId === "heise-plus")
     expect(filter?.recommendDisable).toBe(true)
   })
 
-  it("recommendDisable=false when filter is not enabled", () => {
-    mockIsFilterEnabled = () => false // filter disabled
+  it("recommendDisable=false when hide rate is exactly 50% (not > 50%)", () => {
+    mockIsFilterEnabled = () => true
+    writeStats({
+      version: 1,
+      days: {
+        [todayKey()]: makeDayStats(
+          {},
+          { "heise-plus": { appeared: 10, hidden: 5, saved: 0 } },
+        ),
+      },
+    })
 
-    writeStats({ version: 1, days: {} })
     const { result } = renderHook(() => useInsightsData())
     const filter = result.current.filters.find((f) => f.filterId === "heise-plus")
     expect(filter?.recommendDisable).toBe(false)
   })
 
-  it("recommendDisable=false when filter is enabled but no read-list matches", () => {
-    mockIsFilterEnabled = () => true // filter is enabled
-    mockReadListArticles = [
-      {
-        id: "heise:regular-1",
-        title: "Regular Article",
-        description: "",
-        link: "https://example.com",
-        publishedAt: new Date(),
-        source: "heise",
-        language: "de",
+  it("recommendDisable=false when appeared < 5 (below threshold)", () => {
+    mockIsFilterEnabled = () => true
+    writeStats({
+      version: 1,
+      days: {
+        [todayKey()]: makeDayStats(
+          {},
+          { "heise-plus": { appeared: 4, hidden: 3, saved: 0 } },
+        ),
       },
-    ]
+    })
 
-    writeStats({ version: 1, days: {} })
+    const { result } = renderHook(() => useInsightsData())
+    const filter = result.current.filters.find((f) => f.filterId === "heise-plus")
+    expect(filter?.recommendDisable).toBe(false)
+  })
+
+  it("recommendDisable=false when filter is not enabled", () => {
+    mockIsFilterEnabled = () => false // filter disabled
+
+    writeStats({
+      version: 1,
+      days: {
+        [todayKey()]: makeDayStats(
+          {},
+          { "heise-plus": { appeared: 10, hidden: 8, saved: 0 } },
+        ),
+      },
+    })
     const { result } = renderHook(() => useInsightsData())
     const filter = result.current.filters.find((f) => f.filterId === "heise-plus")
     expect(filter?.recommendDisable).toBe(false)
