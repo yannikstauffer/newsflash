@@ -55,12 +55,14 @@ export function useStatsTracker(): UseStatsTrackerResult {
       connectors: readonly Connector[],
       isFilterEnabled: (filterId: string, enabledByDefault: boolean) => boolean,
     ) => {
-      // Collect all filters from all connectors
-      const allFilters: Array<{ filterId: string; enabledByDefault: boolean; match: ArticleFilter["match"] }> = []
+      // Collect all filters from all connectors, tagged with their owning connector id
+      // so matching is scoped to the article's source connector only.
+      const allFilters: Array<{ filterId: string; connectorId: string; enabledByDefault: boolean; match: ArticleFilter["match"] }> = []
       for (const connector of connectors) {
         for (const filter of connector.filters ?? []) {
           allFilters.push({
             filterId: filter.id,
+            connectorId: connector.id,
             enabledByDefault: filter.enabledByDefault,
             match: filter.match,
           })
@@ -80,11 +82,12 @@ export function useStatsTracker(): UseStatsTrackerResult {
         // eslint-disable-next-line security/detect-object-injection -- feedKey comes from our feed registry
         sourceCounts[feedKey] = { appeared: (sourceCounts[feedKey]?.appeared ?? 0) + 1 }
 
-        // Track appeared for ENABLED filters: article was shown because filter includes this category
+        // Track appeared for ENABLED filters: article was shown because filter includes this category.
+        // Scoped to the owning connector to avoid cross-connector false-positives.
         for (const filter of allFilters) {
+          const isEnabled = isFilterEnabled(filter.filterId, filter.enabledByDefault)
           // eslint-disable-next-line unicorn/prefer-regexp-test -- ArticleFilter.match()
-          if (isFilterEnabled(filter.filterId, filter.enabledByDefault) && filter.match(article)) {
-            // eslint-disable-next-line security/detect-object-injection -- filterId comes from our connector registry
+          if (article.source === filter.connectorId && isEnabled && filter.match(article)) {
             filterCounts[filter.filterId] = { appeared: (filterCounts[filter.filterId]?.appeared ?? 0) + 1 }
           }
         }
@@ -97,9 +100,9 @@ export function useStatsTracker(): UseStatsTrackerResult {
         seenRawArticleIds.current.add(article.id)
 
         for (const filter of allFilters) {
+          const isEnabled = isFilterEnabled(filter.filterId, filter.enabledByDefault)
           // eslint-disable-next-line unicorn/prefer-regexp-test -- ArticleFilter.match()
-          if (!isFilterEnabled(filter.filterId, filter.enabledByDefault) && filter.match(article)) {
-            // eslint-disable-next-line security/detect-object-injection -- filterId comes from our connector registry
+          if (article.source === filter.connectorId && !isEnabled && filter.match(article)) {
             filterCounts[filter.filterId] = { appeared: (filterCounts[filter.filterId]?.appeared ?? 0) + 1 }
           }
         }

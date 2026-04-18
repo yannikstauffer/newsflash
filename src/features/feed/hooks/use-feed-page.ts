@@ -217,12 +217,17 @@ export function useFeedPage(): UseFeedPageResult {
     articlesRef.current = filteredArticles
   }, [filteredArticles])
 
-  // Compute enabled filters (categories the user currently sees matching articles from)
+  // Compute enabled filters (categories the user currently sees matching articles from).
+  // Match is scoped to the owning connector so cross-connector false-positives are excluded.
   const enabledFilters = useMemo(() => {
     return connectors.flatMap((connector) =>
       (connector.filters ?? [])
         .filter((f) => isFilterEnabled(f.id, f.enabledByDefault))
-        .map((f) => ({ filterId: f.id, match: f.match })),
+        .map((f) => ({
+          filterId: f.id,
+          match: (article: NormalizedArticle) =>
+            article.source === connector.id && f.match(article),
+        })),
     )
   }, [isFilterEnabled])
 
