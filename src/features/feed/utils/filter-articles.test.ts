@@ -260,6 +260,39 @@ describe("filterArticles", () => {
     })
   })
 
+  describe("feedId-based enable check", () => {
+    it("uses feedId over source when checking isFeedEnabled for multi-feed connectors", () => {
+      const articles = [
+        makeArticle({ id: "1", source: "srf", feedId: "srf-latest" }),
+        makeArticle({ id: "2", source: "srf", feedId: "srf-sport" }),
+      ]
+
+      // Disable srf-sport specifically — isFeedEnabled receives feedId, not connector id
+      const result = filterArticles(articles, {
+        ...defaultOptions,
+        isFeedEnabled: (id) => id !== "srf-sport",
+      })
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("1")
+    })
+
+    it("falls back to source when feedId is absent", () => {
+      const articles = [
+        makeArticle({ id: "1", source: "engadget" }),
+        makeArticle({ id: "2", source: "heise" }),
+      ]
+
+      const result = filterArticles(articles, {
+        ...defaultOptions,
+        isFeedEnabled: (id) => id !== "heise",
+      })
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("1")
+    })
+  })
+
   describe("SRF category filters", () => {
     it("disabling sport filter excludes sport articles from srf-latest", () => {
       const articles = [

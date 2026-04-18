@@ -62,7 +62,7 @@ describe("useStatsTracker — trackAppeared", () => {
     const { result } = renderHook(() => useStatsTracker())
     const article = makeArticle()
 
-    result.current.trackAppeared([article], [], () => true)
+    result.current.trackAppeared([article], [], [], () => true)
 
     const key = TODAY_KEY
     expect(readStats().days[key]?.sources["heise"]?.appeared).toBe(1)
@@ -72,8 +72,8 @@ describe("useStatsTracker — trackAppeared", () => {
     const { result } = renderHook(() => useStatsTracker())
     const article = makeArticle()
 
-    result.current.trackAppeared([article], [], () => true)
-    result.current.trackAppeared([article], [], () => true)
+    result.current.trackAppeared([article], [], [], () => true)
+    result.current.trackAppeared([article], [], [], () => true)
 
     const key = TODAY_KEY
     expect(readStats().days[key]?.sources["heise"]?.appeared).toBe(1)
@@ -84,8 +84,8 @@ describe("useStatsTracker — trackAppeared", () => {
     const { result: second } = renderHook(() => useStatsTracker())
     const article = makeArticle()
 
-    first.current.trackAppeared([article], [], () => true)
-    second.current.trackAppeared([article], [], () => true)
+    first.current.trackAppeared([article], [], [], () => true)
+    second.current.trackAppeared([article], [], [], () => true)
 
     const key = TODAY_KEY
     // Two independent hook instances each track the article once
@@ -98,7 +98,7 @@ describe("useStatsTracker — trackAppeared", () => {
     const a2 = makeArticle({ id: "heise:2" })
     const a3 = makeArticle({ id: "heise:3", source: "srf" })
 
-    result.current.trackAppeared([a1, a2, a3], [], () => true)
+    result.current.trackAppeared([a1, a2, a3], [], [], () => true)
 
     const key = TODAY_KEY
     const day = readStats().days[key]
@@ -106,36 +106,57 @@ describe("useStatsTracker — trackAppeared", () => {
     expect(day?.sources["srf"]?.appeared).toBe(1)
   })
 
-  it("increments disabled filter appeared for matching article", () => {
+  it("increments enabled filter appeared when matching article is shown in feed", () => {
     const { result } = renderHook(() => useStatsTracker())
     const article = makeArticle({ title: "heise+ | Premium Article" })
 
-    // heise-plus filter is disabled (isFilterEnabled returns false)
-    result.current.trackAppeared([article], [heiseConnector], () => false)
+    // Article is in filteredArticles (shown) and heise-plus filter is enabled
+    result.current.trackAppeared([article], [], [heiseConnector], () => true)
 
     const key = TODAY_KEY
     expect(readStats().days[key]?.filters["heise-plus"]?.appeared).toBe(1)
   })
 
-  it("does not increment filter appeared when filter is enabled", () => {
+  it("increments disabled filter appeared using rawArticles (blocked count)", () => {
     const { result } = renderHook(() => useStatsTracker())
     const article = makeArticle({ title: "heise+ | Premium Article" })
 
-    // Filter is enabled (isFilterEnabled returns true) — article wouldn't be shown, but we track it
-    result.current.trackAppeared([article], [heiseConnector], () => true)
+    // Article is NOT in filteredArticles (removed by disabled filter) but IS in rawArticles
+    result.current.trackAppeared([], [article], [heiseConnector], () => false)
+
+    const key = TODAY_KEY
+    expect(readStats().days[key]?.filters["heise-plus"]?.appeared).toBe(1)
+  })
+
+  it("does not increment enabled filter appeared when article does not match", () => {
+    const { result } = renderHook(() => useStatsTracker())
+    const article = makeArticle({ title: "Regular Article" })
+
+    result.current.trackAppeared([article], [], [heiseConnector], () => true)
 
     const key = TODAY_KEY
     expect(readStats().days[key]?.filters["heise-plus"]?.appeared).toBeUndefined()
   })
 
-  it("does not increment filter appeared for non-matching article", () => {
+  it("does not increment disabled filter appeared for non-matching article in rawArticles", () => {
     const { result } = renderHook(() => useStatsTracker())
     const article = makeArticle({ title: "Regular Article" })
 
-    result.current.trackAppeared([article], [heiseConnector], () => false)
+    result.current.trackAppeared([], [article], [heiseConnector], () => false)
 
     const key = TODAY_KEY
     expect(readStats().days[key]?.filters["heise-plus"]?.appeared).toBeUndefined()
+  })
+
+  it("raw article deduplication: same raw article does not increment disabled filter appeared twice", () => {
+    const { result } = renderHook(() => useStatsTracker())
+    const article = makeArticle({ title: "heise+ | Premium Article" })
+
+    result.current.trackAppeared([], [article], [heiseConnector], () => false)
+    result.current.trackAppeared([], [article], [heiseConnector], () => false)
+
+    const key = TODAY_KEY
+    expect(readStats().days[key]?.filters["heise-plus"]?.appeared).toBe(1)
   })
 })
 
@@ -158,7 +179,7 @@ describe("useStatsTracker — trackHidden", () => {
     expect(readStats().days[key]?.sources["heise"]?.hidden).toBe(1)
   })
 
-  it("increments filter hidden counter for matching disabled filter", () => {
+  it("increments filter hidden counter for matching enabled filter", () => {
     const { result } = renderHook(() => useStatsTracker())
     const article = makeArticle({ title: "heise+ | Premium Article" })
 

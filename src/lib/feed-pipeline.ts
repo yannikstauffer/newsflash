@@ -21,7 +21,7 @@ export async function fetchAndParseAllFeeds(
       .map(async (feed): Promise<NormalizedArticle[]> => {
         try {
           const xml = await fetchFeed(feedProxyPath(feed.id))
-          return connector.parse(xml)
+          return connector.parse(xml).map((article) => ({ ...article, feedId: feed.id }))
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "Unknown error"
