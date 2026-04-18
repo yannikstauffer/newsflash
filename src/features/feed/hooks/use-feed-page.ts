@@ -135,6 +135,19 @@ export function useFeedPage(): UseFeedPageResult {
     hiddenIds, searchQuery, allArticles, selectedDate,
   ])
 
+  // Articles for disabled-filter blocked-count tracking: same view constraints as
+  // filteredArticles (day, hidden, search) but WITHOUT connector filter removal so
+  // articles blocked by disabled filters pass through and can be counted.
+  const rawArticlesForTracking = useMemo(() => {
+    const raw = filterArticles(articles, {
+      isFeedEnabled,
+      showHidden,
+      hiddenIds,
+      searchQuery,
+    })
+    return allArticles ? raw : filterByDay(raw, selectedDate)
+  }, [articles, isFeedEnabled, showHidden, hiddenIds, searchQuery, allArticles, selectedDate])
+
   const { articleCount, hiddenCount } = useMemo(() => {
     const hiddenSet = new Set(hiddenIds)
     const visibleFiltered = filterArticles(articles, {
@@ -218,9 +231,9 @@ export function useFeedPage(): UseFeedPageResult {
   // (for disabled-filter block counts) are passed to the tracker.
   useEffect(() => {
     if (!loading) {
-      trackAppeared(filteredArticles, articles, connectors, isFilterEnabled)
+      trackAppeared(filteredArticles, rawArticlesForTracking, connectors, isFilterEnabled)
     }
-  }, [filteredArticles, articles, loading, trackAppeared, isFilterEnabled])
+  }, [filteredArticles, rawArticlesForTracking, loading, trackAppeared, isFilterEnabled])
 
   const handleKeyboardHide = useCallback(
     (articleId: string) => {
