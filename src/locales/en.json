@@ -117,6 +117,7 @@
     "hidden": "Hidden",
     "saved": "Saved",
     "matched": "Matched",
+    "blocked": "Blocked",
     "hideRate": "Hide rate"
   },
   "error": {

@@ -28,7 +28,7 @@ export function filterArticles(
   }
 
   return articles.filter((article) => {
-    if (!isFeedEnabled(article.source)) {
+    if (!isFeedEnabled(article.feedId ?? article.source)) {
       return false
     }
 
