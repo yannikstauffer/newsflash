@@ -55,15 +55,18 @@ export function useStatsTracker(): UseStatsTrackerResult {
       connectors: readonly Connector[],
       isFilterEnabled: (filterId: string, enabledByDefault: boolean) => boolean,
     ) => {
+      if (filteredArticles.length === 0 && rawArticles.length === 0) return
+
       // Collect all filters from all connectors, tagged with their owning connector id
       // so matching is scoped to the article's source connector only.
-      const allFilters: Array<{ filterId: string; connectorId: string; enabledByDefault: boolean; match: ArticleFilter["match"] }> = []
+      // Pre-compute enabled state once per filter to avoid repeated calls per article.
+      const allFilters: Array<{ filterId: string; connectorId: string; isEnabled: boolean; match: ArticleFilter["match"] }> = []
       for (const connector of connectors) {
         for (const filter of connector.filters ?? []) {
           allFilters.push({
             filterId: filter.id,
             connectorId: connector.id,
-            enabledByDefault: filter.enabledByDefault,
+            isEnabled: isFilterEnabled(filter.id, filter.enabledByDefault),
             match: filter.match,
           })
         }
@@ -85,9 +88,8 @@ export function useStatsTracker(): UseStatsTrackerResult {
         // Track appeared for ENABLED filters: article was shown because filter includes this category.
         // Scoped to the owning connector to avoid cross-connector false-positives.
         for (const filter of allFilters) {
-          const isEnabled = isFilterEnabled(filter.filterId, filter.enabledByDefault)
           // eslint-disable-next-line unicorn/prefer-regexp-test -- ArticleFilter.match()
-          if (article.source === filter.connectorId && isEnabled && filter.match(article)) {
+          if (article.source === filter.connectorId && filter.isEnabled && filter.match(article)) {
             filterCounts[filter.filterId] = { appeared: (filterCounts[filter.filterId]?.appeared ?? 0) + 1 }
           }
         }
@@ -100,9 +102,8 @@ export function useStatsTracker(): UseStatsTrackerResult {
         seenRawArticleIds.current.add(article.id)
 
         for (const filter of allFilters) {
-          const isEnabled = isFilterEnabled(filter.filterId, filter.enabledByDefault)
           // eslint-disable-next-line unicorn/prefer-regexp-test -- ArticleFilter.match()
-          if (article.source === filter.connectorId && !isEnabled && filter.match(article)) {
+          if (article.source === filter.connectorId && !filter.isEnabled && filter.match(article)) {
             filterCounts[filter.filterId] = { appeared: (filterCounts[filter.filterId]?.appeared ?? 0) + 1 }
           }
         }
