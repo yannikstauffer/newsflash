@@ -38,21 +38,6 @@ vi.mock("@/features/feed-config/hooks/use-feed-preferences", () => ({
   useFeedPreferences: () => ({ isFeedEnabled: () => true }),
 }))
 
-// Default article-actions mock — readListArticles can be overridden per test
-let mockReadListArticles: Array<{
-  id: string
-  title: string
-  description: string
-  link: string
-  publishedAt: Date
-  source: string
-  language: string
-}> = []
-
-vi.mock("@/features/article-actions", () => ({
-  useArticleState: () => ({ readListArticles: mockReadListArticles }),
-}))
-
 // Default filter pref mock — can be overridden per test
 let mockIsFilterEnabled = (_filterId: string, _enabledByDefault: boolean) => false
 
@@ -89,7 +74,6 @@ beforeEach(() => {
   vi.setSystemTime(FROZEN_DATE)
   localStorage.clear()
   mockIsFilterEnabled = () => false
-  mockReadListArticles = []
 })
 
 afterEach(() => {

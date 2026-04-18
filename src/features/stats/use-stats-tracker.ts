@@ -84,6 +84,7 @@ export function useStatsTracker(): UseStatsTrackerResult {
         for (const filter of allFilters) {
           // eslint-disable-next-line unicorn/prefer-regexp-test -- ArticleFilter.match()
           if (isFilterEnabled(filter.filterId, filter.enabledByDefault) && filter.match(article)) {
+            // eslint-disable-next-line security/detect-object-injection -- filterId comes from our connector registry
             filterCounts[filter.filterId] = { appeared: (filterCounts[filter.filterId]?.appeared ?? 0) + 1 }
           }
         }
@@ -98,6 +99,7 @@ export function useStatsTracker(): UseStatsTrackerResult {
         for (const filter of allFilters) {
           // eslint-disable-next-line unicorn/prefer-regexp-test -- ArticleFilter.match()
           if (!isFilterEnabled(filter.filterId, filter.enabledByDefault) && filter.match(article)) {
+            // eslint-disable-next-line security/detect-object-injection -- filterId comes from our connector registry
             filterCounts[filter.filterId] = { appeared: (filterCounts[filter.filterId]?.appeared ?? 0) + 1 }
           }
         }

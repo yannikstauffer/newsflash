@@ -1,6 +1,5 @@
 import { useMemo } from "react"
 
-import { useArticleState } from "@/features/article-actions"
 import { connectors } from "@/features/connectors/registry"
 import { useFeedPreferences } from "@/features/feed-config/hooks/use-feed-preferences"
 import { useFilterPreferences } from "@/features/feed-config/hooks/use-filter-preferences"
@@ -58,7 +57,6 @@ export function useInsightsData(): {
 } {
   const { isFeedEnabled } = useFeedPreferences()
   const { isFilterEnabled } = useFilterPreferences()
-  const { readListArticles } = useArticleState()
 
   return useMemo(() => {
     const store = readStats()
@@ -163,5 +161,5 @@ export function useInsightsData(): {
     }
 
     return { sources, filters, hasData }
-  }, [isFeedEnabled, isFilterEnabled, readListArticles])
+  }, [isFeedEnabled, isFilterEnabled])
 }
