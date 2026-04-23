@@ -210,6 +210,30 @@ describe("useArticleState", () => {
       expect(result.current.isHidden("heise:recent")).toBe(true)
     })
 
+    it("evicts entries that expire after mount when the hook rerenders", () => {
+      const ttlMs = HIDDEN_TTL_DAYS * 24 * 60 * 60 * 1000
+      const nearExpiryHiddenAt = new Date(Date.now() - ttlMs + 1000).toISOString()
+
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify([{ id: "heise:soon-expired", hiddenAt: nearExpiryHiddenAt }]),
+      )
+
+      const { result, rerender } = renderHook(() => useArticleState())
+
+      expect(result.current.hiddenIds).toContain("heise:soon-expired")
+      expect(result.current.isHidden("heise:soon-expired")).toBe(true)
+
+      act(() => {
+        vi.advanceTimersByTime(1001)
+      })
+
+      rerender()
+
+      expect(result.current.hiddenIds).not.toContain("heise:soon-expired")
+      expect(result.current.isHidden("heise:soon-expired")).toBe(false)
+    })
+
     it("hideArticles batch stamps all new entries with current time", () => {
       const { result } = renderHook(() => useArticleState())
 

@@ -27,12 +27,17 @@ function isExpired(entry: HiddenEntry, now: number): boolean {
 
 // Converts any stored value (legacy string[] or proper HiddenEntry[]) to HiddenEntry[].
 // Legacy strings are stamped with the current time so no hides are lost on upgrade.
+// Entries with non-string id/hiddenAt are dropped to prevent runtime errors downstream.
 function normalizeHidden(raw: unknown): HiddenEntry[] {
   if (!Array.isArray(raw)) return []
   const now = new Date().toISOString()
   return (raw as unknown[]).flatMap((item) => {
     if (typeof item === "string") return [{ id: item, hiddenAt: now }]
-    if (item && typeof item === "object" && "id" in item && "hiddenAt" in item) {
+    if (
+      item && typeof item === "object" &&
+      "id" in item && typeof (item as Record<string, unknown>).id === "string" &&
+      "hiddenAt" in item && typeof (item as Record<string, unknown>).hiddenAt === "string"
+    ) {
       return [item as HiddenEntry]
     }
     return []
@@ -95,21 +100,13 @@ export function useArticleState(): {
     [],
   )
 
-  const hiddenMigrated = useRef(false)
   const readListMigrated = useRef(false)
 
   // Migrate legacy string[] or entries without colon prefix to timestamped HiddenEntry[].
-  // Runs once on mount; writes back so older devices pushing string[] via sync are normalized.
+  // Re-runs whenever rawHiddenEntries changes so sync-pushed legacy data is also normalized.
   useEffect(() => {
-    if (hiddenMigrated.current) return
-    const raw = localStorage.getItem(HIDDEN_KEY)
-    if (!raw) return
-    let parsed: unknown
-    try { parsed = JSON.parse(raw) } catch { return }
-    if (!Array.isArray(parsed)) return
-
-    const hasLegacyStrings = (parsed as unknown[]).some((item) => typeof item === "string")
-    const hasUnprefixedIds = (parsed as unknown[]).some((item) => {
+    const hasLegacyStrings = (rawHiddenEntries as unknown[]).some((item) => typeof item === "string")
+    const hasUnprefixedIds = (rawHiddenEntries as unknown[]).some((item) => {
       if (typeof item === "string") return !hasSourcePrefix(item)
       if (item && typeof item === "object" && "id" in item) {
         return !hasSourcePrefix((item as HiddenEntry).id)
@@ -118,11 +115,10 @@ export function useArticleState(): {
     })
 
     if (hasLegacyStrings || hasUnprefixedIds) {
-      hiddenMigrated.current = true
-      const normalized = normalizeHidden(parsed)
+      const normalized = normalizeHidden(rawHiddenEntries)
       setHiddenEntries(normalized.filter((entry) => hasSourcePrefix(entry.id)))
     }
-  }, [setHiddenEntries])
+  }, [rawHiddenEntries, setHiddenEntries])
 
   useEffect(() => {
     if (!readListMigrated.current && storedReadList.some((a) => !hasSourcePrefix(a.id))) {
@@ -131,18 +127,16 @@ export function useArticleState(): {
     }
   }, [storedReadList, setStoredReadList])
 
-  // normalizeHidden is applied in both the read memo and all write updaters so that
-  // legacy string[] in state (before the migration effect writes back) is handled correctly.
-  // cutoff is computed in the component body (not inside useMemo) to satisfy react-hooks/purity.
+  // TTL filtering intentionally calls Date.now() during render so hiddenIds is always up-to-date —
+  // entries that cross the 14-day boundary are evicted on the next re-render without requiring a write.
+  // The react-hooks/purity rule flags Date.now() as impure, but this is a deliberate trade-off:
+  // the component IS deterministic given the same inputs at the same instant in time; the impurity
+  // is bounded and acceptable here.
+  // eslint-disable-next-line react-hooks/purity
   const cutoff = Date.now()
-  const hiddenIds = useMemo(
-    () =>
-      normalizeHidden(rawHiddenEntries)
-        .filter((entry) => !isExpired(entry, cutoff))
-        .map((entry) => entry.id),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rawHiddenEntries],
-  )
+  const hiddenIds = normalizeHidden(rawHiddenEntries)
+    .filter((entry) => !isExpired(entry, cutoff))
+    .map((entry) => entry.id)
 
   const hiddenSet = useMemo(() => new Set(hiddenIds), [hiddenIds])
   const readListIdSet = useMemo(
@@ -169,7 +163,7 @@ export function useArticleState(): {
       const cutoff = Date.now()
       setHiddenEntries((previous) => {
         const active = normalizeHidden(previous).filter((entry) => !isExpired(entry, cutoff))
-        if (active.some((entry) => entry.id === articleId)) return previous
+        if (active.some((entry) => entry.id === articleId)) return active
         return [{ id: articleId, hiddenAt: ts }, ...active]
       })
     },
@@ -231,7 +225,7 @@ export function useArticleState(): {
         const newEntries = ids
           .filter((id) => !existing.has(id))
           .map((id) => ({ id, hiddenAt: ts }))
-        if (newEntries.length === 0) return previous
+        if (newEntries.length === 0) return active
         return [...newEntries, ...active]
       })
     },
