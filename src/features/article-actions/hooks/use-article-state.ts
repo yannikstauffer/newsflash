@@ -22,7 +22,8 @@ function hasSourcePrefix(id: string): boolean {
 }
 
 function isExpired(entry: HiddenEntry, now: number): boolean {
-  return now - new Date(entry.hiddenAt).getTime() > HIDDEN_TTL_MS
+  const hiddenAtMs = new Date(entry.hiddenAt).getTime()
+  return Number.isNaN(hiddenAtMs) || now - hiddenAtMs > HIDDEN_TTL_MS
 }
 
 // Converts any stored value (legacy string[] or proper HiddenEntry[]) to HiddenEntry[].
@@ -104,18 +105,15 @@ export function useArticleState(): {
 
   // Migrate legacy string[] or entries without colon prefix to timestamped HiddenEntry[].
   // Re-runs whenever rawHiddenEntries changes so sync-pushed legacy data is also normalized.
+  // normalizeHidden handles non-array values safely (returns []), removing the need to guard
+  // against null/object storage corruption before calling .some().
   useEffect(() => {
-    const hasLegacyStrings = (rawHiddenEntries as unknown[]).some((item) => typeof item === "string")
-    const hasUnprefixedIds = (rawHiddenEntries as unknown[]).some((item) => {
-      if (typeof item === "string") return !hasSourcePrefix(item)
-      if (item && typeof item === "object" && "id" in item) {
-        return !hasSourcePrefix((item as HiddenEntry).id)
-      }
-      return false
-    })
+    const normalized = normalizeHidden(rawHiddenEntries)
+    const hasLegacyStrings = Array.isArray(rawHiddenEntries) &&
+      (rawHiddenEntries as unknown[]).some((item) => typeof item === "string")
+    const hasUnprefixedIds = normalized.some((entry) => !hasSourcePrefix(entry.id))
 
     if (hasLegacyStrings || hasUnprefixedIds) {
-      const normalized = normalizeHidden(rawHiddenEntries)
       setHiddenEntries(normalized.filter((entry) => hasSourcePrefix(entry.id)))
     }
   }, [rawHiddenEntries, setHiddenEntries])
