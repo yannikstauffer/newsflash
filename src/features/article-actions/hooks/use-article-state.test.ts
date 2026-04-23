@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
-  MAX_HIDDEN_IDS,
+  HIDDEN_TTL_DAYS,
   MAX_READLIST_ITEMS,
   useArticleState,
 } from "./use-article-state"
@@ -90,8 +90,8 @@ describe("useArticleState", () => {
   })
 
   describe("pruning constants", () => {
-    it("exports MAX_HIDDEN_IDS as 500", () => {
-      expect(MAX_HIDDEN_IDS).toBe(500)
+    it("exports HIDDEN_TTL_DAYS as 14", () => {
+      expect(HIDDEN_TTL_DAYS).toBe(14)
     })
 
     it("exports MAX_READLIST_ITEMS as 200", () => {
@@ -99,10 +99,48 @@ describe("useArticleState", () => {
     })
   })
 
-  describe("hideArticle pruning", () => {
-    it("does not prune when list is under the limit", () => {
-      const ids = Array.from({ length: 10 }, (_, index) => `src:id-${index}`)
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
+  describe("hideArticle time-based eviction (14-day window)", () => {
+    const NOW_ISO = "2026-04-23T12:00:00.000Z"
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date(NOW_ISO))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it("evicts entries older than 14 days on next write", () => {
+      const fifteenDaysAgo = "2026-04-08T12:00:00.000Z"
+      const sevenDaysAgo = "2026-04-16T12:00:00.000Z"
+
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify([
+          { id: "heise:old", hiddenAt: fifteenDaysAgo },
+          { id: "heise:recent", hiddenAt: sevenDaysAgo },
+        ]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.hideArticle("heise:new")
+      })
+
+      expect(result.current.hiddenIds).toContain("heise:new")
+      expect(result.current.hiddenIds).toContain("heise:recent")
+      expect(result.current.hiddenIds).not.toContain("heise:old")
+    })
+
+    it("does not apply a count-based cap when all entries are within the window", () => {
+      const recent = "2026-04-20T12:00:00.000Z"
+      const entries = Array.from({ length: 600 }, (_, index) => ({
+        id: `src:id-${index}`,
+        hiddenAt: recent,
+      }))
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(entries))
 
       const { result } = renderHook(() => useArticleState())
 
@@ -110,51 +148,119 @@ describe("useArticleState", () => {
         result.current.hideArticle("src:new-id")
       })
 
-      expect(result.current.hiddenIds).toHaveLength(11)
+      expect(result.current.hiddenIds).toHaveLength(601)
       expect(result.current.hiddenIds[0]).toBe("src:new-id")
+      expect(result.current.hiddenIds).toContain("src:id-599")
     })
 
-    it("drops the oldest entry when hiding at exactly max capacity", () => {
-      const ids = Array.from({ length: MAX_HIDDEN_IDS }, (_, index) => `src:id-${index}`)
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
+    it("migrates legacy string[] entries by stamping them with current time", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["heise:legacy-1", "heise:legacy-2"]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      expect(result.current.hiddenIds).toEqual(["heise:legacy-1", "heise:legacy-2"])
+
+      // Subsequent write persists timestamped shape to storage.
+      act(() => {
+        result.current.hideArticle("heise:new")
+      })
+
+      const stored: unknown = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? "[]")
+      expect(Array.isArray(stored)).toBe(true)
+      expect(stored).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "heise:legacy-1", hiddenAt: expect.any(String) }),
+          expect.objectContaining({ id: "heise:legacy-2", hiddenAt: expect.any(String) }),
+          { id: "heise:new", hiddenAt: NOW_ISO },
+        ]),
+      )
+    })
+
+    it("persists timestamped entries to localStorage on hideArticle", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.hideArticle("heise:fresh")
+      })
+
+      const stored = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? "[]")
+      expect(stored).toEqual([{ id: "heise:fresh", hiddenAt: NOW_ISO }])
+    })
+
+    it("evicts expired entries without any explicit write (filters in hiddenIds)", () => {
+      const fifteenDaysAgo = "2026-04-08T12:00:00.000Z"
+      const sevenDaysAgo = "2026-04-16T12:00:00.000Z"
+
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify([
+          { id: "heise:old", hiddenAt: fifteenDaysAgo },
+          { id: "heise:recent", hiddenAt: sevenDaysAgo },
+        ]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      expect(result.current.hiddenIds).toContain("heise:recent")
+      expect(result.current.hiddenIds).not.toContain("heise:old")
+      expect(result.current.isHidden("heise:old")).toBe(false)
+      expect(result.current.isHidden("heise:recent")).toBe(true)
+    })
+
+    it("hideArticles batch stamps all new entries with current time", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.hideArticles(["heise:a", "heise:b"])
+      })
+
+      const stored = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? "[]")
+      expect(stored).toEqual([
+        { id: "heise:a", hiddenAt: NOW_ISO },
+        { id: "heise:b", hiddenAt: NOW_ISO },
+      ])
+    })
+
+    it("unhideArticle removes the entry from storage", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify([
+          { id: "heise:a", hiddenAt: NOW_ISO },
+          { id: "heise:b", hiddenAt: NOW_ISO },
+        ]),
+      )
 
       const { result } = renderHook(() => useArticleState())
 
       act(() => {
-        result.current.hideArticle("src:new-id")
+        result.current.unhideArticle("heise:a")
       })
 
-      expect(result.current.hiddenIds).toHaveLength(MAX_HIDDEN_IDS)
-      expect(result.current.hiddenIds[0]).toBe("src:new-id")
-      expect(result.current.hiddenIds).not.toContain(`src:id-${MAX_HIDDEN_IDS - 1}`)
+      expect(result.current.hiddenIds).toEqual(["heise:b"])
+      const stored = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? "[]")
+      expect(stored).toEqual([{ id: "heise:b", hiddenAt: NOW_ISO }])
     })
 
-    it("truncates an oversized existing list to max on next write", () => {
-      const ids = Array.from({ length: MAX_HIDDEN_IDS + 50 }, (_, index) => `src:id-${index}`)
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
+    it("removeHiddenBySource filters timestamped entries by id prefix", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify([
+          { id: "heise:a", hiddenAt: NOW_ISO },
+          { id: "heise:b", hiddenAt: NOW_ISO },
+          { id: "srf:c", hiddenAt: NOW_ISO },
+        ]),
+      )
 
       const { result } = renderHook(() => useArticleState())
 
       act(() => {
-        result.current.hideArticle("src:new-id")
+        result.current.removeHiddenBySource("heise")
       })
 
-      expect(result.current.hiddenIds).toHaveLength(MAX_HIDDEN_IDS)
-      expect(result.current.hiddenIds[0]).toBe("src:new-id")
-    })
-
-    it("does not change the list when hiding a duplicate ID", () => {
-      const ids = Array.from({ length: MAX_HIDDEN_IDS }, (_, index) => `src:id-${index}`)
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
-
-      const { result } = renderHook(() => useArticleState())
-      const before = result.current.hiddenIds
-
-      act(() => {
-        result.current.hideArticle("src:id-0")
-      })
-
-      expect(result.current.hiddenIds).toBe(before)
+      expect(result.current.hiddenIds).toEqual(["srf:c"])
     })
   })
 

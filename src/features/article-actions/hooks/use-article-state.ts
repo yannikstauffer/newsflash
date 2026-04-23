@@ -5,14 +5,38 @@ import type { NormalizedArticle } from "@/features/connectors/types"
 import { useSyncedStorage } from "@/hooks/use-synced-storage"
 import * as articleCache from "@/lib/article-cache"
 
-export const MAX_HIDDEN_IDS = 500
+export const HIDDEN_TTL_DAYS = 14
 export const MAX_READLIST_ITEMS = 200
 
 const HIDDEN_KEY = "newsflash:hidden"
 const READLIST_KEY = "newsflash:readlist"
+const HIDDEN_TTL_MS = HIDDEN_TTL_DAYS * 24 * 60 * 60 * 1000
+
+interface HiddenEntry {
+  id: string
+  hiddenAt: string
+}
 
 function hasSourcePrefix(id: string): boolean {
   return id.includes(":")
+}
+
+function isExpired(entry: HiddenEntry, now: number): boolean {
+  return now - new Date(entry.hiddenAt).getTime() > HIDDEN_TTL_MS
+}
+
+// Converts any stored value (legacy string[] or proper HiddenEntry[]) to HiddenEntry[].
+// Legacy strings are stamped with the current time so no hides are lost on upgrade.
+function normalizeHidden(raw: unknown): HiddenEntry[] {
+  if (!Array.isArray(raw)) return []
+  const now = new Date().toISOString()
+  return (raw as unknown[]).flatMap((item) => {
+    if (typeof item === "string") return [{ id: item, hiddenAt: now }]
+    if (item && typeof item === "object" && "id" in item && "hiddenAt" in item) {
+      return [item as HiddenEntry]
+    }
+    return []
+  })
 }
 
 interface StoredArticle {
@@ -65,7 +89,7 @@ export function useArticleState(): {
   removeHiddenBySource: (sourceId: string) => void
   removeReadListBySource: (sourceId: string) => void
 } {
-  const [hiddenIds, setHiddenIds] = useSyncedStorage<string[]>(HIDDEN_KEY, [])
+  const [rawHiddenEntries, setHiddenEntries] = useSyncedStorage<HiddenEntry[]>(HIDDEN_KEY, [])
   const [storedReadList, setStoredReadList] = useSyncedStorage<StoredArticle[]>(
     READLIST_KEY,
     [],
@@ -74,12 +98,31 @@ export function useArticleState(): {
   const hiddenMigrated = useRef(false)
   const readListMigrated = useRef(false)
 
+  // Migrate legacy string[] or entries without colon prefix to timestamped HiddenEntry[].
+  // Runs once on mount; writes back so older devices pushing string[] via sync are normalized.
   useEffect(() => {
-    if (!hiddenMigrated.current && hiddenIds.some((id) => !hasSourcePrefix(id))) {
+    if (hiddenMigrated.current) return
+    const raw = localStorage.getItem(HIDDEN_KEY)
+    if (!raw) return
+    let parsed: unknown
+    try { parsed = JSON.parse(raw) } catch { return }
+    if (!Array.isArray(parsed)) return
+
+    const hasLegacyStrings = (parsed as unknown[]).some((item) => typeof item === "string")
+    const hasUnprefixedIds = (parsed as unknown[]).some((item) => {
+      if (typeof item === "string") return !hasSourcePrefix(item)
+      if (item && typeof item === "object" && "id" in item) {
+        return !hasSourcePrefix((item as HiddenEntry).id)
+      }
+      return false
+    })
+
+    if (hasLegacyStrings || hasUnprefixedIds) {
       hiddenMigrated.current = true
-      setHiddenIds((previous) => previous.filter(hasSourcePrefix))
+      const normalized = normalizeHidden(parsed)
+      setHiddenEntries(normalized.filter((entry) => hasSourcePrefix(entry.id)))
     }
-  }, [hiddenIds, setHiddenIds])
+  }, [setHiddenEntries])
 
   useEffect(() => {
     if (!readListMigrated.current && storedReadList.some((a) => !hasSourcePrefix(a.id))) {
@@ -87,6 +130,19 @@ export function useArticleState(): {
       setStoredReadList((previous) => previous.filter((a) => hasSourcePrefix(a.id)))
     }
   }, [storedReadList, setStoredReadList])
+
+  // normalizeHidden is applied in both the read memo and all write updaters so that
+  // legacy string[] in state (before the migration effect writes back) is handled correctly.
+  // cutoff is computed in the component body (not inside useMemo) to satisfy react-hooks/purity.
+  const cutoff = Date.now()
+  const hiddenIds = useMemo(
+    () =>
+      normalizeHidden(rawHiddenEntries)
+        .filter((entry) => !isExpired(entry, cutoff))
+        .map((entry) => entry.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rawHiddenEntries],
+  )
 
   const hiddenSet = useMemo(() => new Set(hiddenIds), [hiddenIds])
   const readListIdSet = useMemo(
@@ -109,20 +165,26 @@ export function useArticleState(): {
 
   const hideArticle = useCallback(
     (articleId: string) => {
-      setHiddenIds((previous) => {
-        if (previous.includes(articleId)) return previous
-        const next = [articleId, ...previous]
-        return next.length > MAX_HIDDEN_IDS ? next.slice(0, MAX_HIDDEN_IDS) : next
+      const ts = new Date().toISOString()
+      const cutoff = Date.now()
+      setHiddenEntries((previous) => {
+        const active = normalizeHidden(previous).filter((entry) => !isExpired(entry, cutoff))
+        if (active.some((entry) => entry.id === articleId)) return previous
+        return [{ id: articleId, hiddenAt: ts }, ...active]
       })
     },
-    [setHiddenIds],
+    [setHiddenEntries],
   )
 
   const unhideArticle = useCallback(
     (articleId: string) => {
-      setHiddenIds((previous) => previous.filter((id) => id !== articleId))
+      const cutoff = Date.now()
+      setHiddenEntries((previous) =>
+        normalizeHidden(previous)
+          .filter((entry) => !isExpired(entry, cutoff) && entry.id !== articleId),
+      )
     },
-    [setHiddenIds],
+    [setHiddenEntries],
   )
 
   const addToReadList = useCallback(
@@ -161,23 +223,31 @@ export function useArticleState(): {
 
   const hideArticles = useCallback(
     (ids: string[]) => {
-      setHiddenIds((previous) => {
-        const existing = new Set(previous)
-        const newIds = ids.filter((id) => !existing.has(id))
-        if (newIds.length === 0) return previous
-        const next = [...newIds, ...previous]
-        return next.length > MAX_HIDDEN_IDS ? next.slice(0, MAX_HIDDEN_IDS) : next
+      const ts = new Date().toISOString()
+      const cutoff = Date.now()
+      setHiddenEntries((previous) => {
+        const active = normalizeHidden(previous).filter((entry) => !isExpired(entry, cutoff))
+        const existing = new Set(active.map((entry) => entry.id))
+        const newEntries = ids
+          .filter((id) => !existing.has(id))
+          .map((id) => ({ id, hiddenAt: ts }))
+        if (newEntries.length === 0) return previous
+        return [...newEntries, ...active]
       })
     },
-    [setHiddenIds],
+    [setHiddenEntries],
   )
 
   const unhideArticles = useCallback(
     (ids: string[]) => {
       const idsToRemove = new Set(ids)
-      setHiddenIds((previous) => previous.filter((id) => !idsToRemove.has(id)))
+      const cutoff = Date.now()
+      setHiddenEntries((previous) =>
+        normalizeHidden(previous)
+          .filter((entry) => !isExpired(entry, cutoff) && !idsToRemove.has(entry.id)),
+      )
     },
-    [setHiddenIds],
+    [setHiddenEntries],
   )
 
   const clearReadList = useCallback(
@@ -219,11 +289,13 @@ export function useArticleState(): {
 
   const removeHiddenBySource = useCallback(
     (sourceId: string) => {
-      setHiddenIds((previous) =>
-        previous.filter((id) => !id.startsWith(`${sourceId}:`)),
+      const cutoff = Date.now()
+      setHiddenEntries((previous) =>
+        normalizeHidden(previous)
+          .filter((entry) => !isExpired(entry, cutoff) && !entry.id.startsWith(`${sourceId}:`)),
       )
     },
-    [setHiddenIds],
+    [setHiddenEntries],
   )
 
   const removeReadListBySource = useCallback(
