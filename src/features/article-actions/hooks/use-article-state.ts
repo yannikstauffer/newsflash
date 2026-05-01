@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useRef } from "react"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
@@ -55,8 +55,22 @@ function getActiveHidden(raw: unknown, cutoff: number, legacyStamp: string): Hid
   )
 }
 
-function readLegacyHiddenStamp(): string {
-  return globalThis.localStorage.getItem(`${HIDDEN_KEY}:updated_at`) ?? new Date().toISOString()
+// Resolves the timestamp to assign to legacy `string[]` hidden entries.
+// Prefers the storage key's `:updated_at` (a stable proxy for when those hides were last
+// touched). When absent (very old installs / private-mode storage failures), falls back to
+// a value memoized in `fallbackRef` so we don't re-stamp with `now` on every render — that
+// would prevent legacy entries from ever aging out via the 14-day TTL.
+function resolveLegacyHiddenStamp(fallbackRef: { current: string | null }): string {
+  try {
+    const stamp = globalThis.localStorage.getItem(`${HIDDEN_KEY}:updated_at`)
+    if (stamp) return stamp
+  } catch {
+    // localStorage blocked / private mode — fall through to memoized fallback
+  }
+  if (fallbackRef.current === null) {
+    fallbackRef.current = new Date().toISOString()
+  }
+  return fallbackRef.current
 }
 
 interface StoredArticle {
@@ -114,6 +128,9 @@ export function useArticleState(): {
     READLIST_KEY,
     [],
   )
+  // Per-hook-instance fallback for the legacy timestamp when storage has no `:updated_at`.
+  // Lazily initialized on first need; preserved across renders so legacy entries can age out.
+  const fallbackStampRef = useRef<string | null>(null)
 
   // Legacy data (pre-prefix string[] or unprefixed entries) is normalized on read and
   // cleaned up organically the next time a real mutation persists the array. We deliberately
@@ -125,7 +142,7 @@ export function useArticleState(): {
   // entries crossing the 14-day boundary are evicted on the next re-render without a write.
   // eslint-disable-next-line react-hooks/purity
   const cutoff = Date.now()
-  const legacyStamp = readLegacyHiddenStamp()
+  const legacyStamp = resolveLegacyHiddenStamp(fallbackStampRef)
   const hiddenIds = getActiveHidden(rawHiddenEntries, cutoff, legacyStamp).map((entry) => entry.id)
 
   const hiddenSet = useMemo(() => new Set(hiddenIds), [hiddenIds])
@@ -158,7 +175,7 @@ export function useArticleState(): {
       if (!hasSourcePrefix(articleId)) return
       const ts = new Date().toISOString()
       const cutoff = Date.now()
-      const legacyStamp = readLegacyHiddenStamp()
+      const legacyStamp = resolveLegacyHiddenStamp(fallbackStampRef)
       setHiddenEntries((previous) => {
         const active = getActiveHidden(previous, cutoff, legacyStamp)
         if (active.some((entry) => entry.id === articleId)) return active
@@ -171,7 +188,7 @@ export function useArticleState(): {
   const unhideArticle = useCallback(
     (articleId: string) => {
       const cutoff = Date.now()
-      const legacyStamp = readLegacyHiddenStamp()
+      const legacyStamp = resolveLegacyHiddenStamp(fallbackStampRef)
       setHiddenEntries((previous) =>
         getActiveHidden(previous, cutoff, legacyStamp).filter((entry) => entry.id !== articleId),
       )
@@ -224,7 +241,7 @@ export function useArticleState(): {
     (ids: string[]) => {
       const ts = new Date().toISOString()
       const cutoff = Date.now()
-      const legacyStamp = readLegacyHiddenStamp()
+      const legacyStamp = resolveLegacyHiddenStamp(fallbackStampRef)
       setHiddenEntries((previous) => {
         const active = getActiveHidden(previous, cutoff, legacyStamp)
         const existing = new Set(active.map((entry) => entry.id))
@@ -242,7 +259,7 @@ export function useArticleState(): {
     (ids: string[]) => {
       const idsToRemove = new Set(ids)
       const cutoff = Date.now()
-      const legacyStamp = readLegacyHiddenStamp()
+      const legacyStamp = resolveLegacyHiddenStamp(fallbackStampRef)
       setHiddenEntries((previous) =>
         getActiveHidden(previous, cutoff, legacyStamp).filter(
           (entry) => !idsToRemove.has(entry.id),
@@ -295,7 +312,7 @@ export function useArticleState(): {
   const removeHiddenBySource = useCallback(
     (sourceId: string) => {
       const cutoff = Date.now()
-      const legacyStamp = readLegacyHiddenStamp()
+      const legacyStamp = resolveLegacyHiddenStamp(fallbackStampRef)
       setHiddenEntries((previous) =>
         getActiveHidden(previous, cutoff, legacyStamp).filter(
           (entry) => !entry.id.startsWith(`${sourceId}:`),

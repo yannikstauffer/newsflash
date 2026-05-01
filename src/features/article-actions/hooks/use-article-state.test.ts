@@ -297,6 +297,26 @@ describe("useArticleState", () => {
       expect(result.current.hiddenIds).not.toContain("heise:legacy")
     })
 
+    it("uses a stable fallback stamp when :updated_at is absent so legacy strings still age out", () => {
+      // Old install: localStorage has legacy string[] but no `:updated_at` companion key.
+      // The fallback must be stable across renders, otherwise each render re-stamps with `now`
+      // and the entry never crosses the TTL boundary.
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(["heise:legacy"]))
+      expect(localStorage.getItem(`${HIDDEN_KEY}:updated_at`)).toBeNull()
+
+      const { result, rerender } = renderHook(() => useArticleState())
+
+      expect(result.current.hiddenIds).toContain("heise:legacy")
+
+      // Advance past the 14-day TTL relative to first-mount time.
+      act(() => {
+        vi.advanceTimersByTime(15 * 24 * 60 * 60 * 1000)
+      })
+      rerender()
+
+      expect(result.current.hiddenIds).not.toContain("heise:legacy")
+    })
+
     it("ignores hideArticle calls with unprefixed IDs", () => {
       const { result } = renderHook(() => useArticleState())
 
