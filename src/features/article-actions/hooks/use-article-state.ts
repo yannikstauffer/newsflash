@@ -149,6 +149,9 @@ export function useArticleState(): {
   // entries crossing the 14-day boundary are evicted on the next re-render without a write.
   // eslint-disable-next-line react-hooks/purity
   const cutoff = Date.now()
+  // Intentional: fallbackStampRef is read here to derive the legacy stamp for TTL filtering;
+  // the value never changes after mount so accessing it during render is safe.
+  // eslint-disable-next-line react-hooks/refs
   const legacyStamp = resolveLegacyHiddenStamp(fallbackStampRef)
   const hiddenIds = getActiveHidden(rawHiddenEntries, cutoff, legacyStamp).map((entry) => entry.id)
 
