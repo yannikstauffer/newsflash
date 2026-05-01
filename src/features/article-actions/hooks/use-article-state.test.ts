@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
-  MAX_HIDDEN_IDS,
+  HIDDEN_TTL_DAYS,
   MAX_READLIST_ITEMS,
   useArticleState,
 } from "./use-article-state"
@@ -90,8 +90,8 @@ describe("useArticleState", () => {
   })
 
   describe("pruning constants", () => {
-    it("exports MAX_HIDDEN_IDS as 500", () => {
-      expect(MAX_HIDDEN_IDS).toBe(500)
+    it("exports HIDDEN_TTL_DAYS as 14", () => {
+      expect(HIDDEN_TTL_DAYS).toBe(14)
     })
 
     it("exports MAX_READLIST_ITEMS as 200", () => {
@@ -99,10 +99,48 @@ describe("useArticleState", () => {
     })
   })
 
-  describe("hideArticle pruning", () => {
-    it("does not prune when list is under the limit", () => {
-      const ids = Array.from({ length: 10 }, (_, index) => `src:id-${index}`)
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
+  describe("hideArticle time-based eviction (14-day window)", () => {
+    const NOW_ISO = "2026-04-23T12:00:00.000Z"
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date(NOW_ISO))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it("evicts entries older than 14 days on next write", () => {
+      const fifteenDaysAgo = "2026-04-08T12:00:00.000Z"
+      const sevenDaysAgo = "2026-04-16T12:00:00.000Z"
+
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify([
+          { id: "heise:old", hiddenAt: fifteenDaysAgo },
+          { id: "heise:recent", hiddenAt: sevenDaysAgo },
+        ]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.hideArticle("heise:new")
+      })
+
+      expect(result.current.hiddenIds).toContain("heise:new")
+      expect(result.current.hiddenIds).toContain("heise:recent")
+      expect(result.current.hiddenIds).not.toContain("heise:old")
+    })
+
+    it("does not apply a count-based cap when all entries are within the window", () => {
+      const recent = "2026-04-20T12:00:00.000Z"
+      const entries = Array.from({ length: 600 }, (_, index) => ({
+        id: `src:id-${index}`,
+        hiddenAt: recent,
+      }))
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(entries))
 
       const { result } = renderHook(() => useArticleState())
 
@@ -110,55 +148,199 @@ describe("useArticleState", () => {
         result.current.hideArticle("src:new-id")
       })
 
-      expect(result.current.hiddenIds).toHaveLength(11)
+      expect(result.current.hiddenIds).toHaveLength(601)
       expect(result.current.hiddenIds[0]).toBe("src:new-id")
+      expect(result.current.hiddenIds).toContain("src:id-599")
     })
 
-    it("drops the oldest entry when hiding at exactly max capacity", () => {
-      const ids = Array.from({ length: MAX_HIDDEN_IDS }, (_, index) => `src:id-${index}`)
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
+    it("migrates legacy string[] entries by stamping them with current time", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["heise:legacy-1", "heise:legacy-2"]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      expect(result.current.hiddenIds).toEqual(["heise:legacy-1", "heise:legacy-2"])
+
+      // Subsequent write persists timestamped shape to storage.
+      act(() => {
+        result.current.hideArticle("heise:new")
+      })
+
+      const stored: unknown = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? "[]")
+      expect(Array.isArray(stored)).toBe(true)
+      expect(stored).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "heise:legacy-1", hiddenAt: expect.any(String) }),
+          expect.objectContaining({ id: "heise:legacy-2", hiddenAt: expect.any(String) }),
+          { id: "heise:new", hiddenAt: NOW_ISO },
+        ]),
+      )
+    })
+
+    it("persists timestamped entries to localStorage on hideArticle", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.hideArticle("heise:fresh")
+      })
+
+      const stored = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? "[]")
+      expect(stored).toEqual([{ id: "heise:fresh", hiddenAt: NOW_ISO }])
+    })
+
+    it("evicts expired entries without any explicit write (filters in hiddenIds)", () => {
+      const fifteenDaysAgo = "2026-04-08T12:00:00.000Z"
+      const sevenDaysAgo = "2026-04-16T12:00:00.000Z"
+
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify([
+          { id: "heise:old", hiddenAt: fifteenDaysAgo },
+          { id: "heise:recent", hiddenAt: sevenDaysAgo },
+        ]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      expect(result.current.hiddenIds).toContain("heise:recent")
+      expect(result.current.hiddenIds).not.toContain("heise:old")
+      expect(result.current.isHidden("heise:old")).toBe(false)
+      expect(result.current.isHidden("heise:recent")).toBe(true)
+    })
+
+    it("evicts entries that expire after mount when the hook rerenders", () => {
+      const ttlMs = HIDDEN_TTL_DAYS * 24 * 60 * 60 * 1000
+      const nearExpiryHiddenAt = new Date(Date.now() - ttlMs + 1000).toISOString()
+
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify([{ id: "heise:soon-expired", hiddenAt: nearExpiryHiddenAt }]),
+      )
+
+      const { result, rerender } = renderHook(() => useArticleState())
+
+      expect(result.current.hiddenIds).toContain("heise:soon-expired")
+      expect(result.current.isHidden("heise:soon-expired")).toBe(true)
+
+      act(() => {
+        vi.advanceTimersByTime(1001)
+      })
+
+      rerender()
+
+      expect(result.current.hiddenIds).not.toContain("heise:soon-expired")
+      expect(result.current.isHidden("heise:soon-expired")).toBe(false)
+    })
+
+    it("hideArticles batch stamps all new entries with current time", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.hideArticles(["heise:a", "heise:b"])
+      })
+
+      const stored = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? "[]")
+      expect(stored).toEqual([
+        { id: "heise:a", hiddenAt: NOW_ISO },
+        { id: "heise:b", hiddenAt: NOW_ISO },
+      ])
+    })
+
+    it("unhideArticle removes the entry from storage", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify([
+          { id: "heise:a", hiddenAt: NOW_ISO },
+          { id: "heise:b", hiddenAt: NOW_ISO },
+        ]),
+      )
 
       const { result } = renderHook(() => useArticleState())
 
       act(() => {
-        result.current.hideArticle("src:new-id")
+        result.current.unhideArticle("heise:a")
       })
 
-      expect(result.current.hiddenIds).toHaveLength(MAX_HIDDEN_IDS)
-      expect(result.current.hiddenIds[0]).toBe("src:new-id")
-      expect(result.current.hiddenIds).not.toContain(`src:id-${MAX_HIDDEN_IDS - 1}`)
+      expect(result.current.hiddenIds).toEqual(["heise:b"])
+      const stored = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? "[]")
+      expect(stored).toEqual([{ id: "heise:b", hiddenAt: NOW_ISO }])
     })
 
-    it("truncates an oversized existing list to max on next write", () => {
-      const ids = Array.from({ length: MAX_HIDDEN_IDS + 50 }, (_, index) => `src:id-${index}`)
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
+    it("removeHiddenBySource filters timestamped entries by id prefix", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify([
+          { id: "heise:a", hiddenAt: NOW_ISO },
+          { id: "heise:b", hiddenAt: NOW_ISO },
+          { id: "srf:c", hiddenAt: NOW_ISO },
+        ]),
+      )
 
       const { result } = renderHook(() => useArticleState())
 
       act(() => {
-        result.current.hideArticle("src:new-id")
+        result.current.removeHiddenBySource("heise")
       })
 
-      expect(result.current.hiddenIds).toHaveLength(MAX_HIDDEN_IDS)
-      expect(result.current.hiddenIds[0]).toBe("src:new-id")
+      expect(result.current.hiddenIds).toEqual(["srf:c"])
     })
 
-    it("does not change the list when hiding a duplicate ID", () => {
-      const ids = Array.from({ length: MAX_HIDDEN_IDS }, (_, index) => `src:id-${index}`)
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
+    it("uses :updated_at as the legacy timestamp so legacy strings can age out via TTL", () => {
+      const sixteenDaysAgo = "2026-04-07T12:00:00.000Z"
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(["heise:legacy"]))
+      localStorage.setItem(`${HIDDEN_KEY}:updated_at`, sixteenDaysAgo)
 
       const { result } = renderHook(() => useArticleState())
-      const before = result.current.hiddenIds
+
+      expect(result.current.hiddenIds).not.toContain("heise:legacy")
+    })
+
+    it("uses a stable fallback stamp when :updated_at is absent so legacy strings still age out", () => {
+      // Old install: localStorage has legacy string[] but no `:updated_at` companion key.
+      // The fallback must be stable across renders, otherwise each render re-stamps with `now`
+      // and the entry never crosses the TTL boundary.
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(["heise:legacy"]))
+      expect(localStorage.getItem(`${HIDDEN_KEY}:updated_at`)).toBeNull()
+
+      const { result, rerender } = renderHook(() => useArticleState())
+
+      expect(result.current.hiddenIds).toContain("heise:legacy")
+
+      // Advance past the 14-day TTL relative to first-mount time.
+      act(() => {
+        vi.advanceTimersByTime(15 * 24 * 60 * 60 * 1000)
+      })
+      rerender()
+
+      expect(result.current.hiddenIds).not.toContain("heise:legacy")
+    })
+
+    it("ignores hideArticle calls with unprefixed IDs", () => {
+      const { result } = renderHook(() => useArticleState())
 
       act(() => {
-        result.current.hideArticle("src:id-0")
+        result.current.hideArticle("not-prefixed")
       })
 
-      expect(result.current.hiddenIds).toBe(before)
+      expect(result.current.hiddenIds).toEqual([])
+      expect(localStorage.getItem(HIDDEN_KEY)).toBeNull()
     })
   })
 
   describe("addToReadList pruning", () => {
+    it("ignores articles with unprefixed IDs", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.addToReadList(makeArticle({ id: "no-prefix" }))
+      })
+
+      expect(result.current.readListIds).toEqual([])
+      expect(mockUpsertMany).not.toHaveBeenCalled()
+    })
+
     it("does not prune when list is under the limit", () => {
       const { result } = renderHook(() => useArticleState())
 
@@ -263,6 +445,94 @@ describe("useArticleState", () => {
 
       expect(result.current.readListArticles).toBe(before)
     })
+
+    it("unpins legacy unprefixed entries dropped by the prefix filter on add", () => {
+      const stored = [
+        {
+          id: "legacy-pinned",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+      mockBulkSetPinned.mockClear()
+
+      act(() => {
+        result.current.addToReadList(makeArticle({ id: "heise:new" }))
+      })
+
+      expect(mockBulkSetPinned).toHaveBeenCalledWith(["legacy-pinned"], false)
+    })
+  })
+
+  describe("removeFromReadList legacy cleanup", () => {
+    it("unpins legacy unprefixed entries dropped by the prefix filter", () => {
+      const stored = [
+        {
+          id: "legacy-pinned",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+        {
+          id: "heise:target",
+          title: "Target",
+          description: "T",
+          link: "https://example.com/target",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+      mockBulkSetPinned.mockClear()
+      mockSetPinned.mockClear()
+
+      act(() => {
+        result.current.removeFromReadList("heise:target")
+      })
+
+      expect(mockBulkSetPinned).toHaveBeenCalledWith(["legacy-pinned"], false)
+      expect(mockSetPinned).toHaveBeenCalledWith("heise:target", false)
+    })
+  })
+
+  describe("restoreReadList legacy cleanup", () => {
+    it("unpins legacy unprefixed entries dropped by the prefix filter", () => {
+      const stored = [
+        {
+          id: "legacy-pinned",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+      mockBulkSetPinned.mockClear()
+
+      act(() => {
+        result.current.restoreReadList([makeArticle({ id: "heise:restored" })])
+      })
+
+      const allDropped = mockBulkSetPinned.mock.calls.flatMap(([ids]) => ids as string[])
+      expect(allDropped).toContain("legacy-pinned")
+    })
   })
 
   describe("removeReadListBySource", () => {
@@ -357,6 +627,76 @@ describe("useArticleState", () => {
         false,
       )
     })
+
+    it("unpins legacy unprefixed entries from non-matching sources dropped by the prefix filter", () => {
+      const stored = [
+        {
+          id: "legacy-srf",
+          title: "Legacy SRF",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "srf",
+          language: "de",
+        },
+        {
+          id: "heise:to-remove",
+          title: "Heise",
+          description: "H",
+          link: "https://example.com/h",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+      mockBulkSetPinned.mockClear()
+
+      act(() => {
+        result.current.removeReadListBySource("heise")
+      })
+
+      const allUnpinned = mockBulkSetPinned.mock.calls.flatMap(([ids]) => ids as string[])
+      expect(allUnpinned).toContain("legacy-srf")
+      expect(allUnpinned).toContain("heise:to-remove")
+    })
+
+    it("unpins legacy unprefixed IDs whose source matches", () => {
+      const stored = [
+        {
+          id: "legacyHeise",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+        {
+          id: "heise:valid",
+          title: "Valid",
+          description: "New",
+          link: "https://example.com/valid",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.removeReadListBySource("heise")
+      })
+
+      expect(mockBulkSetPinned).toHaveBeenCalledWith(
+        ["legacyHeise", "heise:valid"],
+        false,
+      )
+    })
   })
 
   describe("Set-based lookups", () => {
@@ -436,6 +776,41 @@ describe("useArticleState", () => {
       expect(result.current.readListArticles).toEqual([])
       expect(result.current.readListIds).toEqual([])
     })
+
+    it("unpins legacy unprefixed IDs from IDB so they are not protected from eviction", () => {
+      const stored = [
+        {
+          id: "legacy123",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+        {
+          id: "heise:valid",
+          title: "Valid",
+          description: "New",
+          link: "https://example.com/valid",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.clearReadList()
+      })
+
+      expect(mockBulkSetPinned).toHaveBeenCalledWith(
+        ["legacy123", "heise:valid"],
+        false,
+      )
+    })
   })
 
   describe("restoreReadList", () => {
@@ -500,8 +875,49 @@ describe("useArticleState", () => {
     })
   })
 
-  describe("legacy data migration", () => {
-    it("clears legacy hidden IDs without colon separator", () => {
+  describe("legacy data normalization on read", () => {
+    it("does not write to localStorage on mount when hidden contains legacy string[] data", () => {
+      // Regression: previously the migration effect wrote a normalized array via
+      // useSyncedStorage, which bumped `:updated_at` to now and caused this device to
+      // win the LWW sync and clobber hides made on another device.
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["heise:legacy-1", "heise:legacy-2"]),
+      )
+      const beforeTimestamp = "2026-01-01T00:00:00.000Z"
+      localStorage.setItem(`${HIDDEN_KEY}:updated_at`, beforeTimestamp)
+      const beforeRaw = localStorage.getItem(HIDDEN_KEY)
+
+      renderHook(() => useArticleState())
+
+      expect(localStorage.getItem(`${HIDDEN_KEY}:updated_at`)).toBe(beforeTimestamp)
+      expect(localStorage.getItem(HIDDEN_KEY)).toBe(beforeRaw)
+    })
+
+    it("does not write to localStorage on mount when read list contains unprefixed entries", () => {
+      const stored = [
+        {
+          id: "legacy123",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+      const beforeTimestamp = "2026-01-01T00:00:00.000Z"
+      localStorage.setItem(`${READLIST_KEY}:updated_at`, beforeTimestamp)
+      const beforeRaw = localStorage.getItem(READLIST_KEY)
+
+      renderHook(() => useArticleState())
+
+      expect(localStorage.getItem(`${READLIST_KEY}:updated_at`)).toBe(beforeTimestamp)
+      expect(localStorage.getItem(READLIST_KEY)).toBe(beforeRaw)
+    })
+
+    it("filters legacy hidden IDs without colon separator", () => {
       localStorage.setItem(
         HIDDEN_KEY,
         JSON.stringify(["abc123", "def456", "heise:valid"]),
@@ -509,8 +925,60 @@ describe("useArticleState", () => {
 
       const { result } = renderHook(() => useArticleState())
 
-      // After migration effect runs
       expect(result.current.hiddenIds).toEqual(["heise:valid"])
+    })
+
+    it("drops legacy unprefixed hidden entries from storage on next mutation", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["abc123", "heise:valid"]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.hideArticle("heise:new")
+      })
+
+      const storedHidden: Array<{ id: string }> = JSON.parse(
+        localStorage.getItem(HIDDEN_KEY) ?? "[]",
+      )
+      expect(storedHidden.map((entry) => entry.id)).toEqual(["heise:new", "heise:valid"])
+    })
+
+    it("drops legacy unprefixed read list entries from storage on next mutation", () => {
+      const stored = [
+        {
+          id: "legacy123",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+        {
+          id: "heise:valid",
+          title: "Valid",
+          description: "New",
+          link: "https://example.com/valid",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.addToReadList(makeArticle({ id: "heise:added" }))
+      })
+
+      const after: Array<{ id: string }> = JSON.parse(
+        localStorage.getItem(READLIST_KEY) ?? "[]",
+      )
+      expect(after.map((entry) => entry.id)).toEqual(["heise:added", "heise:valid"])
     })
 
     it("clears legacy read list entries without colon separator in ID", () => {
