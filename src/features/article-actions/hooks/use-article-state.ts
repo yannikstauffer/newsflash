@@ -26,22 +26,16 @@ function isExpired(entry: HiddenEntry, now: number): boolean {
   return Number.isNaN(hiddenAtMs) || now - hiddenAtMs > HIDDEN_TTL_MS
 }
 
-// Active = normalized + prefix-valid + within TTL. Used by both reads and mutation
-// updaters so any persisted write naturally drops legacy unprefixed entries.
-function getActiveHidden(raw: unknown, cutoff: number): HiddenEntry[] {
-  return normalizeHidden(raw).filter(
-    (entry) => hasSourcePrefix(entry.id) && !isExpired(entry, cutoff),
-  )
-}
-
 // Converts any stored value (legacy string[] or proper HiddenEntry[]) to HiddenEntry[].
-// Legacy strings are stamped with the current time so no hides are lost on upgrade.
+// Legacy strings are stamped with `legacyStamp` so the same input produces the same output
+// across renders (otherwise legacy entries would never age out via TTL because each render
+// would re-stamp them with a fresh "now"). Callers pass the storage key's `:updated_at`
+// value as the proxy timestamp, falling back to "now" if unset.
 // Entries with non-string id/hiddenAt are dropped to prevent runtime errors downstream.
-function normalizeHidden(raw: unknown): HiddenEntry[] {
+function normalizeHidden(raw: unknown, legacyStamp: string): HiddenEntry[] {
   if (!Array.isArray(raw)) return []
-  const now = new Date().toISOString()
   return (raw as unknown[]).flatMap((item) => {
-    if (typeof item === "string") return [{ id: item, hiddenAt: now }]
+    if (typeof item === "string") return [{ id: item, hiddenAt: legacyStamp }]
     if (
       item && typeof item === "object" &&
       "id" in item && typeof (item as Record<string, unknown>).id === "string" &&
@@ -51,6 +45,18 @@ function normalizeHidden(raw: unknown): HiddenEntry[] {
     }
     return []
   })
+}
+
+// Active = normalized + prefix-valid + within TTL. Used by both reads and mutation
+// updaters so any persisted write naturally drops legacy unprefixed entries.
+function getActiveHidden(raw: unknown, cutoff: number, legacyStamp: string): HiddenEntry[] {
+  return normalizeHidden(raw, legacyStamp).filter(
+    (entry) => hasSourcePrefix(entry.id) && !isExpired(entry, cutoff),
+  )
+}
+
+function readLegacyHiddenStamp(): string {
+  return globalThis.localStorage.getItem(`${HIDDEN_KEY}:updated_at`) ?? new Date().toISOString()
 }
 
 interface StoredArticle {
@@ -119,7 +125,8 @@ export function useArticleState(): {
   // entries crossing the 14-day boundary are evicted on the next re-render without a write.
   // eslint-disable-next-line react-hooks/purity
   const cutoff = Date.now()
-  const hiddenIds = getActiveHidden(rawHiddenEntries, cutoff).map((entry) => entry.id)
+  const legacyStamp = readLegacyHiddenStamp()
+  const hiddenIds = getActiveHidden(rawHiddenEntries, cutoff, legacyStamp).map((entry) => entry.id)
 
   const hiddenSet = useMemo(() => new Set(hiddenIds), [hiddenIds])
   const validReadList = useMemo(
@@ -146,10 +153,14 @@ export function useArticleState(): {
 
   const hideArticle = useCallback(
     (articleId: string) => {
+      // Reject unprefixed IDs at the entry point so storage stays consistent with the
+      // `source:id` format readers expect.
+      if (!hasSourcePrefix(articleId)) return
       const ts = new Date().toISOString()
       const cutoff = Date.now()
+      const legacyStamp = readLegacyHiddenStamp()
       setHiddenEntries((previous) => {
-        const active = getActiveHidden(previous, cutoff)
+        const active = getActiveHidden(previous, cutoff, legacyStamp)
         if (active.some((entry) => entry.id === articleId)) return active
         return [{ id: articleId, hiddenAt: ts }, ...active]
       })
@@ -160,8 +171,9 @@ export function useArticleState(): {
   const unhideArticle = useCallback(
     (articleId: string) => {
       const cutoff = Date.now()
+      const legacyStamp = readLegacyHiddenStamp()
       setHiddenEntries((previous) =>
-        getActiveHidden(previous, cutoff).filter((entry) => entry.id !== articleId),
+        getActiveHidden(previous, cutoff, legacyStamp).filter((entry) => entry.id !== articleId),
       )
     },
     [setHiddenEntries],
@@ -169,6 +181,9 @@ export function useArticleState(): {
 
   const addToReadList = useCallback(
     (article: NormalizedArticle) => {
+      // Reject unprefixed IDs so we never persist invisible entries (validReadList would
+      // filter them out of derived state) or trigger pin calls with invalid IDs.
+      if (!hasSourcePrefix(article.id)) return
       let didAdd = false
       let droppedId: string | undefined
       setStoredReadList((previous) => {
@@ -209,8 +224,9 @@ export function useArticleState(): {
     (ids: string[]) => {
       const ts = new Date().toISOString()
       const cutoff = Date.now()
+      const legacyStamp = readLegacyHiddenStamp()
       setHiddenEntries((previous) => {
-        const active = getActiveHidden(previous, cutoff)
+        const active = getActiveHidden(previous, cutoff, legacyStamp)
         const existing = new Set(active.map((entry) => entry.id))
         const newEntries = ids
           .filter((id) => hasSourcePrefix(id) && !existing.has(id))
@@ -226,8 +242,11 @@ export function useArticleState(): {
     (ids: string[]) => {
       const idsToRemove = new Set(ids)
       const cutoff = Date.now()
+      const legacyStamp = readLegacyHiddenStamp()
       setHiddenEntries((previous) =>
-        getActiveHidden(previous, cutoff).filter((entry) => !idsToRemove.has(entry.id)),
+        getActiveHidden(previous, cutoff, legacyStamp).filter(
+          (entry) => !idsToRemove.has(entry.id),
+        ),
       )
     },
     [setHiddenEntries],
@@ -276,8 +295,11 @@ export function useArticleState(): {
   const removeHiddenBySource = useCallback(
     (sourceId: string) => {
       const cutoff = Date.now()
+      const legacyStamp = readLegacyHiddenStamp()
       setHiddenEntries((previous) =>
-        getActiveHidden(previous, cutoff).filter((entry) => !entry.id.startsWith(`${sourceId}:`)),
+        getActiveHidden(previous, cutoff, legacyStamp).filter(
+          (entry) => !entry.id.startsWith(`${sourceId}:`),
+        ),
       )
     },
     [setHiddenEntries],

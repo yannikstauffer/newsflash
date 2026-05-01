@@ -286,9 +286,41 @@ describe("useArticleState", () => {
 
       expect(result.current.hiddenIds).toEqual(["srf:c"])
     })
+
+    it("uses :updated_at as the legacy timestamp so legacy strings can age out via TTL", () => {
+      const sixteenDaysAgo = "2026-04-07T12:00:00.000Z"
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(["heise:legacy"]))
+      localStorage.setItem(`${HIDDEN_KEY}:updated_at`, sixteenDaysAgo)
+
+      const { result } = renderHook(() => useArticleState())
+
+      expect(result.current.hiddenIds).not.toContain("heise:legacy")
+    })
+
+    it("ignores hideArticle calls with unprefixed IDs", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.hideArticle("not-prefixed")
+      })
+
+      expect(result.current.hiddenIds).toEqual([])
+      expect(localStorage.getItem(HIDDEN_KEY)).toBeNull()
+    })
   })
 
   describe("addToReadList pruning", () => {
+    it("ignores articles with unprefixed IDs", () => {
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.addToReadList(makeArticle({ id: "no-prefix" }))
+      })
+
+      expect(result.current.readListIds).toEqual([])
+      expect(mockUpsertMany).not.toHaveBeenCalled()
+    })
+
     it("does not prune when list is under the limit", () => {
       const { result } = renderHook(() => useArticleState())
 
