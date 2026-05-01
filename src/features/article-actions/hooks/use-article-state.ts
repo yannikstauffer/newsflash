@@ -271,7 +271,9 @@ export function useArticleState(): {
 
   const clearReadList = useCallback(
     () => {
-      const ids = storedReadList.filter((a) => hasSourcePrefix(a.id)).map((a) => a.id)
+      // Unpin every stored ID, including legacy unprefixed ones — otherwise legacy
+      // IDB-pinned entries stay protected from eviction even after the read list is cleared.
+      const ids = storedReadList.map((a) => a.id)
       articleCache.bulkSetPinned(ids, false).catch(() => {})
       setStoredReadList([])
     },
@@ -326,11 +328,12 @@ export function useArticleState(): {
     (sourceId: string) => {
       let removedIds: string[] = []
       setStoredReadList((previous) => {
-        const valid = previous.filter((a) => hasSourcePrefix(a.id))
-        removedIds = valid
+        // Compute removedIds from the unfiltered `previous` so legacy IDB-pinned entries
+        // also get unpinned — otherwise they linger as undeletable pinned records.
+        removedIds = previous
           .filter((a) => a.source === sourceId)
           .map((a) => a.id)
-        return valid.filter((a) => a.source !== sourceId)
+        return previous.filter((a) => hasSourcePrefix(a.id) && a.source !== sourceId)
       })
       if (removedIds.length > 0) {
         articleCache.bulkSetPinned(removedIds, false).catch(() => {})

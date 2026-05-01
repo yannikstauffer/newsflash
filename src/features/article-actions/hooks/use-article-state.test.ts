@@ -539,6 +539,41 @@ describe("useArticleState", () => {
         false,
       )
     })
+
+    it("unpins legacy unprefixed IDs whose source matches", () => {
+      const stored = [
+        {
+          id: "legacyHeise",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+        {
+          id: "heise:valid",
+          title: "Valid",
+          description: "New",
+          link: "https://example.com/valid",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.removeReadListBySource("heise")
+      })
+
+      expect(mockBulkSetPinned).toHaveBeenCalledWith(
+        ["legacyHeise", "heise:valid"],
+        false,
+      )
+    })
   })
 
   describe("Set-based lookups", () => {
@@ -617,6 +652,41 @@ describe("useArticleState", () => {
 
       expect(result.current.readListArticles).toEqual([])
       expect(result.current.readListIds).toEqual([])
+    })
+
+    it("unpins legacy unprefixed IDs from IDB so they are not protected from eviction", () => {
+      const stored = [
+        {
+          id: "legacy123",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+        {
+          id: "heise:valid",
+          title: "Valid",
+          description: "New",
+          link: "https://example.com/valid",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.clearReadList()
+      })
+
+      expect(mockBulkSetPinned).toHaveBeenCalledWith(
+        ["legacy123", "heise:valid"],
+        false,
+      )
     })
   })
 
