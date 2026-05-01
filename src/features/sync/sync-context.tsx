@@ -130,6 +130,9 @@ export function SyncProvider({ children }: SyncProviderProps) {
   // Auto-sync on mount when authenticated
   useEffect(() => {
     if (userId) {
+      // Intentional: doSync() is an async function whose setState calls happen asynchronously
+      // after awaits; calling it here on mount to initiate the initial sync is by design.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       doSync()
     }
   }, [userId, doSync])
