@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useMemo } from "react"
 
 import type { NormalizedArticle } from "@/features/connectors/types"
 
@@ -101,49 +101,32 @@ export function useArticleState(): {
     [],
   )
 
-  const readListMigrated = useRef(false)
-
-  // Migrate legacy string[] or entries without colon prefix to timestamped HiddenEntry[].
-  // Re-runs whenever rawHiddenEntries changes so sync-pushed legacy data is also normalized.
-  // normalizeHidden handles non-array values safely (returns []), removing the need to guard
-  // against null/object storage corruption before calling .some().
-  useEffect(() => {
-    const normalized = normalizeHidden(rawHiddenEntries)
-    const hasLegacyStrings = Array.isArray(rawHiddenEntries) &&
-      (rawHiddenEntries as unknown[]).some((item) => typeof item === "string")
-    const hasUnprefixedIds = normalized.some((entry) => !hasSourcePrefix(entry.id))
-
-    if (hasLegacyStrings || hasUnprefixedIds) {
-      setHiddenEntries(normalized.filter((entry) => hasSourcePrefix(entry.id)))
-    }
-  }, [rawHiddenEntries, setHiddenEntries])
-
-  useEffect(() => {
-    if (!readListMigrated.current && storedReadList.some((a) => !hasSourcePrefix(a.id))) {
-      readListMigrated.current = true
-      setStoredReadList((previous) => previous.filter((a) => hasSourcePrefix(a.id)))
-    }
-  }, [storedReadList, setStoredReadList])
-
-  // TTL filtering intentionally calls Date.now() during render so hiddenIds is always up-to-date —
-  // entries that cross the 14-day boundary are evicted on the next re-render without requiring a write.
-  // The react-hooks/purity rule flags Date.now() as impure, but this is a deliberate trade-off:
-  // the component IS deterministic given the same inputs at the same instant in time; the impurity
-  // is bounded and acceptable here.
+  // Legacy data (pre-prefix string[] or unprefixed entries) is normalized on read and
+  // cleaned up organically the next time a real mutation persists the array. We deliberately
+  // do NOT migrate by writing through useSyncedStorage on mount, because that bumps
+  // `:updated_at` to "now" and causes this device to win the LWW sync, clobbering hides
+  // made on another device.
+  //
+  // TTL filtering calls Date.now() during render so hiddenIds is always current —
+  // entries crossing the 14-day boundary are evicted on the next re-render without a write.
   // eslint-disable-next-line react-hooks/purity
   const cutoff = Date.now()
   const hiddenIds = normalizeHidden(rawHiddenEntries)
-    .filter((entry) => !isExpired(entry, cutoff))
+    .filter((entry) => hasSourcePrefix(entry.id) && !isExpired(entry, cutoff))
     .map((entry) => entry.id)
 
   const hiddenSet = useMemo(() => new Set(hiddenIds), [hiddenIds])
-  const readListIdSet = useMemo(
-    () => new Set(storedReadList.map((a) => a.id)),
+  const validReadList = useMemo(
+    () => storedReadList.filter((a) => hasSourcePrefix(a.id)),
     [storedReadList],
   )
+  const readListIdSet = useMemo(
+    () => new Set(validReadList.map((a) => a.id)),
+    [validReadList],
+  )
 
-  const readListIds = useMemo(() => storedReadList.map((a) => a.id), [storedReadList])
-  const readListArticles = useMemo(() => storedReadList.map(fromStored), [storedReadList])
+  const readListIds = useMemo(() => validReadList.map((a) => a.id), [validReadList])
+  const readListArticles = useMemo(() => validReadList.map(fromStored), [validReadList])
 
   const isHidden = useCallback(
     (articleId: string): boolean => hiddenSet.has(articleId),

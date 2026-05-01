@@ -630,8 +630,49 @@ describe("useArticleState", () => {
     })
   })
 
-  describe("legacy data migration", () => {
-    it("clears legacy hidden IDs without colon separator", () => {
+  describe("legacy data normalization on read", () => {
+    it("does not write to localStorage on mount when hidden contains legacy string[] data", () => {
+      // Regression: previously the migration effect wrote a normalized array via
+      // useSyncedStorage, which bumped `:updated_at` to now and caused this device to
+      // win the LWW sync and clobber hides made on another device.
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["heise:legacy-1", "heise:legacy-2"]),
+      )
+      const beforeTimestamp = "2026-01-01T00:00:00.000Z"
+      localStorage.setItem(`${HIDDEN_KEY}:updated_at`, beforeTimestamp)
+      const beforeRaw = localStorage.getItem(HIDDEN_KEY)
+
+      renderHook(() => useArticleState())
+
+      expect(localStorage.getItem(`${HIDDEN_KEY}:updated_at`)).toBe(beforeTimestamp)
+      expect(localStorage.getItem(HIDDEN_KEY)).toBe(beforeRaw)
+    })
+
+    it("does not write to localStorage on mount when read list contains unprefixed entries", () => {
+      const stored = [
+        {
+          id: "legacy123",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+      const beforeTimestamp = "2026-01-01T00:00:00.000Z"
+      localStorage.setItem(`${READLIST_KEY}:updated_at`, beforeTimestamp)
+      const beforeRaw = localStorage.getItem(READLIST_KEY)
+
+      renderHook(() => useArticleState())
+
+      expect(localStorage.getItem(`${READLIST_KEY}:updated_at`)).toBe(beforeTimestamp)
+      expect(localStorage.getItem(READLIST_KEY)).toBe(beforeRaw)
+    })
+
+    it("filters legacy hidden IDs without colon separator", () => {
       localStorage.setItem(
         HIDDEN_KEY,
         JSON.stringify(["abc123", "def456", "heise:valid"]),
