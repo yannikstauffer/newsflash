@@ -60,12 +60,19 @@ function getActiveHidden(raw: unknown, cutoff: number, legacyStamp: string): Hid
 // touched). When absent (very old installs / private-mode storage failures), falls back to
 // a value memoized in `fallbackRef` so we don't re-stamp with `now` on every render — that
 // would prevent legacy entries from ever aging out via the 14-day TTL.
+//
+// `legacyHiddenStorageUnavailable` short-circuits the localStorage read after the first
+// failure so we don't keep paying throw/catch overhead on every render and mutation.
+let legacyHiddenStorageUnavailable = false
+
 function resolveLegacyHiddenStamp(fallbackRef: { current: string | null }): string {
-  try {
-    const stamp = globalThis.localStorage.getItem(`${HIDDEN_KEY}:updated_at`)
-    if (stamp) return stamp
-  } catch {
-    // localStorage blocked / private mode — fall through to memoized fallback
+  if (!legacyHiddenStorageUnavailable) {
+    try {
+      const stamp = globalThis.localStorage.getItem(`${HIDDEN_KEY}:updated_at`)
+      if (stamp) return stamp
+    } catch {
+      legacyHiddenStorageUnavailable = true
+    }
   }
   if (fallbackRef.current === null) {
     fallbackRef.current = new Date().toISOString()
