@@ -203,8 +203,14 @@ export function useArticleState(): {
       if (!hasSourcePrefix(article.id)) return
       let didAdd = false
       let droppedId: string | undefined
+      let removedLegacyIds: string[] = []
       setStoredReadList((previous) => {
         const valid = previous.filter((a) => hasSourcePrefix(a.id))
+        // Track legacy IDs being dropped from storage so we can unpin them in IDB —
+        // otherwise pinned legacy records survive forever and dodge eviction.
+        removedLegacyIds = previous
+          .filter((a) => !hasSourcePrefix(a.id))
+          .map((a) => a.id)
         if (valid.some((a) => a.id === article.id)) {
           // Preserve reference for true no-ops so memoized derivations stay stable.
           return valid.length === previous.length ? previous : valid
@@ -217,6 +223,9 @@ export function useArticleState(): {
         }
         return next
       })
+      if (removedLegacyIds.length > 0) {
+        articleCache.bulkSetPinned(removedLegacyIds, false).catch(() => {})
+      }
       if (didAdd) {
         articleCache.upsertMany([article], { pinned: true }).catch(() => {})
         if (droppedId) {
@@ -229,9 +238,17 @@ export function useArticleState(): {
 
   const removeFromReadList = useCallback(
     (articleId: string) => {
-      setStoredReadList((previous) =>
-        previous.filter((a) => hasSourcePrefix(a.id) && a.id !== articleId),
-      )
+      let removedLegacyIds: string[] = []
+      setStoredReadList((previous) => {
+        // Unpin legacy IDs being dropped so they don't linger as orphaned pinned records.
+        removedLegacyIds = previous
+          .filter((a) => !hasSourcePrefix(a.id))
+          .map((a) => a.id)
+        return previous.filter((a) => hasSourcePrefix(a.id) && a.id !== articleId)
+      })
+      if (removedLegacyIds.length > 0) {
+        articleCache.bulkSetPinned(removedLegacyIds, false).catch(() => {})
+      }
       articleCache.setPinned(articleId, false).catch(() => {})
     },
     [setStoredReadList],
@@ -296,7 +313,9 @@ export function useArticleState(): {
           : allEntries
         const cappedIds = new Set(capped.map((a) => a.id))
         articlesToPin = articles.filter((a) => cappedIds.has(a.id))
-        droppedIds = validPrevious
+        // droppedIds includes legacy unprefixed entries dropped by the prefix filter
+        // in addition to capped-out entries — both must be unpinned.
+        droppedIds = previous
           .filter((a) => !cappedIds.has(a.id))
           .map((a) => a.id)
         return capped
@@ -328,12 +347,12 @@ export function useArticleState(): {
     (sourceId: string) => {
       let removedIds: string[] = []
       setStoredReadList((previous) => {
-        // Compute removedIds from the unfiltered `previous` so legacy IDB-pinned entries
-        // also get unpinned — otherwise they linger as undeletable pinned records.
-        removedIds = previous
-          .filter((a) => a.source === sourceId)
-          .map((a) => a.id)
-        return previous.filter((a) => hasSourcePrefix(a.id) && a.source !== sourceId)
+        const next = previous.filter((a) => hasSourcePrefix(a.id) && a.source !== sourceId)
+        const nextIds = new Set(next.map((a) => a.id))
+        // Unpin everything dropped — both source-matching entries (any prefix state)
+        // and legacy unprefixed entries from other sources removed by the prefix filter.
+        removedIds = previous.filter((a) => !nextIds.has(a.id)).map((a) => a.id)
+        return next
       })
       if (removedIds.length > 0) {
         articleCache.bulkSetPinned(removedIds, false).catch(() => {})

@@ -445,6 +445,94 @@ describe("useArticleState", () => {
 
       expect(result.current.readListArticles).toBe(before)
     })
+
+    it("unpins legacy unprefixed entries dropped by the prefix filter on add", () => {
+      const stored = [
+        {
+          id: "legacy-pinned",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+      mockBulkSetPinned.mockClear()
+
+      act(() => {
+        result.current.addToReadList(makeArticle({ id: "heise:new" }))
+      })
+
+      expect(mockBulkSetPinned).toHaveBeenCalledWith(["legacy-pinned"], false)
+    })
+  })
+
+  describe("removeFromReadList legacy cleanup", () => {
+    it("unpins legacy unprefixed entries dropped by the prefix filter", () => {
+      const stored = [
+        {
+          id: "legacy-pinned",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+        {
+          id: "heise:target",
+          title: "Target",
+          description: "T",
+          link: "https://example.com/target",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+      mockBulkSetPinned.mockClear()
+      mockSetPinned.mockClear()
+
+      act(() => {
+        result.current.removeFromReadList("heise:target")
+      })
+
+      expect(mockBulkSetPinned).toHaveBeenCalledWith(["legacy-pinned"], false)
+      expect(mockSetPinned).toHaveBeenCalledWith("heise:target", false)
+    })
+  })
+
+  describe("restoreReadList legacy cleanup", () => {
+    it("unpins legacy unprefixed entries dropped by the prefix filter", () => {
+      const stored = [
+        {
+          id: "legacy-pinned",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+      mockBulkSetPinned.mockClear()
+
+      act(() => {
+        result.current.restoreReadList([makeArticle({ id: "heise:restored" })])
+      })
+
+      const allDropped = mockBulkSetPinned.mock.calls.flatMap(([ids]) => ids as string[])
+      expect(allDropped).toContain("legacy-pinned")
+    })
   })
 
   describe("removeReadListBySource", () => {
@@ -538,6 +626,41 @@ describe("useArticleState", () => {
         ["heise:h2", "heise:h1"],
         false,
       )
+    })
+
+    it("unpins legacy unprefixed entries from non-matching sources dropped by the prefix filter", () => {
+      const stored = [
+        {
+          id: "legacy-srf",
+          title: "Legacy SRF",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "srf",
+          language: "de",
+        },
+        {
+          id: "heise:to-remove",
+          title: "Heise",
+          description: "H",
+          link: "https://example.com/h",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+      mockBulkSetPinned.mockClear()
+
+      act(() => {
+        result.current.removeReadListBySource("heise")
+      })
+
+      const allUnpinned = mockBulkSetPinned.mock.calls.flatMap(([ids]) => ids as string[])
+      expect(allUnpinned).toContain("legacy-srf")
+      expect(allUnpinned).toContain("heise:to-remove")
     })
 
     it("unpins legacy unprefixed IDs whose source matches", () => {
