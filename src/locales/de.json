@@ -19,6 +19,7 @@
     "closeSearch": "Suche schliessen",
     "openSearch": "Suche öffnen",
     "refreshed": "Aktualisiert {{time}}",
+    "synced": "Synchronisiert {{time}}",
     "loading": "Feeds werden geladen...",
     "loadingLabel": "Feeds werden geladen",
     "empty": "Keine Artikel gefunden. Versuche, die Filter anzupassen.",
@@ -34,7 +35,8 @@
     "hideAllDescription": "{{count}} Artikel werden ausgeblendet. Du kannst sie mit «Ausgeblendet anzeigen» wieder einblenden.",
     "hideAllToast": "{{count}} Artikel ausgeblendet",
     "cancel": "Abbrechen",
-    "undo": "Rückgängig"
+    "undo": "Rückgängig",
+    "showNewerArticles": "{{count}} neuere Artikel anzeigen"
   },
   "settings": {
     "heading": "Einstellungen",
@@ -115,6 +117,7 @@
     "hidden": "Ausgeblendet",
     "saved": "Gespeichert",
     "matched": "Übereinstimmend",
+    "blocked": "Gefiltert",
     "hideRate": "Ausblendrate"
   },
   "error": {

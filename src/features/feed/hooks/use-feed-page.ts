@@ -1,6 +1,7 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router"
 import { BookmarkPlus, EyeOff } from "lucide-react"
 import { createElement, useCallback, useEffect, useMemo, useRef } from "react"
+import { useTranslation } from "react-i18next"
 
 import { useFeedData } from "./use-feed-data"
 import { filterArticles } from "../utils/filter-articles"
@@ -17,11 +18,12 @@ import {
   useArticleKeyboardShortcuts,
   useArticleState,
 } from "@/features/article-actions"
-const feedRoute = getRouteApi("/")
 import { connectors } from "@/features/connectors/registry"
 import { useFeedPreferences } from "@/features/feed-config/hooks/use-feed-preferences"
 import { useFilterPreferences } from "@/features/feed-config/hooks/use-filter-preferences"
 import { useStatsTracker } from "@/features/stats/use-stats-tracker"
+
+const feedRoute = getRouteApi("/")
 
 interface FilterBarProps {
   readonly showHidden: boolean
@@ -51,6 +53,8 @@ interface FeedListProps {
   ) => ReactNode
   readonly emptyMessage: string | undefined
   readonly onRefresh: () => void
+  readonly pendingCount: number
+  readonly onAcceptPending: () => void
 }
 
 interface UseFeedPageResult {
@@ -76,9 +80,11 @@ function isDateToday(d: Date): boolean {
 }
 
 export function useFeedPage(): UseFeedPageResult {
+  const { t } = useTranslation()
   const { isFeedEnabled } = useFeedPreferences()
   const { isFilterEnabled } = useFilterPreferences()
-  const { articles, loading, errors, lastRefreshedAt, refresh } = useFeedData(isFeedEnabled)
+  const { articles, loading, errors, lastRefreshedAt, refresh, pendingCount, acceptPending } =
+    useFeedData(isFeedEnabled)
   const {
     hiddenIds,
     isHidden,
@@ -128,6 +134,19 @@ export function useFeedPage(): UseFeedPageResult {
     articles, isFeedEnabled, isFilterEnabled, showHidden,
     hiddenIds, searchQuery, allArticles, selectedDate,
   ])
+
+  // Articles for disabled-filter blocked-count tracking: same view constraints as
+  // filteredArticles (day, hidden, search) but WITHOUT connector filter removal so
+  // articles blocked by disabled filters pass through and can be counted.
+  const rawArticlesForTracking = useMemo(() => {
+    const raw = filterArticles(articles, {
+      isFeedEnabled,
+      showHidden,
+      hiddenIds,
+      searchQuery,
+    })
+    return allArticles ? raw : filterByDay(raw, selectedDate)
+  }, [articles, isFeedEnabled, showHidden, hiddenIds, searchQuery, allArticles, selectedDate])
 
   const { articleCount, hiddenCount } = useMemo(() => {
     const hiddenSet = new Set(hiddenIds)
@@ -198,29 +217,36 @@ export function useFeedPage(): UseFeedPageResult {
     articlesRef.current = filteredArticles
   }, [filteredArticles])
 
-  // Compute disabled filters once (filters where user currently sees matching articles)
-  const disabledFilters = useMemo(() => {
+  // Compute enabled filters (categories the user currently sees matching articles from).
+  // Match is scoped to the owning connector so cross-connector false-positives are excluded.
+  const enabledFilters = useMemo(() => {
     return connectors.flatMap((connector) =>
       (connector.filters ?? [])
-        .filter((f) => !isFilterEnabled(f.id, f.enabledByDefault))
-        .map((f) => ({ filterId: f.id, match: f.match })),
+        .filter((f) => isFilterEnabled(f.id, f.enabledByDefault))
+        .map((f) => ({
+          filterId: f.id,
+          match: (article: NormalizedArticle) =>
+            article.source === connector.id && f.match(article),
+        })),
     )
   }, [isFilterEnabled])
 
-  // Track appeared articles when the visible list changes
+  // Track appeared articles when the visible list changes.
+  // Both filteredArticles (for feed + enabled-filter stats) and raw articles
+  // (for disabled-filter block counts) are passed to the tracker.
   useEffect(() => {
-    if (!loading && filteredArticles.length > 0) {
-      trackAppeared(filteredArticles, connectors, isFilterEnabled)
+    if (!loading) {
+      trackAppeared(filteredArticles, rawArticlesForTracking, connectors, isFilterEnabled)
     }
-  }, [filteredArticles, loading, trackAppeared, isFilterEnabled])
+  }, [filteredArticles, rawArticlesForTracking, loading, trackAppeared, isFilterEnabled])
 
   const handleKeyboardHide = useCallback(
     (articleId: string) => {
       const article = articlesRef.current.find((a) => a.id === articleId)
       hideArticle(articleId)
-      if (article) trackHidden(article, disabledFilters)
+      if (article) trackHidden(article, enabledFilters)
     },
-    [hideArticle, trackHidden, disabledFilters],
+    [hideArticle, trackHidden, enabledFilters],
   )
 
   const handleKeyboardSave = useCallback(
@@ -232,11 +258,11 @@ export function useFeedPage(): UseFeedPageResult {
       } else {
         addToReadList(article)
         hideArticle(articleId)
-        trackSaved(article, disabledFilters)
+        trackSaved(article, enabledFilters)
         swipeableCardReferences.current.get(articleId)?.triggerRemoval()
       }
     },
-    [isInReadList, removeFromReadList, addToReadList, hideArticle, trackSaved, disabledFilters],
+    [isInReadList, removeFromReadList, addToReadList, hideArticle, trackSaved, enabledFilters],
   )
 
   const getFocusedArticleId = useCallback(
@@ -284,7 +310,7 @@ export function useFeedPage(): UseFeedPageResult {
       return createElement(ArticleActionButtons, {
         onHide: () => {
           hideArticle(article.id)
-          trackHidden(article, disabledFilters)
+          trackHidden(article, enabledFilters)
         },
         onSave: () => {
           if (isInReadList(article.id)) {
@@ -292,7 +318,7 @@ export function useFeedPage(): UseFeedPageResult {
           } else {
             addToReadList(article)
             hideArticle(article.id)
-            trackSaved(article, disabledFilters)
+            trackSaved(article, enabledFilters)
             swipeableCardReferences.current.get(article.id)?.triggerRemoval()
           }
         },
@@ -302,7 +328,7 @@ export function useFeedPage(): UseFeedPageResult {
     [
       showHidden, isHidden, unhideArticle, hideArticle,
       isInReadList, removeFromReadList, addToReadList,
-      trackHidden, trackSaved, disabledFilters,
+      trackHidden, trackSaved, enabledFilters,
     ],
   )
 
@@ -333,7 +359,7 @@ export function useFeedPage(): UseFeedPageResult {
             ),
             onAction: () => {
               hideArticle(article.id)
-              trackHidden(article, disabledFilters)
+              trackHidden(article, enabledFilters)
             },
           },
           swipeLeft: {
@@ -349,7 +375,7 @@ export function useFeedPage(): UseFeedPageResult {
               } else {
                 addToReadList(article)
                 hideArticle(article.id)
-                trackSaved(article, disabledFilters)
+                trackSaved(article, enabledFilters)
               }
             },
           },
@@ -359,7 +385,7 @@ export function useFeedPage(): UseFeedPageResult {
     },
     [
       hideArticle, isInReadList, removeFromReadList, addToReadList,
-      createInteractionRef, trackHidden, trackSaved, disabledFilters,
+      createInteractionRef, trackHidden, trackSaved, enabledFilters,
     ],
   )
 
@@ -393,7 +419,7 @@ export function useFeedPage(): UseFeedPageResult {
   ])
 
   const emptyMessage = !allArticles && !loading
-    ? "No articles for this day."
+    ? t("feed.emptyDay")
     : undefined
 
   const feedListProps: FeedListProps = useMemo(() => ({
@@ -406,9 +432,12 @@ export function useFeedPage(): UseFeedPageResult {
     renderWrapper: renderArticleWrapper,
     emptyMessage,
     onRefresh: refresh,
+    pendingCount,
+    onAcceptPending: acceptPending,
   }), [
     filteredArticles, loading, errors, hiddenIds,
     showHidden, renderActions, renderArticleWrapper, emptyMessage, refresh,
+    pendingCount, acceptPending,
   ])
 
   return { filterBarProps, feedListProps, lastRefreshedAt }

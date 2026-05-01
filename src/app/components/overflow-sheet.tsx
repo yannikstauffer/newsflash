@@ -1,6 +1,6 @@
 import { Popover } from "@base-ui/react/popover"
 import { Link, useLocation } from "@tanstack/react-router"
-import { Check, Loader2, MoreVertical, Settings, TrendingUp } from "lucide-react"
+import { Check, Loader2, MoreHorizontal, Settings, TrendingUp } from "lucide-react"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
@@ -19,7 +19,7 @@ function OverflowButtonIcon({ className }: OverflowButtonIconProps) {
 
   return (
     <span className="relative inline-flex items-center justify-center">
-      <MoreVertical className={className} aria-hidden="true" />
+      <MoreHorizontal className={className} aria-hidden="true" />
       {showSyncing && (
         <span
           className="absolute -right-1 -top-1 flex size-3 items-center justify-center rounded-full bg-background"
@@ -62,10 +62,10 @@ export function OverflowSheet() {
       </Popover.Trigger>
 
       <Popover.Portal>
-        <Popover.Positioner side="top" align="end" sideOffset={8}>
+        <Popover.Positioner side="top" align="end" sideOffset={8} className="z-50">
           <Popover.Popup
             className={cn(
-              "z-50 min-w-[160px] overflow-hidden rounded-xl border border-border bg-background shadow-lg",
+              "min-w-[160px] overflow-hidden rounded-xl border border-border bg-background shadow-lg",
               "transition-[opacity,transform] duration-100 ease-in",
               "data-open:opacity-100 data-open:scale-100",
               "data-closed:opacity-0 data-closed:scale-95",

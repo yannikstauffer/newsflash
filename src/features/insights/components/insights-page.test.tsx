@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import InsightsPage from "./insights-page"
 
-import type { FilterInsight, SourceInsight } from "../hooks/use-insights-data"
+import type { FeedInsight, FilterInsight } from "../hooks/use-insights-data"
 
 // Mock i18n to return keys so test assertions are key-stable
 vi.mock("react-i18next", () => ({
@@ -13,7 +13,7 @@ vi.mock("react-i18next", () => ({
 }))
 
 // Default mock — no data
-let mockSourceInsights: SourceInsight[] = []
+let mockSourceInsights: FeedInsight[] = []
 let mockFilterInsights: FilterInsight[] = []
 let mockHasData = false
 
@@ -25,9 +25,10 @@ vi.mock("../hooks/use-insights-data", () => ({
   }),
 }))
 
-function makeSource(overrides: Partial<SourceInsight> = {}): SourceInsight {
+function makeSource(overrides: Partial<FeedInsight> = {}): FeedInsight {
   return {
-    sourceId: "heise",
+    feedId: "heise",
+    feedName: "Heise Online",
     sourceName: "Heise",
     appeared: 10,
     hidden: 2,
@@ -48,7 +49,9 @@ function makeFilter(overrides: Partial<FilterInsight> = {}): FilterInsight {
     appeared: 5,
     hidden: 2,
     saved: 0,
-    isEnabled: false,
+    hideRate: 0.4,
+    hasEnoughData: true,
+    isEnabled: true,
     recommendEnable: false,
     recommendDisable: false,
     ...overrides,
@@ -80,7 +83,7 @@ describe("InsightsPage — empty state", () => {
 describe("InsightsPage — source cards", () => {
   it("renders a source card for each source", () => {
     mockHasData = true
-    mockSourceInsights = [makeSource({ sourceId: "heise", sourceName: "Heise" }), makeSource({ sourceId: "srf", sourceName: "SRF" })]
+    mockSourceInsights = [makeSource({ feedId: "heise", feedName: "Heise Online", sourceName: "Heise" }), makeSource({ feedId: "srf", feedName: "SRF", sourceName: "SRF" })]
     render(<InsightsPage />)
     expect(screen.getAllByTestId("source-insight-card")).toHaveLength(2)
   })
@@ -134,19 +137,29 @@ describe("InsightsPage — recommendation badges", () => {
 })
 
 describe("InsightsPage — filter cards", () => {
-  it("shows matched/hidden/saved when appeared > 0", () => {
+  it("shows matched/hidden/saved for enabled filter with enough data", () => {
     mockHasData = true
-    mockFilterInsights = [makeFilter({ appeared: 8, hidden: 3, saved: 1 })]
+    mockFilterInsights = [makeFilter({ appeared: 8, hidden: 3, saved: 1, isEnabled: true, hasEnoughData: true })]
     render(<InsightsPage />)
     expect(screen.getByTestId("filter-appeared").textContent).toBe("8")
     expect(screen.getByTestId("filter-hidden").textContent).toBe("3")
     expect(screen.getByTestId("filter-saved").textContent).toBe("1")
   })
 
-  it("shows no-matching-articles indicator when appeared=0", () => {
+  it("shows only blocked count for disabled filter (no hidden/saved columns)", () => {
     mockHasData = true
-    mockFilterInsights = [makeFilter({ appeared: 0 })]
+    mockFilterInsights = [makeFilter({ appeared: 8, hidden: 0, saved: 0, isEnabled: false, hasEnoughData: true })]
     render(<InsightsPage />)
-    expect(screen.getByTestId("no-matching-articles")).toBeInTheDocument()
+    expect(screen.getByTestId("filter-appeared").textContent).toBe("8")
+    expect(screen.queryByTestId("filter-hidden")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("filter-saved")).not.toBeInTheDocument()
+  })
+
+  it("shows not-enough-data indicator when hasEnoughData=false", () => {
+    mockHasData = true
+    mockFilterInsights = [makeFilter({ hasEnoughData: false })]
+    render(<InsightsPage />)
+    expect(screen.getByTestId("not-enough-data")).toBeInTheDocument()
+    expect(screen.queryByTestId("filter-appeared")).not.toBeInTheDocument()
   })
 })

@@ -19,6 +19,7 @@
     "closeSearch": "Close search",
     "openSearch": "Open search",
     "refreshed": "Refreshed {{time}}",
+    "synced": "Synced {{time}}",
     "loading": "Loading feeds...",
     "loadingLabel": "Loading feeds",
     "empty": "No articles found. Try adjusting your filters.",
@@ -34,7 +35,8 @@
     "hideAllDescription": "This will hide {{count}} articles. You can show them again using Show Hidden.",
     "hideAllToast": "{{count}} articles hidden",
     "cancel": "Cancel",
-    "undo": "Undo"
+    "undo": "Undo",
+    "showNewerArticles": "Show {{count}} newer articles"
   },
   "settings": {
     "heading": "Settings",
@@ -115,6 +117,7 @@
     "hidden": "Hidden",
     "saved": "Saved",
     "matched": "Matched",
+    "blocked": "Blocked",
     "hideRate": "Hide rate"
   },
   "error": {

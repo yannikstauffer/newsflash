@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 
 import { useInsightsData } from "../hooks/use-insights-data"
 
-import type { FilterInsight, SourceInsight } from "../hooks/use-insights-data"
+import type { FeedInsight, FilterInsight } from "../hooks/use-insights-data"
 
 import { cn } from "@/lib/utils"
 
@@ -47,13 +47,13 @@ function NotEnoughData() {
   )
 }
 
-// --- Source insight card ---
+// --- Feed insight card ---
 
-interface SourceInsightCardProps {
-  readonly insight: SourceInsight
+interface FeedInsightCardProps {
+  readonly insight: FeedInsight
 }
 
-function SourceInsightCard({ insight }: SourceInsightCardProps) {
+function FeedInsightCard({ insight }: FeedInsightCardProps) {
   const { t } = useTranslation()
 
   return (
@@ -62,7 +62,10 @@ function SourceInsightCard({ insight }: SourceInsightCardProps) {
       data-testid="source-insight-card"
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-medium text-sm">{insight.sourceName}</h3>
+        <div>
+          <h3 className="font-medium text-sm">{insight.feedName}</h3>
+          <p className="text-xs text-muted-foreground">{insight.sourceName}</p>
+        </div>
         <div className="flex flex-wrap gap-1 justify-end">
           {insight.recommendDisable && (
             <RecommendationBadge variant="disable">
@@ -82,7 +85,7 @@ function SourceInsightCard({ insight }: SourceInsightCardProps) {
       </div>
 
       {insight.hasEnoughData ? (
-        <dl className="flex gap-4 text-sm text-muted-foreground">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 md:grid-cols-4 text-sm text-muted-foreground">
           <div>
             <dt className="text-xs uppercase tracking-wide">{t("insights.appeared")}</dt>
             <dd className="font-medium text-foreground" data-testid="source-appeared">{insight.appeared}</dd>
@@ -142,25 +145,29 @@ function FilterInsightCard({ insight }: FilterInsightCardProps) {
         </div>
       </div>
 
-      {insight.appeared > 0 ? (
-        <dl className="flex gap-4 text-sm text-muted-foreground">
+      {insight.hasEnoughData ? (
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 md:grid-cols-3 text-sm text-muted-foreground">
           <div>
-            <dt className="text-xs uppercase tracking-wide">{t("insights.matched")}</dt>
+            <dt className="text-xs uppercase tracking-wide">
+              {insight.isEnabled ? t("insights.matched") : t("insights.blocked")}
+            </dt>
             <dd className="font-medium text-foreground" data-testid="filter-appeared">{insight.appeared}</dd>
           </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide">{t("insights.hidden")}</dt>
-            <dd className="font-medium text-foreground" data-testid="filter-hidden">{insight.hidden}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide">{t("insights.saved")}</dt>
-            <dd className="font-medium text-foreground" data-testid="filter-saved">{insight.saved}</dd>
-          </div>
+          {insight.isEnabled && (
+            <>
+              <div>
+                <dt className="text-xs uppercase tracking-wide">{t("insights.hidden")}</dt>
+                <dd className="font-medium text-foreground" data-testid="filter-hidden">{insight.hidden}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide">{t("insights.saved")}</dt>
+                <dd className="font-medium text-foreground" data-testid="filter-saved">{insight.saved}</dd>
+              </div>
+            </>
+          )}
         </dl>
       ) : (
-        <span className="text-xs text-muted-foreground italic" data-testid="no-matching-articles">
-          {t("insights.noMatchingArticles")}
-        </span>
+        <NotEnoughData />
       )}
     </div>
   )
@@ -203,7 +210,7 @@ export default function InsightsPage() {
               </h2>
               <div className="space-y-3">
                 {sources.map((insight) => (
-                  <SourceInsightCard key={insight.sourceId} insight={insight} />
+                  <FeedInsightCard key={insight.feedId} insight={insight} />
                 ))}
               </div>
             </section>

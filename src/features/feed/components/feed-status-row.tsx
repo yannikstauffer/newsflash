@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { formatRelativeTime } from "../utils/format-time"
 
@@ -9,6 +10,7 @@ interface FeedStatusRowProps {
 }
 
 export function FeedStatusRow({ lastRefreshedAt }: FeedStatusRowProps) {
+  const { t, i18n } = useTranslation()
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(
     getLastSyncedAtSync,
   )
@@ -34,10 +36,10 @@ export function FeedStatusRow({ lastRefreshedAt }: FeedStatusRowProps) {
 
   const parts: string[] = []
   if (lastRefreshedAt) {
-    parts.push(`Refreshed ${formatRelativeTime(lastRefreshedAt)}`)
+    parts.push(t("feed.refreshed", { time: formatRelativeTime(lastRefreshedAt, undefined, i18n.language) }))
   }
   if (lastSyncedAt) {
-    parts.push(`Synced ${formatRelativeTime(lastSyncedAt)}`)
+    parts.push(t("feed.synced", { time: formatRelativeTime(lastSyncedAt, undefined, i18n.language) }))
   }
 
   return (

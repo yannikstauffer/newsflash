@@ -30,7 +30,7 @@ export function BottomNav({ readListCount }: BottomNavProps) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-10 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:sticky sm:top-0 sm:z-20 sm:border-b sm:border-t-0 sm:pb-0"
+      className="fixed bottom-0 left-0 right-0 z-10 min-w-[320px] border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:sticky sm:top-0 sm:z-20 sm:border-b sm:border-t-0 sm:pb-0"
       aria-label={t("nav.mainNavigation")}
     >
       <div className="mx-auto flex max-w-3xl gap-2 p-2">
