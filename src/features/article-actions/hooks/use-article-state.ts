@@ -26,6 +26,14 @@ function isExpired(entry: HiddenEntry, now: number): boolean {
   return Number.isNaN(hiddenAtMs) || now - hiddenAtMs > HIDDEN_TTL_MS
 }
 
+// Active = normalized + prefix-valid + within TTL. Used by both reads and mutation
+// updaters so any persisted write naturally drops legacy unprefixed entries.
+function getActiveHidden(raw: unknown, cutoff: number): HiddenEntry[] {
+  return normalizeHidden(raw).filter(
+    (entry) => hasSourcePrefix(entry.id) && !isExpired(entry, cutoff),
+  )
+}
+
 // Converts any stored value (legacy string[] or proper HiddenEntry[]) to HiddenEntry[].
 // Legacy strings are stamped with the current time so no hides are lost on upgrade.
 // Entries with non-string id/hiddenAt are dropped to prevent runtime errors downstream.
@@ -111,9 +119,7 @@ export function useArticleState(): {
   // entries crossing the 14-day boundary are evicted on the next re-render without a write.
   // eslint-disable-next-line react-hooks/purity
   const cutoff = Date.now()
-  const hiddenIds = normalizeHidden(rawHiddenEntries)
-    .filter((entry) => hasSourcePrefix(entry.id) && !isExpired(entry, cutoff))
-    .map((entry) => entry.id)
+  const hiddenIds = getActiveHidden(rawHiddenEntries, cutoff).map((entry) => entry.id)
 
   const hiddenSet = useMemo(() => new Set(hiddenIds), [hiddenIds])
   const validReadList = useMemo(
@@ -143,7 +149,7 @@ export function useArticleState(): {
       const ts = new Date().toISOString()
       const cutoff = Date.now()
       setHiddenEntries((previous) => {
-        const active = normalizeHidden(previous).filter((entry) => !isExpired(entry, cutoff))
+        const active = getActiveHidden(previous, cutoff)
         if (active.some((entry) => entry.id === articleId)) return active
         return [{ id: articleId, hiddenAt: ts }, ...active]
       })
@@ -155,8 +161,7 @@ export function useArticleState(): {
     (articleId: string) => {
       const cutoff = Date.now()
       setHiddenEntries((previous) =>
-        normalizeHidden(previous)
-          .filter((entry) => !isExpired(entry, cutoff) && entry.id !== articleId),
+        getActiveHidden(previous, cutoff).filter((entry) => entry.id !== articleId),
       )
     },
     [setHiddenEntries],
@@ -167,9 +172,13 @@ export function useArticleState(): {
       let didAdd = false
       let droppedId: string | undefined
       setStoredReadList((previous) => {
-        if (previous.some((a) => a.id === article.id)) return previous
+        const valid = previous.filter((a) => hasSourcePrefix(a.id))
+        if (valid.some((a) => a.id === article.id)) {
+          // Preserve reference for true no-ops so memoized derivations stay stable.
+          return valid.length === previous.length ? previous : valid
+        }
         didAdd = true
-        const next = [toStored(article), ...previous]
+        const next = [toStored(article), ...valid]
         if (next.length > MAX_READLIST_ITEMS) {
           droppedId = next.at(-1)?.id
           return next.slice(0, MAX_READLIST_ITEMS)
@@ -189,7 +198,7 @@ export function useArticleState(): {
   const removeFromReadList = useCallback(
     (articleId: string) => {
       setStoredReadList((previous) =>
-        previous.filter((a) => a.id !== articleId),
+        previous.filter((a) => hasSourcePrefix(a.id) && a.id !== articleId),
       )
       articleCache.setPinned(articleId, false).catch(() => {})
     },
@@ -201,10 +210,10 @@ export function useArticleState(): {
       const ts = new Date().toISOString()
       const cutoff = Date.now()
       setHiddenEntries((previous) => {
-        const active = normalizeHidden(previous).filter((entry) => !isExpired(entry, cutoff))
+        const active = getActiveHidden(previous, cutoff)
         const existing = new Set(active.map((entry) => entry.id))
         const newEntries = ids
-          .filter((id) => !existing.has(id))
+          .filter((id) => hasSourcePrefix(id) && !existing.has(id))
           .map((id) => ({ id, hiddenAt: ts }))
         if (newEntries.length === 0) return active
         return [...newEntries, ...active]
@@ -218,8 +227,7 @@ export function useArticleState(): {
       const idsToRemove = new Set(ids)
       const cutoff = Date.now()
       setHiddenEntries((previous) =>
-        normalizeHidden(previous)
-          .filter((entry) => !isExpired(entry, cutoff) && !idsToRemove.has(entry.id)),
+        getActiveHidden(previous, cutoff).filter((entry) => !idsToRemove.has(entry.id)),
       )
     },
     [setHiddenEntries],
@@ -227,7 +235,7 @@ export function useArticleState(): {
 
   const clearReadList = useCallback(
     () => {
-      const ids = storedReadList.map((a) => a.id)
+      const ids = storedReadList.filter((a) => hasSourcePrefix(a.id)).map((a) => a.id)
       articleCache.bulkSetPinned(ids, false).catch(() => {})
       setStoredReadList([])
     },
@@ -239,15 +247,18 @@ export function useArticleState(): {
       let articlesToPin: NormalizedArticle[] = []
       let droppedIds: string[] = []
       setStoredReadList((previous) => {
-        const existingIds = new Set(previous.map((a) => a.id))
-        const newEntries = articles.filter((a) => !existingIds.has(a.id))
-        const allEntries = [...newEntries.map(toStored), ...previous]
+        const validPrevious = previous.filter((a) => hasSourcePrefix(a.id))
+        const existingIds = new Set(validPrevious.map((a) => a.id))
+        const newEntries = articles.filter(
+          (a) => hasSourcePrefix(a.id) && !existingIds.has(a.id),
+        )
+        const allEntries = [...newEntries.map(toStored), ...validPrevious]
         const capped = allEntries.length > MAX_READLIST_ITEMS
           ? allEntries.slice(0, MAX_READLIST_ITEMS)
           : allEntries
         const cappedIds = new Set(capped.map((a) => a.id))
         articlesToPin = articles.filter((a) => cappedIds.has(a.id))
-        droppedIds = previous
+        droppedIds = validPrevious
           .filter((a) => !cappedIds.has(a.id))
           .map((a) => a.id)
         return capped
@@ -266,8 +277,7 @@ export function useArticleState(): {
     (sourceId: string) => {
       const cutoff = Date.now()
       setHiddenEntries((previous) =>
-        normalizeHidden(previous)
-          .filter((entry) => !isExpired(entry, cutoff) && !entry.id.startsWith(`${sourceId}:`)),
+        getActiveHidden(previous, cutoff).filter((entry) => !entry.id.startsWith(`${sourceId}:`)),
       )
     },
     [setHiddenEntries],
@@ -277,10 +287,11 @@ export function useArticleState(): {
     (sourceId: string) => {
       let removedIds: string[] = []
       setStoredReadList((previous) => {
-        removedIds = previous
+        const valid = previous.filter((a) => hasSourcePrefix(a.id))
+        removedIds = valid
           .filter((a) => a.source === sourceId)
           .map((a) => a.id)
-        return previous.filter((a) => a.source !== sourceId)
+        return valid.filter((a) => a.source !== sourceId)
       })
       if (removedIds.length > 0) {
         articleCache.bulkSetPinned(removedIds, false).catch(() => {})

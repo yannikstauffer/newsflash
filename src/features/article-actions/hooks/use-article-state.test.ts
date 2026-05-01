@@ -680,8 +680,60 @@ describe("useArticleState", () => {
 
       const { result } = renderHook(() => useArticleState())
 
-      // After migration effect runs
       expect(result.current.hiddenIds).toEqual(["heise:valid"])
+    })
+
+    it("drops legacy unprefixed hidden entries from storage on next mutation", () => {
+      localStorage.setItem(
+        HIDDEN_KEY,
+        JSON.stringify(["abc123", "heise:valid"]),
+      )
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.hideArticle("heise:new")
+      })
+
+      const storedHidden: Array<{ id: string }> = JSON.parse(
+        localStorage.getItem(HIDDEN_KEY) ?? "[]",
+      )
+      expect(storedHidden.map((entry) => entry.id)).toEqual(["heise:new", "heise:valid"])
+    })
+
+    it("drops legacy unprefixed read list entries from storage on next mutation", () => {
+      const stored = [
+        {
+          id: "legacy123",
+          title: "Legacy",
+          description: "Old",
+          link: "https://example.com",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+        {
+          id: "heise:valid",
+          title: "Valid",
+          description: "New",
+          link: "https://example.com/valid",
+          publishedAt: "2026-01-15T10:00:00.000Z",
+          source: "heise",
+          language: "de",
+        },
+      ]
+      localStorage.setItem(READLIST_KEY, JSON.stringify(stored))
+
+      const { result } = renderHook(() => useArticleState())
+
+      act(() => {
+        result.current.addToReadList(makeArticle({ id: "heise:added" }))
+      })
+
+      const after: Array<{ id: string }> = JSON.parse(
+        localStorage.getItem(READLIST_KEY) ?? "[]",
+      )
+      expect(after.map((entry) => entry.id)).toEqual(["heise:added", "heise:valid"])
     })
 
     it("clears legacy read list entries without colon separator in ID", () => {
